@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#E8607A"/>
+      <stop offset="100%" stop-color="#8855CC"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Rounded square background -->
+  <rect width="512" height="512" rx="112" ry="112" fill="url(#bg)"/>
+
+  <!-- Graph / share icon — 3 nodes + 2 edges (white) -->
+  <!-- Lines drawn first so nodes render on top -->
+  <!-- Left node to top-right node -->
+  <line x1="168" y1="248" x2="340" y2="148" stroke="white" stroke-width="28" stroke-linecap="round" opacity="0.95"/>
+  <!-- Left node to bottom-right node -->
+  <line x1="168" y1="268" x2="340" y2="368" stroke="white" stroke-width="28" stroke-linecap="round" opacity="0.95"/>
+
+  <!-- Left node -->
+  <circle cx="156" cy="258" r="46" fill="white"/>
+  <!-- Top-right node -->
+  <circle cx="352" cy="140" r="46" fill="white"/>
+  <!-- Bottom-right node -->
+  <circle cx="352" cy="376" r="46" fill="white"/>
+</svg>

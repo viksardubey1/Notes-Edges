@@ -1,0 +1,513 @@
+@import "tailwindcss";
+
+/* ─── Design Tokens — Atmospheric Dark (default) ─────────────────────────── */
+/* Deep indigo-violet space. Graph = cosmic canvas. UI = warm dark glass.      */
+/* [data-theme="dark"] = deeper void variant for explicit dark preference.     */
+
+:root {
+  /* Primitive palette — deep atmospheric dark */
+  --color-void: #0B0718;
+  --color-obsidian: #141028;
+  --color-slate: #1C1638;
+  --color-hairline: rgba(255, 255, 255, 0.10);
+  --color-chalk: #EDE8FF;
+  --color-mist: #A898C8;
+  --color-ghost: #6A5F88;
+  --color-arc-blue: #9876EE;
+  --color-arc-glow: rgba(152, 118, 238, 0.20);
+
+  /* Graph rendering tokens — for dark cosmic canvas */
+  --color-node-fill: rgba(255, 255, 255, 0.05);
+  --color-node-ring: rgba(255, 255, 255, 0.16);
+  --color-edge-default: rgba(255, 255, 255, 0.09);
+  --color-edge-strong: rgba(255, 255, 255, 0.24);
+  --color-edge-weak: rgba(255, 255, 255, 0.04);
+
+  /* Cluster colors — luminous on dark canvas */
+  --color-cluster-a: #F07090;
+  --color-cluster-b: #50D0A0;
+  --color-cluster-c: #9880F0;
+  --color-cluster-d: #F0B040;
+  --color-cluster-e: #50C0E8;
+
+  /* Learning state colors */
+  --color-state-weak: #E06070;
+  --color-state-reviewing: #D4A840;
+  --color-state-understood: #60C898;
+  --color-state-mastered: #60C0E8;
+
+  /* Extended cluster palette for variety */
+  --color-cluster-f: #C060E8;
+  --color-cluster-g: #40C8C0;
+
+  /* ── Semantic layout tokens ── */
+  --bg-base: #0B0718;
+  --bg-surface-1: #141028;
+  --bg-surface-2: #1C1638;
+  --bg-surface-3: #251E48;
+  --border-default: rgba(255, 255, 255, 0.10);
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --text-primary: #EDE8FF;
+  --text-secondary: #A898C8;
+  --text-muted: #6A5F88;
+  --accent-primary: #9876EE;
+  --accent-glow: rgba(152, 118, 238, 0.20);
+  --accent-bright: #B494FF;
+  --accent-warm: #E87090;
+  --accent-warm-glow: rgba(232, 112, 144, 0.15);
+
+  /* ── Component-level tokens ── */
+  --card-shadow: 0 1px 3px rgba(0, 0, 0, 0.40), 0 4px 16px rgba(0, 0, 0, 0.30);
+  --card-shadow-hover: 0 2px 8px rgba(0, 0, 0, 0.50), 0 16px 40px rgba(0, 0, 0, 0.40);
+  --panel-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08), 0 8px 40px rgba(0, 0, 0, 0.60);
+
+  /* ── Layout measurements ── */
+  --command-bar-height: 52px;
+  --sidebar-width: 260px;
+  --sidebar-collapsed-width: 52px;
+  --node-detail-width: 340px;
+
+  /* ── Motion tokens ── */
+  --duration-micro: 120ms;
+  --duration-fast: 180ms;
+  --duration-panel: 320ms;
+  --easing-default: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --easing-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --easing-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ─── Dark Theme ──────────────────────────────────────────────────────────── */
+
+[data-theme="dark"] {
+  /* Deeper void — maximum atmospheric immersion */
+  --color-void: #070410;
+  --color-obsidian: #0E0A1E;
+  --color-slate: #151030;
+  --color-hairline: rgba(255, 255, 255, 0.07);
+  --color-chalk: #E8E0FF;
+  --color-mist: #9888C0;
+  --color-ghost: #5A5078;
+  --color-arc-blue: #8868E0;
+  --color-arc-glow: rgba(136, 104, 224, 0.22);
+
+  --color-node-fill: rgba(255, 255, 255, 0.04);
+  --color-node-ring: rgba(255, 255, 255, 0.12);
+  --color-edge-default: rgba(255, 255, 255, 0.07);
+  --color-edge-strong: rgba(255, 255, 255, 0.18);
+  --color-edge-weak: rgba(255, 255, 255, 0.03);
+
+  --color-cluster-a: #E86080;
+  --color-cluster-b: #48C890;
+  --color-cluster-c: #8870E8;
+  --color-cluster-d: #E0A830;
+  --color-cluster-e: #48B8E0;
+
+  --color-state-weak: #D85870;
+  --color-state-reviewing: #C8A030;
+  --color-state-understood: #58C090;
+  --color-state-mastered: #58B8E0;
+
+  --bg-base: #070410;
+  --bg-surface-1: #0E0A1E;
+  --bg-surface-2: #151030;
+  --bg-surface-3: #1C1640;
+  --border-default: rgba(255, 255, 255, 0.07);
+  --border-subtle: rgba(255, 255, 255, 0.04);
+  --text-primary: #E8E0FF;
+  --text-secondary: #9888C0;
+  --text-muted: #5A5078;
+  --accent-primary: #8868E0;
+  --accent-glow: rgba(136, 104, 224, 0.22);
+  --accent-bright: #A888F8;
+  --accent-warm: #E06888;
+  --accent-warm-glow: rgba(224, 104, 136, 0.18);
+
+  --card-shadow: 0 1px 3px rgba(0, 0, 0, 0.60), 0 4px 16px rgba(0, 0, 0, 0.50);
+  --card-shadow-hover: 0 2px 8px rgba(0, 0, 0, 0.70), 0 16px 40px rgba(0, 0, 0, 0.60);
+  --panel-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 8px 40px rgba(0, 0, 0, 0.80);
+}
+
+/* ─── Preset: Forest Night ───────────────────────────────────────────────── */
+[data-theme="dark"][data-preset="forest-night"] {
+  --color-void: #0F1410;
+  --color-obsidian: #141C16;
+  --color-slate: #1A2420;
+  --color-hairline: #2C3E34;
+  --color-chalk: #EDF5EE;
+  --color-mist: #A0C0A8;
+  --color-ghost: #607868;
+  --color-arc-blue: #68C080;
+  --color-arc-glow: rgba(104, 192, 128, 0.13);
+  --bg-base: #0F1410;
+  --bg-surface-1: #141C16;
+  --bg-surface-2: #1A2420;
+  --bg-surface-3: #222E28;
+  --border-default: #2C3E34;
+  --border-subtle: #20302A;
+  --text-primary: #EDF5EE;
+  --text-secondary: #A0C0A8;
+  --text-muted: #607868;
+  --accent-primary: #68C080;
+  --accent-glow: rgba(104, 192, 128, 0.13);
+  --accent-bright: #7AD898;
+  --color-state-weak: #D05858;
+  --color-state-reviewing: #C8A840;
+  --color-state-understood: #68C080;
+  --color-state-mastered: #48C0B0;
+  --color-cluster-a: #E07068;
+  --color-cluster-b: #68C080;
+  --color-cluster-c: #8878C0;
+  --color-cluster-d: #C8A840;
+  --color-cluster-e: #48B8C0;
+}
+
+/* ─── Preset: Ocean Deep ─────────────────────────────────────────────────── */
+[data-theme="dark"][data-preset="ocean-deep"] {
+  --color-void: #0C1118;
+  --color-obsidian: #111C28;
+  --color-slate: #172434;
+  --color-hairline: #263650;
+  --color-chalk: #EAF4FB;
+  --color-mist: #90B8D0;
+  --color-ghost: #507890;
+  --color-arc-blue: #58B8E0;
+  --color-arc-glow: rgba(88, 184, 224, 0.13);
+  --bg-base: #0C1118;
+  --bg-surface-1: #111C28;
+  --bg-surface-2: #172434;
+  --bg-surface-3: #1E2E40;
+  --border-default: #263650;
+  --border-subtle: #1E2C40;
+  --text-primary: #EAF4FB;
+  --text-secondary: #90B8D0;
+  --text-muted: #507890;
+  --accent-primary: #58B8E0;
+  --accent-glow: rgba(88, 184, 224, 0.13);
+  --accent-bright: #70D0F8;
+  --color-state-weak: #D06070;
+  --color-state-reviewing: #C8A040;
+  --color-state-understood: #58D0A0;
+  --color-state-mastered: #40B8D8;
+  --color-cluster-a: #D06888;
+  --color-cluster-b: #58C8A0;
+  --color-cluster-c: #8890D8;
+  --color-cluster-d: #C0A040;
+  --color-cluster-e: #58B8E0;
+}
+
+/* ─── Preset: Golden Hour ────────────────────────────────────────────────── */
+[data-theme="dark"][data-preset="golden-hour"] {
+  --color-void: #141110;
+  --color-obsidian: #1C1917;
+  --color-slate: #242018;
+  --color-hairline: #36302A;
+  --color-chalk: #F0EAE0;
+  --color-mist: #B0A494;
+  --color-ghost: #786860;
+  --color-arc-blue: #D4906A;
+  --color-arc-glow: rgba(212, 144, 106, 0.13);
+  --bg-base: #141110;
+  --bg-surface-1: #1C1917;
+  --bg-surface-2: #242018;
+  --bg-surface-3: #2C2820;
+  --border-default: #36302A;
+  --border-subtle: #2C2620;
+  --text-primary: #F0EAE0;
+  --text-secondary: #B0A494;
+  --text-muted: #786860;
+  --accent-primary: #D4906A;
+  --accent-glow: rgba(212, 144, 106, 0.13);
+  --accent-bright: #E8A878;
+  --color-state-weak: #D46458;
+  --color-state-reviewing: #C89840;
+  --color-state-understood: #6AAA7A;
+  --color-state-mastered: #40AABB;
+  --color-cluster-a: #C86870;
+  --color-cluster-b: #6AAA7A;
+  --color-cluster-c: #9080C0;
+  --color-cluster-d: #C89840;
+  --color-cluster-e: #60A8A0;
+}
+
+/* ─── Preset: Lavender Dusk ──────────────────────────────────────────────── */
+[data-theme="dark"][data-preset="lavender-dusk"] {
+  --color-void: #111018;
+  --color-obsidian: #18162A;
+  --color-slate: #201E38;
+  --color-hairline: #302E54;
+  --color-chalk: #F0ECF8;
+  --color-mist: #B0A8D0;
+  --color-ghost: #70689A;
+  --color-arc-blue: #A880D0;
+  --color-arc-glow: rgba(168, 128, 208, 0.13);
+  --bg-base: #111018;
+  --bg-surface-1: #18162A;
+  --bg-surface-2: #201E38;
+  --bg-surface-3: #282648;
+  --border-default: #302E54;
+  --border-subtle: #262444;
+  --text-primary: #F0ECF8;
+  --text-secondary: #B0A8D0;
+  --text-muted: #70689A;
+  --accent-primary: #A880D0;
+  --accent-glow: rgba(168, 128, 208, 0.13);
+  --accent-bright: #C098E8;
+  --color-state-weak: #D06080;
+  --color-state-reviewing: #C09840;
+  --color-state-understood: #68B890;
+  --color-state-mastered: #60B8D8;
+  --color-cluster-a: #D87890;
+  --color-cluster-b: #70C898;
+  --color-cluster-c: #A880D0;
+  --color-cluster-d: #C0A040;
+  --color-cluster-e: #68B0D0;
+}
+
+/* ─── Tailwind Theme Extension ────────────────────────────────────────────── */
+
+@theme inline {
+  --color-background: var(--bg-base);
+  --color-foreground: var(--text-primary);
+  --font-sans: 'Geist', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'Geist Mono', 'JetBrains Mono', 'Fira Code', monospace;
+}
+
+/* ─── Base Reset ──────────────────────────────────────────────────────────── */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  width: 100%;
+  background-color: var(--bg-base);
+  color: var(--text-primary);
+  font-family: 'Geist', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  transition: background-color 250ms var(--easing-smooth), color 250ms var(--easing-smooth);
+}
+
+/* ─── Shimmer Animation (skeleton loading) ────────────────────────────────── */
+
+@keyframes shimmer {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* ─── Ambient Float ───────────────────────────────────────────────────────── */
+
+@keyframes ambient-float {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-3px); }
+}
+
+.ambient-float {
+  animation: ambient-float 5s ease-in-out infinite;
+}
+
+/* ─── Soft Pulse (for selected elements) ─────────────────────────────────── */
+
+@keyframes soft-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.7; }
+}
+
+/* ─── Focus Ring ──────────────────────────────────────────────────────────── */
+
+:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ─── Scrollbar ───────────────────────────────────────────────────────────── */
+
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-default); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-ghost); }
+
+/* ─── Text Selection ──────────────────────────────────────────────────────── */
+
+::selection {
+  background-color: var(--accent-glow);
+  color: var(--text-primary);
+}
+
+/* ─── Edge Animations ─────────────────────────────────────────────────────── */
+
+@keyframes dash-flow {
+  to { stroke-dashoffset: -24; }
+}
+
+.edge-leads-to {
+  stroke-dasharray: 6 6;
+  animation: dash-flow 1.8s linear infinite;
+}
+
+/* ─── Node Selected Glow ──────────────────────────────────────────────────── */
+
+@keyframes concept-glow {
+  0%, 100% { filter: drop-shadow(0 0 6px var(--accent-glow)); }
+  50%       { filter: drop-shadow(0 0 16px var(--accent-primary)); }
+}
+
+.node-selected {
+  animation: concept-glow 2.5s ease-in-out infinite;
+}
+
+/* ─── Gradient text utility ───────────────────────────────────────────────── */
+
+.text-gradient-accent {
+  background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-warm) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* ─── Card elevation ──────────────────────────────────────────────────────── */
+
+.card-elevated {
+  background: var(--bg-surface-1);
+  border: 1px solid var(--border-default);
+  box-shadow: var(--card-shadow);
+  transition:
+    box-shadow var(--duration-fast) var(--easing-smooth),
+    border-color var(--duration-fast) var(--easing-smooth),
+    transform var(--duration-fast) var(--easing-smooth);
+}
+
+.card-elevated:hover {
+  box-shadow: var(--card-shadow-hover);
+  border-color: rgba(152, 118, 238, 0.40);
+  transform: translateY(-1px);
+}
+
+/* ─── Atmospheric glass surface ───────────────────────────────────────────── */
+
+.glass-panel {
+  background: rgba(20, 16, 40, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+/* ─── Cosmic canvas backdrop ─────────────────────────────────────────────── */
+
+.canvas-atmosphere {
+  background:
+    radial-gradient(ellipse 80% 60% at 20% 10%, rgba(152, 118, 238, 0.07) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 80% 80%, rgba(80, 208, 160, 0.05) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 40% at 75% 15%, rgba(240, 112, 144, 0.05) 0%, transparent 55%),
+    radial-gradient(ellipse 45% 35% at 45% 90%, rgba(80, 192, 232, 0.04) 0%, transparent 55%),
+    #0B0718;
+}
+
+/* ─── Discovery: Concept Unlock ───────────────────────────────────────────── */
+/* Node reveal — spring bounce as a new concept enters the universe            */
+
+@keyframes concept-unlock {
+  0%   { transform: scale(0.4); opacity: 0; filter: drop-shadow(0 0 0px var(--accent-primary)); }
+  55%  { transform: scale(1.18); opacity: 1; filter: drop-shadow(0 0 18px var(--accent-primary)); }
+  75%  { transform: scale(0.92); filter: drop-shadow(0 0 10px var(--accent-glow)); }
+  90%  { transform: scale(1.04); }
+  100% { transform: scale(1);    filter: drop-shadow(0 0 0px transparent); }
+}
+
+.concept-unlock {
+  animation: concept-unlock 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* ─── Discovery: Orbit Pulse ─────────────────────────────────────────────── */
+/* Cluster halo — rings breathe outward like a pulsar                          */
+
+@keyframes orbit-pulse {
+  0%   { transform: scale(1);    opacity: 0.55; }
+  50%  { transform: scale(1.35); opacity: 0.10; }
+  100% { transform: scale(1);    opacity: 0.55; }
+}
+
+.orbit-pulse {
+  animation: orbit-pulse 3.2s ease-in-out infinite;
+}
+
+/* ─── Discovery: Stellar Drift ───────────────────────────────────────────── */
+/* Ambient particle — slow wander across canvas for cosmic depth               */
+
+@keyframes stellar-drift-1 {
+  0%   { transform: translate(0px, 0px);    opacity: 0; }
+  15%  { opacity: 0.6; }
+  85%  { opacity: 0.4; }
+  100% { transform: translate(24px, -40px); opacity: 0; }
+}
+
+@keyframes stellar-drift-2 {
+  0%   { transform: translate(0px, 0px);     opacity: 0; }
+  20%  { opacity: 0.5; }
+  80%  { opacity: 0.3; }
+  100% { transform: translate(-18px, -52px); opacity: 0; }
+}
+
+@keyframes stellar-drift-3 {
+  0%   { transform: translate(0px, 0px);    opacity: 0; }
+  25%  { opacity: 0.4; }
+  75%  { opacity: 0.2; }
+  100% { transform: translate(32px, -28px); opacity: 0; }
+}
+
+.stellar-drift-1 { animation: stellar-drift-1 8s ease-in-out infinite; }
+.stellar-drift-2 { animation: stellar-drift-2 11s ease-in-out infinite 2.5s; }
+.stellar-drift-3 { animation: stellar-drift-3 9.5s ease-in-out infinite 5s; }
+
+/* ─── Discovery: Momentum Flash ──────────────────────────────────────────── */
+/* Connection reveal — edge shimmers briefly when it first becomes visible      */
+
+@keyframes momentum-flash {
+  0%   { opacity: 0; stroke-width: 3; filter: drop-shadow(0 0 8px var(--accent-primary)); }
+  40%  { opacity: 1; stroke-width: 2.5; }
+  100% { opacity: 1; stroke-width: inherit; filter: none; }
+}
+
+.momentum-flash {
+  animation: momentum-flash 0.45s ease-out both;
+}
+
+/* ─── Discovery: Mastery Indicator Glow ──────────────────────────────────── */
+/* Learning state — mastered concepts pulse with golden radiance                */
+
+@keyframes mastery-glow {
+  0%, 100% { box-shadow: 0 0 0px var(--color-state-mastered); }
+  50%       { box-shadow: 0 0 16px var(--color-state-mastered), 0 0 32px rgba(96, 192, 232, 0.25); }
+}
+
+.mastery-glow {
+  animation: mastery-glow 2.8s ease-in-out infinite;
+}
+
+/* ─── Reduced Motion ──────────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .ambient-float  { animation: none; }
+  .edge-leads-to  { animation: none; }
+  .node-selected  { animation: none; }
+  .concept-unlock { animation: none; transform: scale(1); opacity: 1; }
+  .orbit-pulse    { animation: none; }
+  .stellar-drift-1,
+  .stellar-drift-2,
+  .stellar-drift-3 { animation: none; opacity: 0; }
+  .momentum-flash { animation: none; opacity: 1; }
+  .mastery-glow   { animation: none; }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 50ms !important;
+    transition-duration: 50ms !important;
+  }
+}
