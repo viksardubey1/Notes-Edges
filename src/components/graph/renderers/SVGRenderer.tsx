@@ -83,8 +83,10 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions }: SVGRende
   const {
     selectedNodeId, selectedEdgeId, hoveredNodeId, hoveredEdgeId,
     filteredNodeIds, isClusterModeActive, learningStates,
-    visitedNodeIds,
+    visitedNodeIds, backdropUrl,
   } = useGraphStore();
+
+  const hasBackdrop = !!backdropUrl;
 
   const { handleNodeClick, handleNodeDoubleClick, handleEdgeClick, hoverNode, hoverEdge } = useGraphInteractions();
 
@@ -139,37 +141,43 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions }: SVGRende
     }
   }, [selectedNodeId]);
 
-  // "Up next" suggestion
+  // "Up next" suggestion — history-aware, no loops
   const { navigationHistory } = useGraphStore();
   const nextSuggestionNodeId = useMemo(() => {
     if (!selectedNodeId || !graph) return null;
-    const prevId = navigationHistory.length > 0 ? navigationHistory[navigationHistory.length - 1] : null;
-    const neighbors = graph.edges
-      .filter((e) => e.sourceId === selectedNodeId || e.targetId === selectedNodeId)
-      .map((e) => ({ id: e.sourceId === selectedNodeId ? e.targetId : e.sourceId, weight: e.weight }))
-      .sort((a, b) => b.weight - a.weight);
-    const unvisited = neighbors.filter((n) => !visitedNodeIds.has(n.id));
-    if (unvisited.length > 0) {
-      const notPrev = unvisited.filter((n) => n.id !== prevId);
-      return notPrev.length > 0 ? notPrev[0].id : unvisited[0].id;
-    }
+    const historySet = new Set(navigationHistory);
+
+    // Build adjacency
     const adj = new Map<string, string[]>();
     for (const e of graph.edges) {
       const a = adj.get(e.sourceId) ?? []; a.push(e.targetId); adj.set(e.sourceId, a);
       const b = adj.get(e.targetId) ?? []; b.push(e.sourceId); adj.set(e.targetId, b);
     }
+
+    // 1. Unvisited direct neighbour not in history
+    const directNeighbors = (adj.get(selectedNodeId) ?? [])
+      .map((id) => ({ id, weight: graph.edges.find((e) => (e.sourceId === selectedNodeId && e.targetId === id) || (e.targetId === selectedNodeId && e.sourceId === id))?.weight ?? 0 }))
+      .sort((a, b) => b.weight - a.weight);
+    const unvisitedDirect = directNeighbors.filter((n) => !visitedNodeIds.has(n.id) && !historySet.has(n.id));
+    if (unvisitedDirect.length > 0) return unvisitedDirect[0].id;
+
+    // 2. BFS — nearest unvisited node anywhere in graph, skipping history
     const seen = new Set([selectedNodeId]);
-    const queue: { id: string }[] = [{ id: selectedNodeId }];
+    const queue: string[] = [selectedNodeId];
     while (queue.length > 0) {
-      const { id: cur } = queue.shift()!;
+      const cur = queue.shift()!;
       for (const nbr of adj.get(cur) ?? []) {
         if (seen.has(nbr)) continue;
         seen.add(nbr);
-        if (!visitedNodeIds.has(nbr) && nbr !== prevId) return nbr;
-        queue.push({ id: nbr });
+        if (!visitedNodeIds.has(nbr) && !historySet.has(nbr)) return nbr;
+        queue.push(nbr);
       }
     }
-    return null;
+
+    // 3. Everything visited — suggest highest-weight direct neighbour that isn't the immediate prev
+    const prevId = navigationHistory[navigationHistory.length - 1] ?? null;
+    const notPrev = directNeighbors.filter((n) => n.id !== prevId);
+    return notPrev.length > 0 ? notPrev[0].id : null;
   }, [selectedNodeId, graph, visitedNodeIds, navigationHistory]);
 
   // Cluster colors for gradient defs
@@ -265,9 +273,21 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions }: SVGRende
     });
   }, [graph.nodes]);
 
+  // Graph centroid + max spread — for ambient depth opacity
+  const { graphCx, graphCy, graphMaxDist } = useMemo(() => {
+    if (!graph.nodes.length) return { graphCx: 0, graphCy: 0, graphMaxDist: 1 };
+    const xs = graph.nodes.map((n) => n.x ?? 0);
+    const ys = graph.nodes.map((n) => n.y ?? 0);
+    const cx = xs.reduce((a, b) => a + b, 0) / xs.length;
+    const cy = ys.reduce((a, b) => a + b, 0) / ys.length;
+    const maxDist = Math.max(1, ...graph.nodes.map((n) => Math.hypot((n.x ?? 0) - cx, (n.y ?? 0) - cy)));
+    return { graphCx: cx, graphCy: cy, graphMaxDist: maxDist };
+  }, [graph.nodes]);
+
   const canvasCx = dimensions.width / 2;
   const canvasCy = dimensions.height / 2;
   const filterId = `blob-blur-${graph.id}`;
+  const atmoFilterId = `atmo-blur-${graph.id}`;
   const groupTransform = `translate(${canvasCx + pan.x}px, ${canvasCy + pan.y}px) scale(${zoom})`;
 
   return (
@@ -275,6 +295,10 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions }: SVGRende
       <defs>
         <filter id={filterId} x="-60%" y="-60%" width="220%" height="220%">
           <feGaussianBlur stdDeviation="40" />
+        </filter>
+        {/* Atmospheric cluster haze — much larger, very soft */}
+        <filter id={atmoFilterId} x="-120%" y="-120%" width="340%" height="340%">
+          <feGaussianBlur stdDeviation="90" />
         </filter>
         <filter id="nodeGlow" x="-100%" y="-100%" width="300%" height="300%">
           <feGaussianBlur stdDeviation="10" />
@@ -292,41 +316,49 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions }: SVGRende
         <filter id="depthFog-heavy" x="-80%" y="-80%" width="260%" height="260%">
           <feGaussianBlur stdDeviation="4.0" />
         </filter>
+        {/* Label legibility shadow — used when backdrop image is active */}
+        <filter id="labelShadow" x="-20%" y="-40%" width="140%" height="180%">
+          <feDropShadow dx="0" dy="1" stdDeviation="2" floodColor="rgba(0,0,0,0.22)" />
+        </filter>
+        {/* Node backdrop shadow — soft drop shadow to lift nodes off busy backgrounds */}
+        <filter id="nodeBackdropShadow" x="-40%" y="-40%" width="180%" height="180%">
+          <feDropShadow dx="0" dy="2" stdDeviation="4" floodColor="rgba(0,0,0,0.28)" />
+        </filter>
 
         {/* Per-cluster glass orb gradients */}
         {clusterColors.map((color) => (
           <radialGradient key={color} id={`ng-${color.slice(1)}`} cx="35%" cy="28%" r="72%" fx="35%" fy="28%">
-            <stop offset="0%"   stopColor="#FFFFFF" stopOpacity="0.12" />
-            <stop offset="40%"  stopColor={color}   stopOpacity="0.22" />
-            <stop offset="100%" stopColor={color}   stopOpacity="0.07" />
+            <stop offset="0%"   stopColor="#FFFFFF" stopOpacity={hasBackdrop ? 0.90 : 0.72} />
+            <stop offset="40%"  stopColor={color}   stopOpacity={hasBackdrop ? 0.80 : 0.52} />
+            <stop offset="100%" stopColor={color}   stopOpacity={hasBackdrop ? 0.72 : 0.28} />
           </radialGradient>
         ))}
-        {/* Mastered node — brighter, more luminous */}
+        {/* Mastered node */}
         {clusterColors.map((color) => (
           <radialGradient key={`m-${color}`} id={`ng-mastered-${color.slice(1)}`} cx="30%" cy="25%" r="72%" fx="30%" fy="25%">
-            <stop offset="0%"   stopColor="#E0F8FF" stopOpacity="0.32" />
-            <stop offset="35%"  stopColor={color}   stopOpacity="0.45" />
-            <stop offset="100%" stopColor={color}   stopOpacity="0.18" />
+            <stop offset="0%"   stopColor="#FFFFFF" stopOpacity={hasBackdrop ? 0.95 : 0.82} />
+            <stop offset="35%"  stopColor={color}   stopOpacity={hasBackdrop ? 0.88 : 0.65} />
+            <stop offset="100%" stopColor={color}   stopOpacity={hasBackdrop ? 0.78 : 0.32} />
           </radialGradient>
         ))}
-        {/* Understood node — confident, warm */}
+        {/* Understood node */}
         {clusterColors.map((color) => (
           <radialGradient key={`u-${color}`} id={`ng-understood-${color.slice(1)}`} cx="35%" cy="28%" r="72%" fx="35%" fy="28%">
-            <stop offset="0%"   stopColor="#C8FFE8" stopOpacity="0.20" />
-            <stop offset="40%"  stopColor={color}   stopOpacity="0.32" />
-            <stop offset="100%" stopColor={color}   stopOpacity="0.12" />
+            <stop offset="0%"   stopColor="#FFFFFF" stopOpacity={hasBackdrop ? 0.92 : 0.74} />
+            <stop offset="40%"  stopColor={color}   stopOpacity={hasBackdrop ? 0.82 : 0.55} />
+            <stop offset="100%" stopColor={color}   stopOpacity={hasBackdrop ? 0.74 : 0.25} />
           </radialGradient>
         ))}
-        {/* Selection gradient */}
+        {/* Selection gradient — light canvas */}
         <radialGradient id="ng-selected" cx="35%" cy="28%" r="72%" fx="35%" fy="28%">
-          <stop offset="0%"   stopColor="#FFFFFF"   stopOpacity="0.25" />
-          <stop offset="45%"  stopColor="#9876EE"   stopOpacity="0.55" />
-          <stop offset="100%" stopColor="#5A38C0"   stopOpacity="0.75" />
+          <stop offset="0%"   stopColor="#FFFFFF"   stopOpacity="0.60" />
+          <stop offset="45%"  stopColor="#7B6EC4"   stopOpacity="0.55" />
+          <stop offset="100%" stopColor="#5A4AAA"   stopOpacity="0.70" />
         </radialGradient>
-        {/* Hover gradient */}
+        {/* Hover gradient — light canvas */}
         <radialGradient id="ng-hover" cx="35%" cy="28%" r="72%" fx="35%" fy="28%">
-          <stop offset="0%"   stopColor="#FFFFFF"   stopOpacity="0.18" />
-          <stop offset="100%" stopColor="#C8B0FF"   stopOpacity="0.15" />
+          <stop offset="0%"   stopColor="#FFFFFF"   stopOpacity="0.50" />
+          <stop offset="100%" stopColor="#9585DC"   stopOpacity="0.22" />
         </radialGradient>
 
         <marker id="arrow-leads-to" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
@@ -334,27 +366,31 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions }: SVGRende
         </marker>
       </defs>
 
-      {/* ── Ambient stellar field — viewport-fixed, outside pan/zoom ──────── */}
-      <g className="star-field pointer-events-none" aria-hidden="true">
-        {starParticles.map((star, i) => (
-          <circle
-            key={`star-${i}`}
-            cx={star.px}
-            cy={star.py}
-            r={star.sz}
-            fill={star.color}
-            opacity={star.opacity}
-            className={`stellar-drift-${star.drift}`}
-            style={{ animationDelay: `${star.delay.toFixed(2)}s` }}
-          />
-        ))}
-      </g>
+      {/* Star field hidden on light theme */}
 
       <g style={{
         transform: groupTransform,
         transformOrigin: '0px 0px',
         transition: cameraTransition ? 'transform 420ms cubic-bezier(0.25, 0.46, 0.45, 0.94)' : 'none',
       }}>
+
+        {/* ── Atmospheric haze — very large blur, barely visible ───────────── */}
+        <g className="cluster-atmosphere pointer-events-none">
+          {clusterBlobs.map((blob) => {
+            const isActiveCluster = selectedClusterId === blob.id;
+            return (
+              <ellipse
+                key={`atmo-${blob.id}`}
+                cx={blob.cx} cy={blob.cy}
+                rx={blob.rx * 2.2} ry={blob.ry * 2.2}
+                fill={blob.color}
+                opacity={isActiveCluster ? 0.09 : selectedClusterId ? 0.02 : 0.05}
+                filter={`url(#${atmoFilterId})`}
+                style={{ transition: 'opacity 600ms ease-out' }}
+              />
+            );
+          })}
+        </g>
 
         {/* ── Cluster blobs — selected cluster illuminates ─────────────────── */}
         <g className="cluster-blobs pointer-events-none">
@@ -366,7 +402,7 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions }: SVGRende
                 cx={blob.cx} cy={blob.cy}
                 rx={blob.rx} ry={blob.ry}
                 fill={blob.color}
-                opacity={isActiveCluster ? 0.28 : selectedClusterId ? 0.06 : 0.14}
+                opacity={isActiveCluster ? 0.14 : selectedClusterId ? 0.03 : 0.07}
                 filter={`url(#${filterId})`}
                 style={{ transition: 'opacity 400ms ease-out' }}
               />
@@ -392,7 +428,7 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions }: SVGRende
               const isNeighborEdge = neighborEdgeIds.has(edge.id);
               const isHovered = hoveredEdgeId === edge.id;
 
-              let opacity = edgeOpacityFromWeight(edge.weight) * 0.38;
+              let opacity = edgeOpacityFromWeight(edge.weight) * (hasBackdrop ? 0.85 : 0.76);
               if (selectedNodeId !== null) {
                 if (isNeighborEdge) opacity = 0.88;
                 else {
@@ -415,7 +451,11 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions }: SVGRende
               const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
               const dx = x2 - x1, dy = y2 - y1;
               const len = Math.sqrt(dx * dx + dy * dy);
-              const curveOffset = len > 10 ? Math.min(len * 0.13, 32) : 0;
+              // Long cross-graph edges fade proportionally — keeps local edges crisp
+              if (len > 250) opacity *= Math.max(0.35, 1 - (len - 250) / 600);
+              // Longer edges get a proportionally larger bow so they arc around
+              // the graph instead of cutting through the middle.
+              const curveOffset = len > 10 ? Math.min(len * 0.22, 80) : 0;
               const sign = edge.sourceId < edge.targetId ? 1 : -1;
               const cpx = len > 10 ? mx + (-dy / len) * curveOffset * sign : mx;
               const cpy = len > 10 ? my + (dx / len) * curveOffset * sign : my;
@@ -449,7 +489,7 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions }: SVGRende
                   )}
                   <path
                     d={curvePath}
-                    stroke={isSelectedEdge ? 'rgba(255,255,255,0.90)' : typeStyle.color}
+                    stroke={isSelectedEdge ? 'rgba(37,30,61,0.82)' : typeStyle.color}
                     strokeWidth={isSelectedEdge ? typeStyle.width * 2.5 : isNeighborEdge ? typeStyle.width * 1.8 : isHovered ? typeStyle.width * 2 : typeStyle.width}
                     fill="none"
                     strokeDasharray={active ? undefined : typeStyle.dasharray}
@@ -482,25 +522,30 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions }: SVGRende
 
             // ── Visual tier ──
             const ls = (learningStates[node.id] ?? 'unset') as LearningState;
-            const tier: VisualTier = LEARNING_STATE_TO_TIER[ls]
-              ?? (visitedNodeIds.has(node.id) ? 'visited' : 'unexplored');
+            const tier: VisualTier = LEARNING_STATE_TO_TIER[ls] ?? 'visited';
             const tierCfg = TIER_CONFIG[tier];
 
             // ── Radius (tier-adjusted) ──
-            const radius = (node.size ?? 12) * tierCfg.radiusMult;
+            const radius = (node.size ?? 14) * tierCfg.radiusMult;
 
             // ── Depth layer ──
             const nodeDepth = selectedNodeId ? (nodeDepthMap.get(node.id) ?? 3) : 0;
 
             // ── Opacity ──
-            let nodeOpacity = 1;
-            // In base state, unexplored nodes are dimmer
-            if (!hasSelection && tier === 'unexplored') nodeOpacity = 0.55;
+            // Ambient depth falloff: nodes further from graph centroid are slightly dimmer
+            const distFromCenter = Math.hypot((node.x ?? 0) - graphCx, (node.y ?? 0) - graphCy);
+            const depthFade = !hasSelection
+              ? Math.max(hasBackdrop ? 0.82 : 0.75, 1 - (distFromCenter / graphMaxDist) * (hasBackdrop ? 0.15 : 0.18))
+              : 1;
+
+            let nodeOpacity = depthFade;
+            // In base state, unexplored nodes are additionally dimmer
+            if (!hasSelection && tier === 'unexplored') nodeOpacity = Math.min(nodeOpacity, 0.75);
             if (hasSelection) {
               if (selectedNodeId !== null) {
                 if (isSelected || isNeighbor) nodeOpacity = 1;
-                else if (nodeDepth === 2) nodeOpacity = 0.55;
-                else nodeOpacity = 0.38;
+                else if (nodeDepth === 2) nodeOpacity = 0.68;
+                else nodeOpacity = 0.30;
               } else {
                 nodeOpacity = isEdgeEndpt ? 1 : 0.12;
               }
@@ -523,7 +568,9 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions }: SVGRende
             else if (tier === 'understood' && node.clusterColor)
               fillColor = `url(#ng-understood-${node.clusterColor.slice(1)})`;
             else if (tier === 'unexplored')
-              fillColor = node.clusterColor ? node.clusterColor + '14' : 'rgba(255,255,255,0.03)';
+              fillColor = node.clusterColor
+                ? node.clusterColor + (hasBackdrop ? '99' : '28')
+                : hasBackdrop ? 'rgba(123,110,196,0.55)' : 'rgba(123,110,196,0.14)';
             else if (node.clusterColor)
               fillColor = `url(#ng-${node.clusterColor.slice(1)})`;
             else fillColor = 'var(--color-node-fill)';
@@ -547,10 +594,10 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions }: SVGRende
               else if (tier === 'understood') { strokeColor = '#60C898CC'; strokeWidth = 1.2; }
               else if (tier === 'reviewing')  { strokeColor = '#D4A84099'; strokeWidth = 1.0; }
               else if (tier === 'unexplored') {
-                strokeColor = node.clusterColor ? node.clusterColor + '35' : 'rgba(255,255,255,0.14)';
+                strokeColor = node.clusterColor ? node.clusterColor + '40' : 'rgba(123,110,196,0.22)';
                 strokeWidth = 0.7; strokeDash = '3 2';
               } else {
-                strokeColor = node.clusterColor ? node.clusterColor + '80' : 'var(--color-node-ring)';
+                strokeColor = node.clusterColor ? node.clusterColor + 'AA' : 'var(--color-node-ring)';
                 strokeWidth = 1;
               }
             }
@@ -563,10 +610,10 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions }: SVGRende
 
             const labelCentralityThreshold =
               tier === 'unexplored'
-                ? (zoom < 1.0 ? 0.85 : 0.65)   // unexplored: barely visible labels
-                : zoom < 0.5 ? 0.65
-                : zoom < 0.8 ? 0.35
-                : zoom < 1.2 ? 0.18 : 0;
+                ? (zoom < 1.0 ? 0.62 : 0.40)   // unexplored: show labels for more central nodes
+                : zoom < 0.5 ? 0.42
+                : zoom < 0.8 ? 0.22
+                : zoom < 1.2 ? 0.10 : 0;
 
             // Mastered/understood always show labels (known territory)
             const alwaysShowLabel = isSelected || isHovered || isNeighbor
@@ -603,48 +650,35 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions }: SVGRende
                   outline: 'none',
                 }}
               >
-                {/* ── MASTERED: radiant double-ring ──────────────────────────── */}
+                {/* ── MASTERED: steady double-ring on light canvas ───────────── */}
                 {tier === 'mastered' && !isSelected && (
                   <>
-                    {/* Outer luminous glow */}
-                    <circle r={radius + 22} fill="#60C0E8" opacity={0.07}
-                      filter="url(#masteredGlow)" className="pointer-events-none" />
                     {/* Inner steady ring */}
-                    <circle r={radius + 5} fill="none" stroke="#60C0E8"
-                      strokeWidth={1.0} opacity={0.65} className="pointer-events-none" />
+                    <circle r={radius + 5} fill="none" stroke="#3A90B8"
+                      strokeWidth={1.0} opacity={0.50} className="pointer-events-none" />
                     {/* Outer breathing ring */}
-                    <motion.circle r={radius + 12} fill="none" stroke="#60C0E8"
+                    <motion.circle r={radius + 12} fill="none" stroke="#3A90B8"
                       strokeWidth={0.7} className="pointer-events-none"
-                      animate={{ r: [radius + 11, radius + 18, radius + 11], opacity: [0.45, 0.06, 0.45] }}
+                      animate={{ r: [radius + 11, radius + 17, radius + 11], opacity: [0.30, 0.04, 0.30] }}
                       transition={{ duration: 4.0, repeat: Infinity, ease: 'easeInOut' }}
                     />
-                    {/* Inner highlight — luminous core */}
-                    <circle r={radius * 0.38} fill="rgba(200,245,255,0.22)"
-                      className="pointer-events-none" style={{ filter: 'blur(2px)' }} />
                   </>
                 )}
 
                 {/* ── UNDERSTOOD: steady confident ring ─────────────────────── */}
                 {tier === 'understood' && !isSelected && (
                   <>
-                    <circle r={radius + 14} fill="#60C898" opacity={0.08}
-                      filter="url(#nodeGlow)" className="pointer-events-none" />
-                    <circle r={radius + 5} fill="none" stroke="#60C898"
-                      strokeWidth={1.0} opacity={0.55} className="pointer-events-none" />
-                    {/* Subtle inner highlight */}
-                    <circle r={radius * 0.40} fill="rgba(180,255,220,0.14)"
-                      className="pointer-events-none" style={{ filter: 'blur(1.5px)' }} />
+                    <circle r={radius + 5} fill="none" stroke="#3A9870"
+                      strokeWidth={1.0} opacity={0.45} className="pointer-events-none" />
                   </>
                 )}
 
                 {/* ── REVIEWING: warm amber pulse ────────────────────────────── */}
                 {tier === 'reviewing' && !isSelected && (
                   <>
-                    <circle r={radius + 12} fill="#D4A840" opacity={0.08}
-                      filter="url(#nodeGlow)" className="pointer-events-none" />
-                    <motion.circle r={radius + 7} fill="none" stroke="#D4A840"
+                    <motion.circle r={radius + 7} fill="none" stroke="#B88A30"
                       strokeWidth={1} strokeDasharray="4 3" className="pointer-events-none"
-                      animate={{ opacity: [0.12, 0.45, 0.12] }}
+                      animate={{ opacity: [0.10, 0.38, 0.10] }}
                       transition={{ duration: 2.8, repeat: Infinity, ease: 'easeInOut' }}
                     />
                   </>
@@ -682,8 +716,8 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions }: SVGRende
 
                 {/* ── Centrality glow — core ────────────────────────────────── */}
                 {isCore && (
-                  <circle r={radius + (isNeighbor ? 22 : 16)} fill={glowColor}
-                    opacity={isNeighbor ? 0.20 : tier === 'mastered' ? 0.04 : 0.10}
+                  <circle r={radius + (isNeighbor ? 18 : 12)} fill={glowColor}
+                    opacity={isNeighbor ? 0.12 : 0.06}
                     filter="url(#nodeGlow)" className="pointer-events-none"
                     style={{ transition: 'r 300ms ease-out, opacity 300ms ease-out' }}
                   />
@@ -691,8 +725,8 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions }: SVGRende
 
                 {/* ── Centrality glow — important ───────────────────────────── */}
                 {isImportant && (
-                  <circle r={radius + (isNeighbor ? 16 : 10)} fill={glowColor}
-                    opacity={isNeighbor ? 0.16 : 0.07}
+                  <circle r={radius + (isNeighbor ? 12 : 8)} fill={glowColor}
+                    opacity={isNeighbor ? 0.10 : 0.04}
                     filter="url(#nodeGlow)" className="pointer-events-none"
                     style={{ transition: 'r 300ms ease-out, opacity 300ms ease-out' }}
                   />
@@ -700,21 +734,21 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions }: SVGRende
 
                 {/* ── Neighbor ambient halo ─────────────────────────────────── */}
                 {isNeighbor && !isSelected && (
-                  <circle r={radius + 10} fill={node.clusterColor ?? 'var(--accent-primary)'}
-                    opacity={0.12} filter="url(#nodeGlow)" className="pointer-events-none"
+                  <circle r={radius + 8} fill={node.clusterColor ?? 'var(--accent-primary)'}
+                    opacity={0.08} filter="url(#nodeGlow)" className="pointer-events-none"
                   />
                 )}
 
                 {/* ── Selection pulse ring ──────────────────────────────────── */}
                 {isSelected && (
                   <>
-                    <circle r={radius + 14} fill="var(--accent-primary)"
-                      opacity={0.08} filter="url(#nodeGlow)" className="pointer-events-none"
+                    <circle r={radius + 12} fill="var(--accent-primary)"
+                      opacity={0.06} filter="url(#nodeGlow)" className="pointer-events-none"
                     />
                     <motion.circle r={radius + 7} fill="none"
-                      stroke="var(--accent-primary)" strokeWidth={1.2} strokeOpacity={0.5}
+                      stroke="var(--accent-primary)" strokeWidth={1.5} strokeOpacity={0.4}
                       className="pointer-events-none"
-                      animate={{ r: [radius + 6, radius + 13, radius + 6], opacity: [0.6, 0.08, 0.6] }}
+                      animate={{ r: [radius + 6, radius + 13, radius + 6], opacity: [0.5, 0.06, 0.5] }}
                       transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
                     />
                   </>
@@ -784,6 +818,30 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions }: SVGRende
                 </AnimatePresence>
 
                 {/* ── Node body ─────────────────────────────────────────────── */}
+                {/* White halo — always rendered.
+                    Backdrop mode: heavy shadow filter to pop against busy images.
+                    Default mode: clean white ring + stroke — no blur filter so the
+                    shadow doesn't bleed into the label below. */}
+                {hasBackdrop ? (
+                  <motion.circle
+                    initial={{ r: 0 }}
+                    animate={{ r: radius + 4 }}
+                    transition={{ delay: revealDelay, duration: 0.4, ease: [0.34, 1.56, 0.64, 1] }}
+                    fill="rgba(255,255,255,0.92)"
+                    filter="url(#nodeBackdropShadow)"
+                    style={{ pointerEvents: 'none' }}
+                  />
+                ) : (
+                  <motion.circle
+                    initial={{ r: 0 }}
+                    animate={{ r: radius + 3 }}
+                    transition={{ delay: revealDelay, duration: 0.4, ease: [0.34, 1.56, 0.64, 1] }}
+                    fill="rgba(255,255,255,0.88)"
+                    stroke="rgba(255,255,255,0.60)"
+                    strokeWidth={1.5}
+                    style={{ pointerEvents: 'none' }}
+                  />
+                )}
                 <motion.circle
                   key={`${graph.id}-${node.id}`}
                   initial={{ r: 0 }}
@@ -815,21 +873,25 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions }: SVGRende
                   const fontSize  = isSelected ? 13 : tier === 'mastered' ? 12 : 11;
                   const labelW    = labelText.length * (fontSize * 0.52) + 14;
                   const labelY    = radius + 5;
-                  const labelFill = isSelected ? '#B494FF'
-                    : tier === 'mastered'   ? '#A8E8FF'
-                    : tier === 'understood' ? '#90D8B8'
-                    : tier === 'reviewing'  ? '#D4C870'
-                    : isNeighbor ? '#C8B8E8'
-                    : tier === 'unexplored' ? '#5A5070'
-                    : '#8878A8';
+                  const labelFill = isSelected ? '#5A4AAA'
+                    : tier === 'mastered'   ? '#3A90B8'
+                    : tier === 'understood' ? '#3A9870'
+                    : tier === 'reviewing'  ? '#B88A30'
+                    : isNeighbor ? '#5A5272'
+                    : tier === 'unexplored' ? '#857FAA'
+                    : '#504A6A';
+                  const backdropLabelFill = isSelected ? '#2A1E60' : '#251E3D';
                   return (
-                    <g style={{ pointerEvents: 'none', userSelect: 'none' }}>
+                    <g
+                      style={{ pointerEvents: 'none', userSelect: 'none' }}
+                      filter={hasBackdrop ? 'url(#labelShadow)' : undefined}
+                    >
                       <rect
                         x={-labelW / 2} y={labelY + 1} width={labelW} height={fontSize + 5}
-                        rx={4} fill="rgba(10, 6, 22, 0.82)" opacity={1}
+                        rx={4} fill={hasBackdrop ? 'rgba(255,255,255,0.97)' : 'rgba(245,243,251,0.90)'} opacity={1}
                       />
                       <text dy="1em" y={labelY} textAnchor="middle"
-                        fill={labelFill} fontSize={fontSize}
+                        fill={hasBackdrop ? backdropLabelFill : labelFill} fontSize={fontSize}
                         fontFamily="Geist, system-ui, sans-serif"
                         fontWeight={isSelected || tier === 'mastered' ? '600' : '500'}
                         style={{ transition: 'fill 200ms ease-out' }}
@@ -871,7 +933,7 @@ function EdgeLabelPill({ edge, sourceNode, targetNode, semType }: EdgeLabelPillP
   return (
     <g transform={`translate(${midX}, ${midY})`} className="pointer-events-none">
       <rect x={-width / 2} y={-9} width={width} height={18} rx={4}
-        fill="rgba(10, 6, 22, 0.85)" stroke={typeStyle.color + '55'} strokeWidth={0.8} opacity={1}
+        fill="rgba(245, 243, 251, 0.92)" stroke={typeStyle.color + '55'} strokeWidth={0.8} opacity={1}
       />
       <text textAnchor="middle" dy="0.35em" fill={typeStyle.color} fontSize={9}
         fontFamily="Geist, system-ui, sans-serif" fontWeight="500" letterSpacing="0.04em"

@@ -35,10 +35,13 @@ export function ThreeMoments() {
           transition={{ duration: 0.5 }}
           className="text-center mb-20"
         >
-          <p className="text-[11px] text-[#4D7FFF] tracking-[0.12em] uppercase font-medium mb-4">
+          <p className="text-[11px] tracking-[0.12em] uppercase font-medium mb-4" style={{ color: '#7B6EC4' }}>
             How it works
           </p>
-          <h2 className="font-[family-name:var(--font-fraunces)] text-[40px] text-[#F0F0F5] leading-tight">
+          <h2
+            className="font-[family-name:var(--font-fraunces)] text-[40px] leading-tight"
+            style={{ color: '#251E3D' }}
+          >
             Three moments. One understanding.
           </h2>
         </motion.div>
@@ -53,31 +56,28 @@ export function ThreeMoments() {
               viewport={{ once: true, margin: '-60px' }}
               transition={{ duration: 0.5, delay: i * 0.12 }}
               className="flex flex-col gap-6 p-8 rounded-[16px]"
-              style={{
-                background: '#111118',
-                border: '1px solid #2A2A3F',
-              }}
+              style={{ background: '#FFFFFF', border: '1px solid rgba(123,110,196,0.14)' }}
             >
               {/* Visual illustration */}
               <div
                 className="w-full aspect-[4/3] rounded-[10px] flex items-center justify-center overflow-hidden"
-                style={{ background: '#0A0A0F' }}
+                style={{ background: '#F5F3FB' }}
               >
                 {moment.visual}
               </div>
 
               {/* Step number */}
               <div className="flex items-center gap-3">
-                <span className="text-[11px] font-medium text-[#4D7FFF] tracking-[0.10em] uppercase">
+                <span className="text-[11px] font-medium tracking-[0.10em] uppercase" style={{ color: '#7B6EC4' }}>
                   Step {moment.step}
                 </span>
-                <div className="flex-1 h-px bg-[#2A2A3F]" />
+                <div className="flex-1 h-px" style={{ background: 'rgba(123,110,196,0.14)' }} />
               </div>
 
               {/* Copy */}
               <div>
-                <h3 className="text-[17px] font-medium text-[#F0F0F5] mb-2">{moment.title}</h3>
-                <p className="text-[14px] text-[#8888AA] leading-relaxed">{moment.description}</p>
+                <h3 className="text-[17px] font-medium mb-2" style={{ color: '#251E3D' }}>{moment.title}</h3>
+                <p className="text-[14px] leading-relaxed" style={{ color: '#5A5272' }}>{moment.description}</p>
               </div>
             </motion.div>
           ))}
@@ -94,7 +94,7 @@ function UploadVisual() {
     <svg viewBox="0 0 240 180" width="100%" height="100%" aria-hidden="true">
       {/* Upload zone */}
       <rect x="40" y="30" width="160" height="120" rx="10"
-        fill="none" stroke="#2A2A3F" strokeWidth="1.5" strokeDasharray="6 4" />
+        fill="none" stroke="rgba(123,110,196,0.25)" strokeWidth="1.5" strokeDasharray="6 4" />
 
       {/* Upload arrow */}
       <motion.g
@@ -103,8 +103,8 @@ function UploadVisual() {
         viewport={{ once: true }}
         transition={{ duration: 0.5, delay: 0.3 }}
       >
-        <line x1="120" y1="100" x2="120" y2="60" stroke="#4D7FFF" strokeWidth="1.5" />
-        <polyline points="108,72 120,60 132,72" fill="none" stroke="#4D7FFF" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        <line x1="120" y1="100" x2="120" y2="60" stroke="#7B6EC4" strokeWidth="1.5" />
+        <polyline points="108,72 120,60 132,72" fill="none" stroke="#7B6EC4" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
       </motion.g>
 
       {/* PDF icon */}
@@ -114,12 +114,11 @@ function UploadVisual() {
         viewport={{ once: true }}
         transition={{ duration: 0.4, delay: 0.5 }}
       >
-        <rect x="98" y="108" width="44" height="30" rx="4" fill="#1A1A26" stroke="#2A2A3F" strokeWidth="1" />
-        <text x="120" y="128" textAnchor="middle" fill="#8888AA" fontSize="9" fontFamily="Geist, sans-serif" fontWeight="500">PDF</text>
+        <rect x="98" y="108" width="44" height="30" rx="4" fill="rgba(123,110,196,0.06)" stroke="rgba(123,110,196,0.20)" strokeWidth="1" />
+        <text x="120" y="128" textAnchor="middle" fill="#9C95B5" fontSize="9" fontFamily="Geist, sans-serif" fontWeight="500">PDF</text>
       </motion.g>
 
-      {/* Drop hint text */}
-      <text x="120" y="160" textAnchor="middle" fill="#4A4A6A" fontSize="10" fontFamily="Geist, sans-serif">
+      <text x="120" y="160" textAnchor="middle" fill="#9C95B5" fontSize="10" fontFamily="Geist, sans-serif">
         Drop anything here
       </text>
     </svg>
@@ -146,12 +145,11 @@ function BuildVisual() {
 
   return (
     <svg viewBox="0 0 240 180" width="100%" height="100%" aria-hidden="true">
-      {/* Edges */}
       {edges.map((e, i) => (
         <motion.path
           key={i}
           d={`M ${e.x1},${e.y1} L ${e.x2},${e.y2}`}
-          stroke="#2A2A4A"
+          stroke="rgba(123,110,196,0.28)"
           strokeWidth="1"
           fill="none"
           initial={{ pathLength: 0 }}
@@ -161,13 +159,12 @@ function BuildVisual() {
         />
       ))}
 
-      {/* Nodes */}
       {nodePositions.map((n, i) => (
         <motion.circle
           key={i}
           cx={n.cx} cy={n.cy} r={n.r}
-          fill="#1E1E30"
-          stroke={i === 1 ? '#4D7FFF' : '#3A3A5C'}
+          fill="#FFFFFF"
+          stroke={i === 1 ? '#7B6EC4' : 'rgba(123,110,196,0.35)'}
           strokeWidth={i === 1 ? 1.5 : 1}
           initial={{ scale: 0, opacity: 0 }}
           whileInView={{ scale: 1, opacity: 1 }}
@@ -181,14 +178,14 @@ function BuildVisual() {
       <motion.circle
         cx="120" cy="60" r="18"
         fill="none"
-        stroke="#4D7FFF"
+        stroke="#7B6EC4"
         strokeWidth="1"
         opacity="0.3"
         animate={{ r: [18, 26, 18], opacity: [0.3, 0, 0.3] }}
         transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
       />
 
-      <text x="120" y="160" textAnchor="middle" fill="#4A4A6A" fontSize="10" fontFamily="Geist, sans-serif">
+      <text x="120" y="160" textAnchor="middle" fill="#9C95B5" fontSize="10" fontFamily="Geist, sans-serif">
         AI mapping concepts…
       </text>
     </svg>
@@ -206,7 +203,7 @@ function ExploreVisual() {
         { cx: 195, cy: 145, r: 6 },
       ].map((n, i) => (
         <circle key={i} cx={n.cx} cy={n.cy} r={n.r}
-          fill="#1E1E30" stroke="#2A2A3F" strokeWidth="1" opacity="0.25" />
+          fill="rgba(123,110,196,0.04)" stroke="rgba(123,110,196,0.15)" strokeWidth="1" opacity="0.5" />
       ))}
 
       {/* Dimmed outer edges */}
@@ -214,15 +211,15 @@ function ExploreVisual() {
         [60, 50, 120, 90], [190, 55, 165, 90], [40, 140, 90, 120], [195, 145, 155, 120],
       ].map(([x1, y1, x2, y2], i) => (
         <line key={i} x1={x1} y1={y1} x2={x2} y2={y2}
-          stroke="#2A2A3F" strokeWidth="0.8" opacity="0.2" />
+          stroke="rgba(123,110,196,0.15)" strokeWidth="0.8" opacity="0.4" />
       ))}
 
-      {/* Neighbor edges — glowing */}
+      {/* Neighbor edges */}
       {[
         [120, 90, 90, 120], [120, 90, 155, 120], [120, 90, 120, 55],
       ].map(([x1, y1, x2, y2], i) => (
         <motion.line key={i} x1={x1} y1={y1} x2={x2} y2={y2}
-          stroke="#4D7FFF" strokeWidth="1.5"
+          stroke="#7B6EC4" strokeWidth="1.5"
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 0.7 }}
           viewport={{ once: true }}
@@ -237,7 +234,7 @@ function ExploreVisual() {
         { cx: 120, cy: 55, r: 7 },
       ].map((n, i) => (
         <motion.circle key={i} cx={n.cx} cy={n.cy} r={n.r}
-          fill="#1E1E30" stroke="#3A3A5C" strokeWidth="1"
+          fill="#FFFFFF" stroke="rgba(123,110,196,0.35)" strokeWidth="1"
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
           viewport={{ once: true }}
@@ -245,17 +242,17 @@ function ExploreVisual() {
         />
       ))}
 
-      {/* Selected hub node */}
+      {/* Selected hub */}
       <motion.circle cx="120" cy="90" r="16"
-        fill="#4D7FFF22"
+        fill="rgba(123,110,196,0.12)"
         initial={{ r: 10, opacity: 0 }}
         whileInView={{ r: 22, opacity: 1 }}
         viewport={{ once: true }}
         transition={{ duration: 0.3 }}
       />
-      <circle cx="120" cy="90" r="14" fill="#4D7FFF" stroke="#4D7FFF" strokeWidth="2" />
+      <circle cx="120" cy="90" r="14" fill="#7B6EC4" stroke="#7B6EC4" strokeWidth="2" />
 
-      <text x="120" y="160" textAnchor="middle" fill="#4A4A6A" fontSize="10" fontFamily="Geist, sans-serif">
+      <text x="120" y="160" textAnchor="middle" fill="#9C95B5" fontSize="10" fontFamily="Geist, sans-serif">
         Focus on what matters
       </text>
     </svg>

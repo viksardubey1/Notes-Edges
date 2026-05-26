@@ -3,22 +3,32 @@
 /**
  * HeroGraph — Notes & Edges Landing Page
  *
- * The product's single most important marketing asset.
- * A real, interactive, animated knowledge graph — NOT a screenshot or video.
- *
- * Features:
- * - 15 knowledge nodes in 3 semantic clusters
- * - Graph build sequence: nodes stagger in, edges draw via pathLength animation
- * - Click a node → Focus Halo (others dim to 15%, neighbors stay bright, edges glow)
- * - Hover → edge relationship label pill appears
- * - Ambient float on idle (CSS, ±2px, 4s cycle)
- * - Fully accessible: keyboard navigable, reduced-motion respected
+ * Interactive animated knowledge graph demo.
+ * Light theme: white node fills, lavender accents, soft lavender edges.
  */
 
 import { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
-import { primitive } from '@/lib/tokens';
 import { truncateWords } from '@/lib/utils';
+
+// ─── Light theme color palette ────────────────────────────────────────────────
+
+const ACCENT   = '#7B6EC4';
+const ACCENT_GLOW = 'rgba(123,110,196,0.14)';
+const EDGE_DEFAULT = 'rgba(123,110,196,0.28)';
+const EDGE_ACTIVE  = '#7B6EC4';
+const NODE_FILL    = '#FFFFFF';
+const NODE_HOVER   = '#EEEAF8';
+const NODE_SELECTED = '#7B6EC4';
+const LABEL_PRIMARY = '#251E3D';
+const LABEL_MUTED   = '#9C95B5';
+const PILL_BG       = 'rgba(245,243,251,0.96)';
+
+const CLUSTER_COLORS: Record<string, string> = {
+  a: '#7B6EC4',
+  b: '#3FA882',
+  c: '#C4923A',
+};
 
 // ─── Graph Data ───────────────────────────────────────────────────────────────
 
@@ -40,56 +50,45 @@ interface DemoEdge {
 }
 
 const NODES: DemoNode[] = [
-  // Cluster A — Foundation (violet) — top center
-  { id: 'neural-nets', label: 'Neural Networks', x: 345, y: 158, size: 22, cluster: 'a' },
-  { id: 'deep-learning', label: 'Deep Learning', x: 220, y: 210, size: 16, cluster: 'a' },
-  { id: 'backprop', label: 'Backpropagation', x: 358, y: 78, size: 13, cluster: 'a' },
-  { id: 'feature-learning', label: 'Feature Learning', x: 462, y: 222, size: 13, cluster: 'a' },
-
-  // Cluster B — Architecture (forest) — right side
-  { id: 'transformer', label: 'Transformer', x: 570, y: 140, size: 19, cluster: 'b' },
-  { id: 'attention', label: 'Attention', x: 610, y: 248, size: 16, cluster: 'b' },
-  { id: 'self-attention', label: 'Self-Attention', x: 566, y: 340, size: 12, cluster: 'b' },
-  { id: 'embeddings', label: 'Embeddings', x: 468, y: 388, size: 13, cluster: 'b' },
-
-  // Cluster C — Training (amber) — left side
-  { id: 'gradient-descent', label: 'Gradient Descent', x: 128, y: 172, size: 16, cluster: 'c' },
-  { id: 'loss-function', label: 'Loss Function', x: 78, y: 280, size: 13, cluster: 'c' },
-  { id: 'overfitting', label: 'Overfitting', x: 208, y: 340, size: 12, cluster: 'c' },
-  { id: 'regularization', label: 'Regularization', x: 118, y: 408, size: 11, cluster: 'c' },
-  { id: 'training-data', label: 'Training Data', x: 322, y: 396, size: 14, cluster: 'c' },
-  { id: 'dropout', label: 'Dropout', x: 220, y: 438, size: 10, cluster: 'c' },
-  { id: 'knowledge-graph', label: 'Knowledge Graph', x: 388, y: 308, size: 12, cluster: 'a' },
+  { id: 'neural-nets',      label: 'Neural Networks',     x: 345, y: 158, size: 22, cluster: 'a' },
+  { id: 'deep-learning',    label: 'Deep Learning',       x: 220, y: 210, size: 16, cluster: 'a' },
+  { id: 'backprop',         label: 'Backpropagation',     x: 358, y: 78,  size: 13, cluster: 'a' },
+  { id: 'feature-learning', label: 'Feature Learning',    x: 462, y: 222, size: 13, cluster: 'a' },
+  { id: 'transformer',      label: 'Transformer',         x: 570, y: 140, size: 19, cluster: 'b' },
+  { id: 'attention',        label: 'Attention',           x: 610, y: 248, size: 16, cluster: 'b' },
+  { id: 'self-attention',   label: 'Self-Attention',      x: 566, y: 340, size: 12, cluster: 'b' },
+  { id: 'embeddings',       label: 'Embeddings',          x: 468, y: 388, size: 13, cluster: 'b' },
+  { id: 'gradient-descent', label: 'Gradient Descent',    x: 128, y: 172, size: 16, cluster: 'c' },
+  { id: 'loss-function',    label: 'Loss Function',       x: 78,  y: 280, size: 13, cluster: 'c' },
+  { id: 'overfitting',      label: 'Overfitting',         x: 208, y: 340, size: 12, cluster: 'c' },
+  { id: 'regularization',   label: 'Regularization',      x: 118, y: 408, size: 11, cluster: 'c' },
+  { id: 'training-data',    label: 'Training Data',       x: 322, y: 396, size: 14, cluster: 'c' },
+  { id: 'dropout',          label: 'Dropout',             x: 220, y: 438, size: 10, cluster: 'c' },
+  { id: 'knowledge-graph',  label: 'Knowledge Graph',     x: 388, y: 308, size: 12, cluster: 'a' },
 ];
 
 const EDGES: DemoEdge[] = [
-  { id: 'e1', source: 'neural-nets', target: 'deep-learning', weight: 0.9, label: 'is a type of' },
-  { id: 'e2', source: 'neural-nets', target: 'backprop', weight: 0.8, label: 'trained via' },
-  { id: 'e3', source: 'neural-nets', target: 'feature-learning', weight: 0.7, label: 'enables' },
-  { id: 'e4', source: 'neural-nets', target: 'transformer', weight: 0.85, label: 'evolved into' },
-  { id: 'e5', source: 'neural-nets', target: 'gradient-descent', weight: 0.8, label: 'optimized by' },
-  { id: 'e6', source: 'transformer', target: 'attention', weight: 0.95, label: 'uses' },
-  { id: 'e7', source: 'attention', target: 'self-attention', weight: 0.9, label: 'variant' },
-  { id: 'e8', source: 'self-attention', target: 'embeddings', weight: 0.7, label: 'operates on' },
-  { id: 'e9', source: 'backprop', target: 'gradient-descent', weight: 0.9, label: 'computes' },
-  { id: 'e10', source: 'gradient-descent', target: 'loss-function', weight: 0.95, label: 'minimizes' },
-  { id: 'e11', source: 'deep-learning', target: 'overfitting', weight: 0.7, label: 'risks' },
-  { id: 'e12', source: 'overfitting', target: 'regularization', weight: 0.9, label: 'prevented by' },
-  { id: 'e13', source: 'regularization', target: 'dropout', weight: 0.8, label: 'technique' },
-  { id: 'e14', source: 'feature-learning', target: 'embeddings', weight: 0.8, label: 'produces' },
-  { id: 'e15', source: 'embeddings', target: 'knowledge-graph', weight: 0.7, label: 'represents in' },
-  { id: 'e16', source: 'training-data', target: 'overfitting', weight: 0.7, label: 'causes' },
-  { id: 'e17', source: 'training-data', target: 'deep-learning', weight: 0.8, label: 'feeds' },
-  { id: 'e18', source: 'knowledge-graph', target: 'transformer', weight: 0.6, label: 'informs' },
-  { id: 'e19', source: 'loss-function', target: 'backprop', weight: 0.8, label: 'signals' },
-  { id: 'e20', source: 'training-data', target: 'embeddings', weight: 0.65, label: 'encoded as' },
+  { id: 'e1',  source: 'neural-nets',      target: 'deep-learning',    weight: 0.9,  label: 'is a type of' },
+  { id: 'e2',  source: 'neural-nets',      target: 'backprop',         weight: 0.8,  label: 'trained via' },
+  { id: 'e3',  source: 'neural-nets',      target: 'feature-learning', weight: 0.7,  label: 'enables' },
+  { id: 'e4',  source: 'neural-nets',      target: 'transformer',      weight: 0.85, label: 'evolved into' },
+  { id: 'e5',  source: 'neural-nets',      target: 'gradient-descent', weight: 0.8,  label: 'optimized by' },
+  { id: 'e6',  source: 'transformer',      target: 'attention',        weight: 0.95, label: 'uses' },
+  { id: 'e7',  source: 'attention',        target: 'self-attention',   weight: 0.9,  label: 'variant' },
+  { id: 'e8',  source: 'self-attention',   target: 'embeddings',       weight: 0.7,  label: 'operates on' },
+  { id: 'e9',  source: 'backprop',         target: 'gradient-descent', weight: 0.9,  label: 'computes' },
+  { id: 'e10', source: 'gradient-descent', target: 'loss-function',    weight: 0.95, label: 'minimizes' },
+  { id: 'e11', source: 'deep-learning',    target: 'overfitting',      weight: 0.7,  label: 'risks' },
+  { id: 'e12', source: 'overfitting',      target: 'regularization',   weight: 0.9,  label: 'prevented by' },
+  { id: 'e13', source: 'regularization',   target: 'dropout',          weight: 0.8,  label: 'technique' },
+  { id: 'e14', source: 'feature-learning', target: 'embeddings',       weight: 0.8,  label: 'produces' },
+  { id: 'e15', source: 'embeddings',       target: 'knowledge-graph',  weight: 0.7,  label: 'represents in' },
+  { id: 'e16', source: 'training-data',    target: 'overfitting',      weight: 0.7,  label: 'causes' },
+  { id: 'e17', source: 'training-data',    target: 'deep-learning',    weight: 0.8,  label: 'feeds' },
+  { id: 'e18', source: 'knowledge-graph',  target: 'transformer',      weight: 0.6,  label: 'informs' },
+  { id: 'e19', source: 'loss-function',    target: 'backprop',         weight: 0.8,  label: 'signals' },
+  { id: 'e20', source: 'training-data',    target: 'embeddings',       weight: 0.65, label: 'encoded as' },
 ];
-
-const CLUSTER_COLORS: Record<string, string> = {
-  a: primitive.color.clusterViolet,
-  b: primitive.color.clusterForest,
-  c: primitive.color.clusterAmber,
-};
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -127,58 +126,52 @@ export function HeroGraph() {
   const neighborIds = selectedNodeId ? getNeighbors(selectedNodeId) : null;
   const connectedEdgeIds = selectedNodeId ? getConnectedEdges(selectedNodeId) : null;
 
-  const handleNodeClick = useCallback(
-    (nodeId: string) => {
-      setSelectedNodeId((prev) => (prev === nodeId ? null : nodeId));
-    },
-    [],
-  );
+  const handleNodeClick = useCallback((nodeId: string) => {
+    setSelectedNodeId((prev) => (prev === nodeId ? null : nodeId));
+  }, []);
 
   const handleCanvasClick = useCallback(() => {
     setSelectedNodeId(null);
   }, []);
 
-  // Build animation timing
   const nodeDelay = (index: number) => (prefersReducedMotion ? 0 : index * 0.07);
-  const edgeDelay = (index: number) =>
-    prefersReducedMotion ? 0 : NODES.length * 0.07 + index * 0.04;
+  const edgeDelay = (index: number) => prefersReducedMotion ? 0 : NODES.length * 0.07 + index * 0.04;
 
   return (
     <div className="relative w-full h-full select-none">
-      {/* Ambient float wrapper */}
       <div
         className={mounted && !prefersReducedMotion ? 'ambient-float' : ''}
         style={{ width: '100%', height: '100%' }}
       >
         <svg
-          viewBox="50 50 620 430"
+          viewBox="50 40 620 450"
           width="100%"
           height="100%"
           onClick={handleCanvasClick}
+          onMouseDown={(e) => e.preventDefault()}
           aria-label="Interactive knowledge graph demo"
           role="img"
-          style={{ cursor: selectedNodeId ? 'default' : 'grab' }}
+          style={{ cursor: selectedNodeId ? 'default' : 'grab', userSelect: 'none', WebkitUserSelect: 'none' }}
         >
-          {/* ── Background glow hints ─────────────────────────────────────── */}
           <defs>
-            <radialGradient id="glow-a" cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stopColor={CLUSTER_COLORS.a} stopOpacity="0.08" />
+            <radialGradient id="lp-glow-a" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stopColor={CLUSTER_COLORS.a} stopOpacity="0.09" />
               <stop offset="100%" stopColor={CLUSTER_COLORS.a} stopOpacity="0" />
             </radialGradient>
-            <radialGradient id="glow-b" cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stopColor={CLUSTER_COLORS.b} stopOpacity="0.06" />
+            <radialGradient id="lp-glow-b" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stopColor={CLUSTER_COLORS.b} stopOpacity="0.07" />
               <stop offset="100%" stopColor={CLUSTER_COLORS.b} stopOpacity="0" />
             </radialGradient>
-            <radialGradient id="glow-c" cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stopColor={CLUSTER_COLORS.c} stopOpacity="0.07" />
+            <radialGradient id="lp-glow-c" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stopColor={CLUSTER_COLORS.c} stopOpacity="0.08" />
               <stop offset="100%" stopColor={CLUSTER_COLORS.c} stopOpacity="0" />
             </radialGradient>
           </defs>
 
           {/* Cluster ambient glows */}
-          <ellipse cx="350" cy="170" rx="160" ry="120" fill="url(#glow-a)" />
-          <ellipse cx="580" cy="260" rx="130" ry="130" fill="url(#glow-b)" />
-          <ellipse cx="150" cy="310" rx="140" ry="130" fill="url(#glow-c)" />
+          <ellipse cx="350" cy="170" rx="160" ry="120" fill="url(#lp-glow-a)" />
+          <ellipse cx="580" cy="260" rx="130" ry="130" fill="url(#lp-glow-b)" />
+          <ellipse cx="150" cy="310" rx="140" ry="130" fill="url(#lp-glow-c)" />
 
           {/* ── Edges ──────────────────────────────────────────────────────── */}
           <g>
@@ -192,43 +185,30 @@ export function HeroGraph() {
               const hasSelection = selectedNodeId !== null;
 
               const opacity = hasSelection
-                ? isConnected ? 0.85 : 0.04
-                : isHovered ? 0.7 : edge.weight >= 0.8 ? 0.45 : edge.weight >= 0.6 ? 0.28 : 0.14;
+                ? isConnected ? 0.90 : 0.04
+                : isHovered ? 0.75 : edge.weight >= 0.8 ? 0.55 : edge.weight >= 0.6 ? 0.35 : 0.18;
 
-              const strokeColor = isConnected
-                ? primitive.color.arcBlue
-                : primitive.color.darkWire;
-
+              const strokeColor = isConnected ? EDGE_ACTIVE : EDGE_DEFAULT;
               const strokeWidth = isConnected ? 1.5 : edge.weight >= 0.8 ? 1.2 : 0.8;
-
               const midX = (src.x + tgt.x) / 2;
               const midY = (src.y + tgt.y) / 2;
 
               return (
                 <g key={edge.id}>
-                  {/* Invisible wide hit area */}
                   <line
-                    x1={src.x} y1={src.y}
-                    x2={tgt.x} y2={tgt.y}
-                    stroke="transparent"
-                    strokeWidth={14}
+                    x1={src.x} y1={src.y} x2={tgt.x} y2={tgt.y}
+                    stroke="transparent" strokeWidth={14}
                     style={{ cursor: 'default' }}
                     onMouseEnter={() => setHoveredEdgeId(edge.id)}
                     onMouseLeave={() => setHoveredEdgeId(null)}
                   />
-
-                  {/* Animated edge line */}
                   <motion.path
                     d={`M ${src.x},${src.y} L ${tgt.x},${tgt.y}`}
                     stroke={strokeColor}
                     strokeWidth={strokeWidth}
                     fill="none"
                     initial={{ pathLength: 0, opacity: 0 }}
-                    animate={{
-                      pathLength: 1,
-                      opacity,
-                      stroke: strokeColor,
-                    }}
+                    animate={{ pathLength: 1, opacity, stroke: strokeColor }}
                     transition={{
                       pathLength: { duration: 0.5, delay: edgeDelay(i), ease: 'easeInOut' },
                       opacity: { duration: 0.3, delay: edgeDelay(i) },
@@ -238,7 +218,7 @@ export function HeroGraph() {
                     onMouseLeave={() => setHoveredEdgeId(null)}
                   />
 
-                  {/* Edge label pill — on hover or when connected to selected */}
+                  {/* Edge label pill */}
                   <AnimatePresence>
                     {(isHovered || isConnected) && edge.label && (
                       <motion.g
@@ -250,20 +230,11 @@ export function HeroGraph() {
                         transform={`translate(${midX}, ${midY})`}
                         style={{ pointerEvents: 'none' }}
                       >
-                        <rect
-                          x={-30} y={-9}
-                          width={60} height={18}
-                          rx={4}
-                          fill={primitive.color.slate}
-                          opacity={0.92}
-                        />
-                        <text
-                          textAnchor="middle"
-                          dy="0.35em"
-                          fill={primitive.color.mist}
-                          fontSize={9}
-                          fontFamily="Geist, system-ui, sans-serif"
-                        >
+                        <rect x={-30} y={-9} width={60} height={18} rx={4}
+                          fill={PILL_BG} stroke="rgba(123,110,196,0.18)" strokeWidth={0.8} />
+                        <text textAnchor="middle" dy="0.35em"
+                          fill={LABEL_MUTED} fontSize={9}
+                          fontFamily="Geist, system-ui, sans-serif">
                           {truncateWords(edge.label, 3)}
                         </text>
                       </motion.g>
@@ -282,20 +253,16 @@ export function HeroGraph() {
               const isNeighbor = neighborIds?.has(node.id) ?? false;
               const hasSelection = selectedNodeId !== null;
 
-              const nodeOpacity = hasSelection
-                ? isSelected || isNeighbor ? 1 : 0.15
-                : 1;
+              const nodeOpacity = hasSelection ? (isSelected || isNeighbor ? 1 : 0.18) : 1;
 
               const fillColor = isSelected
-                ? primitive.color.arcBlue
-                : isHovered
-                  ? primitive.color.hoverSlate
-                  : primitive.color.deepSlate;
+                ? NODE_SELECTED
+                : isHovered ? NODE_HOVER : NODE_FILL;
 
               const ringColor = isSelected
-                ? primitive.color.arcBlue
+                ? ACCENT
                 : isNeighbor
-                  ? `${primitive.color.arcBlue}88`
+                  ? ACCENT + '88'
                   : CLUSTER_COLORS[node.cluster] + '66';
 
               return (
@@ -314,20 +281,14 @@ export function HeroGraph() {
                     },
                   }}
                   style={{ originX: `${node.x}px`, originY: `${node.y}px`, cursor: 'pointer' }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleNodeClick(node.id);
-                  }}
+                  onClick={(e) => { e.stopPropagation(); handleNodeClick(node.id); }}
                   onMouseEnter={() => setHoveredNodeId(node.id)}
                   onMouseLeave={() => setHoveredNodeId(null)}
                   role="button"
                   aria-label={`Knowledge node: ${node.label}`}
                   tabIndex={0}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      handleNodeClick(node.id);
-                    }
+                    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleNodeClick(node.id); }
                   }}
                 >
                   {/* Selection glow halo */}
@@ -339,7 +300,7 @@ export function HeroGraph() {
                         animate={{ r: node.size + 10, opacity: 1 }}
                         exit={{ r: node.size, opacity: 0 }}
                         transition={{ duration: 0.2 }}
-                        fill={primitive.color.arcGlow}
+                        fill={ACCENT_GLOW}
                         style={{ pointerEvents: 'none' }}
                       />
                     )}
@@ -347,48 +308,37 @@ export function HeroGraph() {
 
                   {/* Cluster color ring */}
                   <circle
-                    cx={node.x} cy={node.y}
-                    r={node.size + 3}
-                    fill="none"
-                    stroke={ringColor}
-                    strokeWidth={1.5}
-                    style={{
-                      transition: 'stroke 200ms ease-out, opacity 200ms ease-out',
-                      pointerEvents: 'none',
-                    }}
+                    cx={node.x} cy={node.y} r={node.size + 3}
+                    fill="none" stroke={ringColor} strokeWidth={1.5}
+                    style={{ transition: 'stroke 200ms ease-out', pointerEvents: 'none' }}
                   />
 
                   {/* Node fill */}
                   <circle
-                    cx={node.x} cy={node.y}
-                    r={node.size}
+                    cx={node.x} cy={node.y} r={node.size}
                     fill={fillColor}
+                    stroke="rgba(123,110,196,0.18)"
+                    strokeWidth={0.8}
                     style={{ transition: 'fill 200ms ease-out' }}
                   />
 
-                  {/* Cluster color dot (center) */}
+                  {/* Cluster color dot */}
                   <circle
-                    cx={node.x} cy={node.y}
-                    r={Math.max(3, node.size * 0.25)}
+                    cx={node.x} cy={node.y} r={Math.max(3, node.size * 0.25)}
                     fill={CLUSTER_COLORS[node.cluster]}
-                    opacity={isSelected ? 0 : 0.7}
+                    opacity={isSelected ? 0 : 0.65}
                     style={{ pointerEvents: 'none', transition: 'opacity 200ms' }}
                   />
 
                   {/* Node label */}
                   <text
-                    x={node.x}
-                    y={node.y + node.size + 12}
+                    x={node.x} y={node.y + node.size + 12}
                     textAnchor="middle"
-                    fill={isSelected || isNeighbor ? primitive.color.chalk : primitive.color.mist}
+                    fill={isSelected || isNeighbor ? LABEL_PRIMARY : LABEL_MUTED}
                     fontSize={isSelected ? 11 : 10}
                     fontFamily="Geist, system-ui, sans-serif"
                     fontWeight="500"
-                    style={{
-                      pointerEvents: 'none',
-                      userSelect: 'none',
-                      transition: 'fill 200ms ease-out, font-size 200ms ease-out',
-                    }}
+                    style={{ pointerEvents: 'none', userSelect: 'none', transition: 'fill 200ms ease-out' }}
                   >
                     {truncateWords(node.label, 3)}
                   </text>
@@ -397,14 +347,13 @@ export function HeroGraph() {
             })}
           </g>
 
-          {/* Click hint when nothing is selected */}
+          {/* Click hint */}
           <AnimatePresence>
             {!selectedNodeId && (
               <motion.text
-                x="340"
-                y="500"
+                x="340" y="478"
                 textAnchor="middle"
-                fill={primitive.color.ghost}
+                fill={LABEL_MUTED}
                 fontSize={11}
                 fontFamily="Geist, system-ui, sans-serif"
                 initial={{ opacity: 0 }}

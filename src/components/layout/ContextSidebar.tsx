@@ -1,19 +1,18 @@
 /**
  * ContextSidebar — Notes & Edges
  *
- * Left sidebar. Light, clean, warm. Collapses to icon rail.
- * Navigation uses CSS variables for full theme compliance.
+ * Minimal left rail. Navigation + lightweight graph context.
+ * Collapses to icon strip.
  */
 
 'use client';
 
 import { motion, AnimatePresence } from 'framer-motion';
-import { Map, Upload, Search, Settings, Plus } from 'lucide-react';
+import { Map, Search, Settings } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useUIStore } from '@/store/ui.store';
-import { semantic } from '@/lib/tokens';
 import { cn } from '@/lib/utils';
 
 interface SidebarNavItem {
@@ -28,31 +27,25 @@ interface ContextSidebarProps {
 }
 
 export function ContextSidebar({ children }: ContextSidebarProps) {
-  const { sidebarOpen, sidebarWidth, openUploadSheet, openSearchPalette } = useUIStore();
+  const { sidebarOpen, sidebarWidth, openSearchPalette } = useUIStore();
   const router = useRouter();
 
   const navItems: SidebarNavItem[] = [
     {
       id: 'graphs',
-      icon: <Map size={18} />,
-      label: 'Knowledge Library',
+      icon: <Map size={16} />,
+      label: 'Library',
       action: () => router.push('/home'),
     },
     {
-      id: 'upload',
-      icon: <Upload size={18} />,
-      label: 'Add Ideas',
-      action: openUploadSheet,
-    },
-    {
       id: 'search',
-      icon: <Search size={18} />,
+      icon: <Search size={16} />,
       label: 'Search',
       action: openSearchPalette,
     },
     {
       id: 'settings',
-      icon: <Settings size={18} />,
+      icon: <Settings size={16} />,
       label: 'Settings',
       action: () => router.push('/settings'),
     },
@@ -62,58 +55,19 @@ export function ContextSidebar({ children }: ContextSidebarProps) {
     <motion.aside
       className={cn('flex flex-col h-full border-r overflow-hidden')}
       style={{
-        background: 'rgba(14, 10, 30, 0.90)',
-        borderColor: 'rgba(255, 255, 255, 0.08)',
-        backdropFilter: 'blur(24px)',
-        WebkitBackdropFilter: 'blur(24px)',
+        background: 'rgba(255,255,255,0.88)',
+        borderColor: 'rgba(123,110,196,0.10)',
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
       }}
       animate={{ width: sidebarWidth }}
-      transition={{
-        duration: 0.25,
-        type: 'spring',
-        stiffness: 320,
-        damping: 32,
-      }}
+      transition={{ duration: 0.22, type: 'spring', stiffness: 340, damping: 34 }}
       aria-label="Sidebar"
     >
-      {/* Brand mark (when expanded) */}
-      <AnimatePresence>
-        {sidebarOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.15 }}
-            className="px-4 pt-4 pb-2 flex-shrink-0"
-          >
-            <div className="flex items-center gap-2">
-              <div
-                className="w-6 h-6 rounded-[7px] flex items-center justify-center flex-shrink-0"
-                style={{ background: 'linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-warm) 100%)' }}
-              >
-                <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                  <circle cx="3" cy="6" r="1.8" fill="white" opacity="0.95" />
-                  <circle cx="9" cy="3" r="1.4" fill="white" opacity="0.80" />
-                  <circle cx="9" cy="9" r="1.4" fill="white" opacity="0.80" />
-                  <line x1="4.7" y1="5.4" x2="7.7" y2="3.5" stroke="white" strokeWidth="0.9" opacity="0.65" />
-                  <line x1="4.7" y1="6.6" x2="7.7" y2="8.5" stroke="white" strokeWidth="0.9" opacity="0.65" />
-                </svg>
-              </div>
-              <span
-                className="text-[13px] font-semibold"
-                style={{ color: 'var(--text-primary)' }}
-              >
-                Notes & Edges
-              </span>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Icon Rail */}
-      <div className={cn('flex flex-col gap-0.5 p-2 flex-shrink-0', sidebarOpen ? 'mt-2' : 'mt-4')}>
+      {/* Nav items */}
+      <div className={cn('flex flex-col gap-0.5 p-1.5 pt-3 flex-shrink-0')}>
         {navItems.map((item) => (
-          <Tooltip key={item.id} delayDuration={sidebarOpen ? 999999 : 400}>
+          <Tooltip key={item.id} delayDuration={sidebarOpen ? 999999 : 300}>
             <TooltipTrigger asChild>
               <Button
                 variant="ghost"
@@ -121,12 +75,10 @@ export function ContextSidebar({ children }: ContextSidebarProps) {
                 onClick={item.action}
                 aria-label={item.label}
                 className={cn(
-                  'w-full justify-start gap-3 transition-all duration-[150ms] rounded-[10px]',
-                  sidebarOpen ? 'px-3 h-9' : 'px-2.5 h-9',
+                  'w-full justify-start gap-2.5 transition-all duration-[120ms] rounded-[8px]',
+                  sidebarOpen ? 'px-2.5 h-8' : 'px-0 h-8 justify-center',
                 )}
-                style={{
-                  color: 'var(--text-muted)',
-                } as React.CSSProperties}
+                style={{ color: 'var(--text-muted)' } as React.CSSProperties}
               >
                 <span className="flex-shrink-0">{item.icon}</span>
                 <AnimatePresence>
@@ -135,8 +87,8 @@ export function ContextSidebar({ children }: ContextSidebarProps) {
                       initial={{ opacity: 0, width: 0 }}
                       animate={{ opacity: 1, width: 'auto' }}
                       exit={{ opacity: 0, width: 0 }}
-                      transition={{ duration: 0.15 }}
-                      className="text-[13px] font-medium overflow-hidden whitespace-nowrap"
+                      transition={{ duration: 0.12 }}
+                      className="text-[12px] font-medium overflow-hidden whitespace-nowrap"
                     >
                       {item.label}
                     </motion.span>
@@ -151,83 +103,22 @@ export function ContextSidebar({ children }: ContextSidebarProps) {
         ))}
       </div>
 
-      {/* Divider */}
-      <div className="mx-3 my-1 border-t" style={{ borderColor: 'var(--border-subtle)' }} />
+      {/* Soft divider */}
+      {sidebarOpen && (
+        <div className="mx-3 my-1" style={{ height: 1, background: 'var(--border-subtle)' }} />
+      )}
 
-      {/* Expanded Content */}
+      {/* Expanded content (graph context, project list) */}
       <AnimatePresence>
         {sidebarOpen && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="flex-1 overflow-y-auto overflow-x-hidden px-3 pb-4"
+            transition={{ duration: 0.18 }}
+            className="flex-1 overflow-y-auto overflow-x-hidden px-1.5 pb-3"
           >
             {children}
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* New Universe Button */}
-      <div
-        className="p-2 flex-shrink-0 border-t"
-        style={{ borderColor: 'var(--border-subtle)' }}
-      >
-        <Tooltip delayDuration={sidebarOpen ? 999999 : 400}>
-          <TooltipTrigger asChild>
-            <button
-              aria-label="New universe"
-              onClick={() => router.push('/welcome?step=2')}
-              className={cn(
-                'w-full flex items-center gap-2.5 rounded-[10px] text-[13px] font-semibold transition-all text-white',
-                sidebarOpen ? 'px-4 py-2.5 justify-start' : 'p-2.5 justify-center',
-              )}
-              style={{ background: 'var(--accent-primary)' }}
-              onMouseEnter={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.background = 'var(--accent-bright)';
-                (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 2px 12px var(--accent-glow)';
-              }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.background = 'var(--accent-primary)';
-                (e.currentTarget as HTMLButtonElement).style.boxShadow = 'none';
-              }}
-            >
-              <Plus size={15} />
-              <AnimatePresence>
-                {sidebarOpen && (
-                  <motion.span
-                    initial={{ opacity: 0, width: 0 }}
-                    animate={{ opacity: 1, width: 'auto' }}
-                    exit={{ opacity: 0, width: 0 }}
-                    transition={{ duration: 0.15 }}
-                    className="overflow-hidden whitespace-nowrap"
-                  >
-                    New Universe
-                  </motion.span>
-                )}
-              </AnimatePresence>
-            </button>
-          </TooltipTrigger>
-          {!sidebarOpen && (
-            <TooltipContent side="right">New Universe</TooltipContent>
-          )}
-        </Tooltip>
-      </div>
-
-      {/* Version tag */}
-      <AnimatePresence>
-        {sidebarOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.15 }}
-            className="flex-shrink-0 px-4 py-2"
-          >
-            <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
-              Notes &amp; Edges · v0.1
-            </span>
           </motion.div>
         )}
       </AnimatePresence>

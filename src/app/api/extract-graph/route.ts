@@ -11,7 +11,26 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
+import { sanitizeForPrompt, rateLimitBody, LIMITS } from '@/lib/sanitize';
 import type { GraphData, GraphNode, GraphEdge, SemanticEdgeType, DepthLevel, GraphIntelligenceSummary } from '@/types/graph';
+
+// 20 graph extractions per 15 minutes per IP (each call is expensive)
+const AI_RATE_LIMIT = { max: 20, windowMs: 15 * 60 * 1000 };
+
+async function withRetry<T>(fn: () => Promise<T>, retries = 3, delayMs = 1500): Promise<T> {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      const isRetryable = msg.includes('503') || msg.includes('Service Unavailable') || msg.includes('overloaded');
+      if (!isRetryable || attempt === retries) throw err;
+      await new Promise((r) => setTimeout(r, delayMs * (attempt + 1)));
+    }
+  }
+  throw new Error('unreachable');
+}
 
 const VALID_SEMANTIC_TYPES = new Set<SemanticEdgeType>([
   'ENABLES', 'IS_A', 'CAUSES', 'CONTRASTS', 'PART_OF', 'DEPENDS_ON', 'LEADS_TO', 'RELATES_TO',
@@ -70,6 +89,20 @@ function clusterColor(id: string): string {
   return CLUSTER_COLORS[id] ?? '#4A4A6A';
 }
 
+// ── Label-aware comfort radius for raw API nodes ─────────────────────────────
+
+function estimateLabelWidth(label: string): number {
+  const text = label.split(/\s+/).slice(0, 4).join(' ');
+  return Math.min(text.length, 22) * 6.5 + 36;
+}
+
+function rawComfortRadius(n: RawNode): number {
+  const size = 8 + Math.min(1, Math.max(0, n.centrality)) * 16; // mirrors GraphNode size calc
+  const br = Math.max(14, size);
+  const halfLabel = estimateLabelWidth(n.label) / 2;
+  return Math.max(br + 10, halfLabel, 54);
+}
+
 function assignPositions(nodes: RawNode[]): Map<string, { x: number; y: number }> {
   const clusters = new Map<string, RawNode[]>();
   for (const n of nodes) {
@@ -79,8 +112,8 @@ function assignPositions(nodes: RawNode[]): Map<string, { x: number; y: number }
   }
   const clusterIds = [...clusters.keys()];
 
-  // Spread clusters generously — minimum 280px between cluster centers
-  const outerRadius = Math.max(280, clusterIds.length * 150);
+  // Outer ring: generous cluster separation (~85 px per cluster).
+  const outerRadius = Math.max(180, clusterIds.length * 65);
   const positions = new Map<string, { x: number; y: number }>();
 
   clusterIds.forEach((cid, ci) => {
@@ -89,24 +122,56 @@ function assignPositions(nodes: RawNode[]): Map<string, { x: number; y: number }
     const cy = outerRadius * Math.sin(clusterAngle);
     const members = clusters.get(cid)!;
 
-    // Sort by centrality — highest centrality node goes to cluster center
     const sorted = [...members].sort((a, b) => (b.centrality ?? 0) - (a.centrality ?? 0));
-    // Inner ring radius scales with member count, minimum 90px between nodes
-    const innerRadius = Math.max(90, sorted.length * 38);
+
+    // Inner ring: sized so adjacent arc spacing ≈ 145 px (n * 24 px formula).
+    const innerRadius = Math.max(60, sorted.length * 18);
 
     sorted.forEach((n, ni) => {
-      // Top-centrality node sits at the cluster centroid
       if (ni === 0) {
         positions.set(n.id, { x: Math.round(cx), y: Math.round(cy) });
         return;
       }
-      const angle = (2 * Math.PI * (ni - 1)) / (sorted.length - 1) - Math.PI / 2;
+      const angle = (2 * Math.PI * ni) / sorted.length - Math.PI / 2;
       positions.set(n.id, {
         x: Math.round(cx + innerRadius * Math.cos(angle)),
         y: Math.round(cy + innerRadius * Math.sin(angle)),
       });
     });
   });
+
+  // ── Label-aware collision resolution ──────────────────────────────────────
+  // Dynamic minSep per pair = cr_i + cr_j + 14 so label bounding boxes never touch.
+  const crMap = new Map(nodes.map((n) => [n.id, rawComfortRadius(n)]));
+  const pts = [...positions.entries()].map(([id, p]) => ({ id, x: p.x, y: p.y }));
+
+  for (let iter = 0; iter < 150; iter++) {
+    let moved = false;
+    for (let i = 0; i < pts.length; i++) {
+      for (let j = i + 1; j < pts.length; j++) {
+        const dx = pts[j].x - pts[i].x;
+        const dy = pts[j].y - pts[i].y;
+        const dist = Math.sqrt(dx * dx + dy * dy) || 0.01;
+        const minSep = (crMap.get(pts[i].id) ?? 54) + (crMap.get(pts[j].id) ?? 54) + 8;
+        if (dist < minSep) {
+          const push = (minSep - dist) / 2;
+          const ux = dx / dist;
+          const uy = dy / dist;
+          pts[i].x -= ux * push;
+          pts[i].y -= uy * push;
+          pts[j].x += ux * push;
+          pts[j].y += uy * push;
+          moved = true;
+        }
+      }
+    }
+    if (!moved) break;
+  }
+
+  for (const pt of pts) {
+    positions.set(pt.id, { x: Math.round(pt.x), y: Math.round(pt.y) });
+  }
+
   return positions;
 }
 
@@ -185,9 +250,20 @@ RULES:
 - centrality: 1.0 = everything depends on understanding this; 0.1 = peripheral detail`;
 
 export async function POST(req: NextRequest) {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) return NextResponse.json({ error: 'GEMINI_API_KEY not configured' }, { status: 500 });
+  // ── Rate limiting ──────────────────────────────────────────────────────────
+  const ip = getClientIp(req);
+  const rl = checkRateLimit(`ai:extract:${ip}`, AI_RATE_LIMIT.max, AI_RATE_LIMIT.windowMs);
+  if (!rl.allowed) {
+    return NextResponse.json(rateLimitBody(rl.resetAt), {
+      status: 429,
+      headers: { 'Retry-After': String(Math.ceil((rl.resetAt - Date.now()) / 1000)) },
+    });
+  }
 
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) return NextResponse.json({ error: 'Service not configured.' }, { status: 500 });
+
+  // ── Parse & validate input ─────────────────────────────────────────────────
   let text: string | null = null;
   let pdfBase64: string | null = null;
   const contentType = req.headers.get('content-type') ?? '';
@@ -197,13 +273,35 @@ export async function POST(req: NextRequest) {
     const t = form.get('text');
     const p = form.get('pdf');
     if (typeof t === 'string' && t.trim()) text = t.trim();
-    if (p instanceof File) pdfBase64 = Buffer.from(await p.arrayBuffer()).toString('base64');
+    if (p instanceof File) {
+      if (p.size > LIMITS.PDF_BYTES) {
+        return NextResponse.json(
+          { error: `PDF too large. Maximum ${LIMITS.PDF_BYTES / 1024 / 1024} MB.` },
+          { status: 413 },
+        );
+      }
+      pdfBase64 = Buffer.from(await p.arrayBuffer()).toString('base64');
+    }
   } else {
-    const body = (await req.json()) as { text?: string };
-    if (body.text?.trim()) text = body.text.trim();
+    let body: unknown;
+    try { body = await req.json(); } catch {
+      return NextResponse.json({ error: 'Invalid request body.' }, { status: 400 });
+    }
+    const raw = (body as Record<string, unknown>)?.text;
+    if (typeof raw === 'string' && raw.trim()) text = raw.trim();
   }
 
-  if (!text && !pdfBase64) return NextResponse.json({ error: 'Provide text or pdf' }, { status: 400 });
+  if (!text && !pdfBase64) return NextResponse.json({ error: 'Provide text or pdf.' }, { status: 400 });
+
+  if (text && text.length > LIMITS.TEXT_INPUT_CHARS) {
+    return NextResponse.json(
+      { error: `Input too large. Maximum ${LIMITS.TEXT_INPUT_CHARS.toLocaleString()} characters.` },
+      { status: 413 },
+    );
+  }
+
+  // Sanitize text and wrap in a delimiter to prevent prompt injection
+  if (text) text = sanitizeForPrompt(text);
 
   try {
     const genAI = new GoogleGenerativeAI(apiKey);
@@ -214,13 +312,15 @@ export async function POST(req: NextRequest) {
 
     type Part = { text: string } | { inlineData: { mimeType: string; data: string } };
     const parts: Part[] = text
-      ? [{ text }]
+      ? [{ text: `--- BEGIN USER TEXT ---\n${text}\n--- END USER TEXT ---` }]
       : [{ inlineData: { mimeType: 'application/pdf', data: pdfBase64! } }, { text: 'Extract a deep knowledge graph from this document.' }];
 
-    const result = await model.generateContent({
-      contents: [{ role: 'user', parts }],
-      generationConfig: { responseMimeType: 'application/json' },
-    });
+    const result = await withRetry(() =>
+      model.generateContent({
+        contents: [{ role: 'user', parts }],
+        generationConfig: { responseMimeType: 'application/json' },
+      })
+    );
 
     const raw = result.response.text().trim();
     const json = raw.startsWith('```') ? raw.replace(/^```[^\n]*\n?/, '').replace(/```$/, '') : raw;
@@ -308,8 +408,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ graph });
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    console.error('[extract-graph]', message);
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error('[extract-graph] error:', err instanceof Error ? err.message : String(err));
+    return NextResponse.json({ error: 'Extraction failed. Please try again.' }, { status: 500 });
   }
 }

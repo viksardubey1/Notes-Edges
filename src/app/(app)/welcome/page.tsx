@@ -16,8 +16,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowRight, Upload, FileText, Loader2, X, AlertCircle } from 'lucide-react';
 import { HeroGraph } from '@/components/marketing/HeroGraph';
-import { saveGraphLocally } from '@/components/graph/LocalGraphLoader';
-import { getSession } from '@/lib/auth';
+import { useAuth } from '@/context/AuthContext';
 import { saveGraph } from '@/lib/graphs';
 import type { GraphData } from '@/types/graph';
 import type { TextAnalysis } from '@/app/api/analyze-text/route';
@@ -43,6 +42,7 @@ const EXTRACT_PHASES = [
 function WelcomeContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { session } = useAuth();
   const initialStep = searchParams.get('step') === '2' ? 2 : 1;
 
   const [step, setStep] = useState<Step>(initialStep as Step);
@@ -142,9 +142,7 @@ function WelcomeContent() {
       }
 
       // Save to user's collection and legacy key
-      const session = getSession();
-      if (session) saveGraph(session.userId, data.graph);
-      saveGraphLocally(data.graph);
+      if (session) void saveGraph(session.userId, data.graph);
 
       setPhaseIdx(EXTRACT_PHASES.length - 1);
       await new Promise((r) => setTimeout(r, 600));

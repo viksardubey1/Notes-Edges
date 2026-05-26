@@ -52,22 +52,27 @@ export function PricingSection() {
           transition={{ duration: 0.5 }}
           className="text-center mb-16"
         >
-          <p className="text-[11px] text-[#4D7FFF] tracking-[0.12em] uppercase font-medium mb-4">
+          <p className="text-[11px] tracking-[0.12em] uppercase font-medium mb-4" style={{ color: '#7B6EC4' }}>
             Pricing
           </p>
-          <h2 className="font-[family-name:var(--font-fraunces)] text-[40px] text-[#F0F0F5] leading-tight mb-8">
+          <h2
+            className="font-[family-name:var(--font-fraunces)] text-[40px] leading-tight mb-8"
+            style={{ color: '#251E3D' }}
+          >
             Start free. Grow forever.
           </h2>
 
           {/* Annual/Monthly toggle */}
-          <div className="inline-flex items-center gap-3 p-1 rounded-[10px]"
-            style={{ background: '#111118', border: '1px solid #2A2A3F' }}>
+          <div
+            className="inline-flex items-center gap-1 p-1 rounded-[10px]"
+            style={{ background: '#FFFFFF', border: '1px solid rgba(123,110,196,0.14)' }}
+          >
             <button
               onClick={() => setAnnual(false)}
               className="px-4 py-2 rounded-[8px] text-[13px] font-medium transition-all duration-150"
               style={{
-                background: !annual ? '#1A1A26' : 'transparent',
-                color: !annual ? '#F0F0F5' : '#8888AA',
+                background: !annual ? 'rgba(123,110,196,0.10)' : 'transparent',
+                color: !annual ? '#251E3D' : '#9C95B5',
               }}
             >
               Monthly
@@ -76,12 +81,12 @@ export function PricingSection() {
               onClick={() => setAnnual(true)}
               className="flex items-center gap-2 px-4 py-2 rounded-[8px] text-[13px] font-medium transition-all duration-150"
               style={{
-                background: annual ? '#1A1A26' : 'transparent',
-                color: annual ? '#F0F0F5' : '#8888AA',
+                background: annual ? 'rgba(123,110,196,0.10)' : 'transparent',
+                color: annual ? '#251E3D' : '#9C95B5',
               }}
             >
               Annual
-              <span className="text-[10px] text-[#4D7FFF] font-medium">–25%</span>
+              <span className="text-[10px] font-medium" style={{ color: '#7B6EC4' }}>–25%</span>
             </button>
           </div>
         </motion.div>
@@ -99,20 +104,20 @@ export function PricingSection() {
                 transition={{ duration: 0.5, delay: i * 0.1 }}
                 className="flex flex-col p-8 rounded-[16px] relative"
                 style={{
-                  background: '#111118',
+                  background: '#FFFFFF',
                   border: tier.recommended
-                    ? '1px solid #4D7FFF'
-                    : '1px solid #2A2A3F',
+                    ? '1px solid #7B6EC4'
+                    : '1px solid rgba(123,110,196,0.14)',
                   boxShadow: tier.recommended
-                    ? '0 0 40px rgba(77,127,255,0.08)'
+                    ? '0 0 40px rgba(123,110,196,0.10)'
                     : 'none',
                 }}
               >
                 {/* Recommended badge */}
                 {tier.recommended && (
                   <div
-                    className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-[11px] font-medium text-[#F0F0F5]"
-                    style={{ background: '#4D7FFF' }}
+                    className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-[11px] font-medium"
+                    style={{ background: '#7B6EC4', color: '#FFFFFF' }}
                   >
                     Recommended
                   </div>
@@ -120,21 +125,20 @@ export function PricingSection() {
 
                 {/* Tier info */}
                 <div className="mb-8">
-                  <h3 className="text-[17px] font-medium text-[#F0F0F5] mb-1">{tier.name}</h3>
-                  <p className="text-[13px] text-[#8888AA] mb-6">{tier.description}</p>
+                  <h3 className="text-[17px] font-medium mb-1" style={{ color: '#251E3D' }}>{tier.name}</h3>
+                  <p className="text-[13px] mb-6" style={{ color: '#5A5272' }}>{tier.description}</p>
 
-                  {/* Price */}
                   <div className="flex items-end gap-1">
-                    <span className="font-[family-name:var(--font-fraunces)] text-[40px] text-[#F0F0F5] leading-none">
+                    <span className="font-[family-name:var(--font-fraunces)] text-[40px] leading-none" style={{ color: '#251E3D' }}>
                       ${price}
                     </span>
                     {price > 0 && (
-                      <span className="text-[13px] text-[#8888AA] mb-1">
+                      <span className="text-[13px] mb-1" style={{ color: '#9C95B5' }}>
                         / mo{annual ? ' · billed annually' : ''}
                       </span>
                     )}
                     {price === 0 && (
-                      <span className="text-[13px] text-[#8888AA] mb-1">forever</span>
+                      <span className="text-[13px] mb-1" style={{ color: '#9C95B5' }}>forever</span>
                     )}
                   </div>
                 </div>
@@ -145,11 +149,11 @@ export function PricingSection() {
                     <li key={feature} className="flex items-start gap-2.5">
                       <Check
                         size={14}
-                        color={tier.recommended ? '#4D7FFF' : '#3D8A6E'}
+                        color={tier.recommended ? '#7B6EC4' : '#3FA882'}
                         className="flex-shrink-0 mt-0.5"
                         aria-hidden="true"
                       />
-                      <span className="text-[13px] text-[#8888AA]">{feature}</span>
+                      <span className="text-[13px]" style={{ color: '#5A5272' }}>{feature}</span>
                     </li>
                   ))}
                 </ul>
@@ -159,9 +163,17 @@ export function PricingSection() {
                   href={tier.href}
                   className="flex items-center justify-center h-10 rounded-[8px] text-[13px] font-medium transition-colors duration-150"
                   style={{
-                    background: tier.recommended ? '#4D7FFF' : 'transparent',
-                    color: '#F0F0F5',
-                    border: tier.recommended ? 'none' : '1px solid #2A2A3F',
+                    background: tier.recommended ? '#7B6EC4' : 'transparent',
+                    color: tier.recommended ? '#FFFFFF' : '#251E3D',
+                    border: tier.recommended ? 'none' : '1px solid rgba(123,110,196,0.22)',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (tier.recommended) (e.currentTarget as HTMLAnchorElement).style.background = '#8F82D4';
+                    else (e.currentTarget as HTMLAnchorElement).style.background = 'rgba(123,110,196,0.06)';
+                  }}
+                  onMouseLeave={(e) => {
+                    if (tier.recommended) (e.currentTarget as HTMLAnchorElement).style.background = '#7B6EC4';
+                    else (e.currentTarget as HTMLAnchorElement).style.background = 'transparent';
                   }}
                 >
                   {tier.cta}

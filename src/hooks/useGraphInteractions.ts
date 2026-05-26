@@ -2,7 +2,7 @@
  * Graph Interaction Hook — Notes & Edges
  *
  * Encapsulates all graph canvas interaction logic:
- * - Node click: select + smooth camera pan to center node + reveal neighbours (progressive mode)
+ * - Node click: select + smooth camera pan to center node
  * - Node double-click: Neighborhood Mode
  * - Canvas click: deselect
  * - Canvas double-click: reset view
@@ -19,12 +19,14 @@ import { clamp } from '@/lib/utils';
 const ZOOM_MIN = 0.1;
 const ZOOM_MAX = 4;
 
+// Preset zoom levels for step-wise zoom in/out
+const ZOOM_LEVELS = [0.25, 0.33, 0.5, 0.67, 0.75, 0.80, 0.90, 1.0, 1.1, 1.25, 1.5, 1.75, 2.0, 2.5, 3.0, 4.0];
+
 export function useGraphInteractions() {
   const {
     graph,
     selectedNodeId,
     zoom,
-    progressiveMode,
     selectNode,
     selectEdge,
     clearSelection,
@@ -35,7 +37,6 @@ export function useGraphInteractions() {
     setMode,
     multiSelectNode,
     fitToContent,
-    revealNode,
   } = useGraphStore();
 
   const { openNodeDetail, closeNodeDetail } = useUIStore();
@@ -49,11 +50,6 @@ export function useGraphInteractions() {
       // Close edge panel if it was open; node detail is handled by ConceptExpansion overlay
       closeNodeDetail();
 
-      // Progressive disclosure: reveal this node + its top neighbours
-      if (progressiveMode) {
-        revealNode(nodeId);
-      }
-
       // Smooth camera pan: center the selected node in the viewport.
       if (graph) {
         const node = graph.nodes.find((n) => n.id === nodeId);
@@ -66,7 +62,25 @@ export function useGraphInteractions() {
         }
       }
     },
-    [selectedNodeId, graph, zoom, progressiveMode, selectNode, clearSelection, multiSelectNode, closeNodeDetail, setPan, revealNode],
+    [selectedNodeId, graph, zoom, selectNode, clearSelection, multiSelectNode, closeNodeDetail, setPan],
+  );
+
+  // Navigate to a node without toggling selection or closing the detail panel.
+  // Used by prev/next traversal buttons inside NodeDetailPanel.
+  const navigateToNode = useCallback(
+    (nodeId: string): void => {
+      selectNode(nodeId);
+      if (graph) {
+        const node = graph.nodes.find((n) => n.id === nodeId);
+        if (node && node.x != null && node.y != null) {
+          setPan({
+            x: -(node.x * zoom) - 220,
+            y: -(node.y * zoom),
+          });
+        }
+      }
+    },
+    [graph, zoom, selectNode, setPan],
   );
 
   const handleNodeDoubleClick = useCallback(
@@ -92,7 +106,7 @@ export function useGraphInteractions() {
   }, [clearSelection]);
 
   const handleCanvasDoubleClick = useCallback((): void => {
-    setZoom(1);
+    setZoom(1.25);
     setPan({ x: 0, y: 0 });
     setMode('default');
   }, [setZoom, setPan, setMode]);
@@ -105,11 +119,13 @@ export function useGraphInteractions() {
   );
 
   const handleZoomIn = useCallback((): void => {
-    handleZoom(zoom * 1.25);
+    const next = ZOOM_LEVELS.find((l) => l > zoom + 0.001);
+    handleZoom(next ?? ZOOM_MAX);
   }, [zoom, handleZoom]);
 
   const handleZoomOut = useCallback((): void => {
-    handleZoom(zoom / 1.25);
+    const prev = [...ZOOM_LEVELS].reverse().find((l) => l < zoom - 0.001);
+    handleZoom(prev ?? ZOOM_MIN);
   }, [zoom, handleZoom]);
 
   const handleFitToScreen = useCallback((): void => {
@@ -126,6 +142,7 @@ export function useGraphInteractions() {
 
   return {
     handleNodeClick,
+    navigateToNode,
     handleNodeDoubleClick,
     handleEdgeClick,
     handleCanvasClick,

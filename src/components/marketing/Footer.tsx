@@ -1,29 +1,19 @@
+'use client';
+
 import Link from 'next/link';
+import { Logo } from '@/components/ui/Logo';
 
 const LINKS = [
-  { label: 'Features', href: '#features' },
-  { label: 'Pricing', href: '#pricing' },
   { label: 'Privacy', href: '/privacy' },
   { label: 'Terms', href: '/terms' },
 ];
 
 export function Footer() {
   return (
-    <footer
-      className="py-8 px-8 border-t"
-      style={{ borderColor: '#2A2A3F' }}
-    >
+    <footer className="py-8 px-8 border-t" style={{ borderColor: 'rgba(123,110,196,0.14)' }}>
       <div className="max-w-[1200px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
         {/* Logo */}
-        <div className="flex items-center gap-2">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <circle cx="7" cy="7" r="4" fill="#4D7FFF" opacity="0.9" />
-            <circle cx="17" cy="17" r="4" fill="#4D7FFF" opacity="0.5" />
-            <line x1="10.5" y1="10.5" x2="13.5" y2="13.5"
-              stroke="#4D7FFF" strokeWidth="1.5" opacity="0.6" />
-          </svg>
-          <span className="text-[13px] font-medium text-[#8888AA]">Notes & Edges</span>
-        </div>
+        <Logo size={24} fontSize={13} textColor="#5A5272" />
 
         {/* Links */}
         <nav className="flex items-center gap-6" aria-label="Footer navigation">
@@ -31,7 +21,10 @@ export function Footer() {
             <Link
               key={link.label}
               href={link.href}
-              className="text-[12px] text-[#4A4A6A] hover:text-[#8888AA] transition-colors duration-150"
+              className="text-[12px] transition-colors duration-150"
+              style={{ color: '#9C95B5' }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = '#5A5272'; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = '#9C95B5'; }}
             >
               {link.label}
             </Link>
@@ -39,7 +32,7 @@ export function Footer() {
         </nav>
 
         {/* Copyright */}
-        <p className="text-[11px] text-[#4A4A6A]">
+        <p className="text-[11px]" style={{ color: '#9C95B5' }}>
           © {new Date().getFullYear()} Notes & Edges
         </p>
       </div>

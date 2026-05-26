@@ -18,6 +18,7 @@ import { useGraphStore } from '@/store/graph.store';
 import { useUIStore } from '@/store/ui.store';
 import { useGraphInteractions } from '@/hooks/useGraphInteractions';
 import type { GraphNode, SemanticEdgeType, LearningState } from '@/types/graph';
+import { buildTraversalOrder } from '@/lib/traversal';
 
 // ── Semantic type config ──────────────────────────────────────────────────────
 
@@ -156,7 +157,7 @@ function ConstellationMap({
             <text
               x={lx} y={ly + 1}
               textAnchor={textAnchor}
-              fill="rgba(200,188,230,0.70)"
+              fill="rgba(90,82,114,0.70)"
               fontSize={isHovered ? 7.5 : 6.5}
               fontFamily="var(--font-sans, sans-serif)"
               style={{ transition: 'font-size 0.15s ease, fill 0.15s ease', userSelect: 'none', pointerEvents: 'none' }}
@@ -187,14 +188,13 @@ export function ConceptExpansion() {
     selectedNodeId,
     learningStates,
     setLearningState,
-    visitedNodeIds,
     navigationHistory,
     navigateBack,
     clearSelection,
   } = useGraphStore();
 
   const { closeNodeDetail } = useUIStore();
-  const { handleNodeClick } = useGraphInteractions();
+  const { navigateToNode } = useGraphInteractions();
 
   const node = useMemo(
     () => graph?.nodes.find((n) => n.id === selectedNodeId) ?? null,
@@ -222,44 +222,62 @@ export function ConceptExpansion() {
     return result.sort((a, b) => b.edge.weight - a.edge.weight);
   }, [graph, selectedNodeId, node]);
 
-  const nextSuggestion = useMemo((): Connection | null => {
-    if (!node || connectedEdges.length === 0) return null;
-    const prevId = navigationHistory.length > 0 ? navigationHistory[navigationHistory.length - 1] : null;
+  // Stable topological order across the whole graph — circular linked list
+  const traversalOrder = useMemo(() => {
+    if (!graph) return [];
+    return buildTraversalOrder(graph.nodes, graph.edges);
+  }, [graph]);
 
-    const unvisited = connectedEdges.filter(({ other }) => !visitedNodeIds.has(other.id));
-    if (unvisited.length > 0) {
-      const notPrev = unvisited.filter(({ other }) => other.id !== prevId);
-      return notPrev.length > 0 ? notPrev[0] : unvisited[0];
-    }
+  const traversalIdx = useMemo(() => {
+    if (!node || traversalOrder.length === 0) return 0;
+    const idx = traversalOrder.indexOf(node.id);
+    return idx === -1 ? 0 : idx;
+  }, [node, traversalOrder]);
 
-    const byWeight = connectedEdges
-      .filter(({ other }) => other.id !== prevId)
-      .sort((a, b) => b.edge.weight - a.edge.weight);
-    return byWeight.length > 0 ? byWeight[0] : connectedEdges[0];
-  }, [node, connectedEdges, visitedNodeIds, navigationHistory]);
+  const nextNode = useMemo(() => {
+    if (!graph || !node || traversalOrder.length < 2) return null;
+    const nextId = traversalOrder[(traversalIdx + 1) % traversalOrder.length];
+    return graph.nodes.find((n) => n.id === nextId) ?? null;
+  }, [graph, node, traversalIdx, traversalOrder]);
+
+  const prevNode = useMemo(() => {
+    if (!graph || !node || traversalOrder.length < 2) return null;
+    const prevId = traversalOrder[(traversalIdx - 1 + traversalOrder.length) % traversalOrder.length];
+    return graph.nodes.find((n) => n.id === prevId) ?? null;
+  }, [graph, node, traversalIdx, traversalOrder]);
 
   const learningState: LearningState = (learningStates[selectedNodeId ?? ''] ?? 'unset') as LearningState;
   const accentRaw = node?.clusterColor ?? '#9876EE';
 
   const prevNodeId = navigationHistory.length > 0 ? navigationHistory[navigationHistory.length - 1] : null;
-  const prevNode = prevNodeId ? graph?.nodes.find((n) => n.id === prevNodeId) ?? null : null;
+  const historyPrevNode = prevNodeId ? graph?.nodes.find((n) => n.id === prevNodeId) ?? null : null;
 
   // Reset expanded state when node changes
   useEffect(() => {
     setConnectionsExpanded(false);
   }, [selectedNodeId]);
 
-  // Escape key closes panel
+  // Keyboard navigation
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && selectedNodeId) {
+      if (!selectedNodeId) return;
+      // Don't hijack when typing in an input
+      if ((e.target as HTMLElement).tagName === 'INPUT' || (e.target as HTMLElement).tagName === 'TEXTAREA') return;
+
+      if (e.key === 'Escape') {
         clearSelection();
         closeNodeDetail();
+      } else if (e.key === 'ArrowRight' && nextNode) {
+        e.preventDefault();
+        navigateToNode(nextNode.id);
+      } else if (e.key === 'ArrowLeft' && prevNode) {
+        e.preventDefault();
+        navigateToNode(prevNode.id);
       }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [selectedNodeId, clearSelection, closeNodeDetail]);
+  }, [selectedNodeId, nextNode, prevNode, clearSelection, closeNodeDetail, navigateToNode]);
 
   const handleClose = () => {
     clearSelection();
@@ -278,15 +296,14 @@ export function ConceptExpansion() {
             bottom: 20,
             width: 'min(440px, 38%)',
             borderRadius: 16,
-            background: 'rgba(8, 5, 20, 0.88)',
-            backdropFilter: 'blur(40px) saturate(160%)',
-            WebkitBackdropFilter: 'blur(40px) saturate(160%)',
-            border: '1px solid rgba(255,255,255,0.09)',
+            background: 'rgba(255, 255, 255, 0.92)',
+            backdropFilter: 'blur(40px) saturate(130%)',
+            WebkitBackdropFilter: 'blur(40px) saturate(130%)',
+            border: '1px solid rgba(123, 110, 196, 0.14)',
             boxShadow: `
-              0 0 0 1px rgba(255,255,255,0.04),
-              0 32px 80px rgba(0,0,0,0.60),
-              0 0 80px ${accentRaw}0A,
-              inset 0 1px 0 rgba(255,255,255,0.05)
+              0 0 0 1px rgba(123,110,196,0.06),
+              0 16px 56px rgba(37,30,61,0.12),
+              0 4px 16px rgba(37,30,61,0.06)
             `,
             zIndex: 30,
           }}
@@ -311,7 +328,7 @@ export function ConceptExpansion() {
             className="flex-shrink-0 flex items-center justify-between px-5 pt-3 pb-2"
           >
             {/* Back button */}
-            {prevNode ? (
+            {historyPrevNode ? (
               <motion.button
                 onClick={() => navigateBack()}
                 className="flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1.5 rounded-[8px]"
@@ -320,7 +337,7 @@ export function ConceptExpansion() {
                 whileTap={{ scale: 0.97 }}
                 onMouseEnter={(e) => {
                   (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-secondary)';
-                  (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.05)';
+                  (e.currentTarget as HTMLButtonElement).style.background = 'rgba(123,110,196,0.07)';
                 }}
                 onMouseLeave={(e) => {
                   (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)';
@@ -328,7 +345,7 @@ export function ConceptExpansion() {
                 }}
               >
                 <ArrowLeft size={11} />
-                <span className="truncate max-w-[130px]">{prevNode.label}</span>
+                <span className="truncate max-w-[130px]">{historyPrevNode.label}</span>
               </motion.button>
             ) : (
               <div />
@@ -338,13 +355,13 @@ export function ConceptExpansion() {
             <button
               onClick={handleClose}
               className="w-7 h-7 flex items-center justify-center rounded-full transition-all"
-              style={{ color: 'var(--text-muted)', background: 'rgba(255,255,255,0.04)' }}
+              style={{ color: 'var(--text-muted)', background: 'rgba(123,110,196,0.06)' }}
               onMouseEnter={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.09)';
+                (e.currentTarget as HTMLButtonElement).style.background = 'rgba(123,110,196,0.12)';
                 (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-primary)';
               }}
               onMouseLeave={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.04)';
+                (e.currentTarget as HTMLButtonElement).style.background = 'rgba(123,110,196,0.06)';
                 (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)';
               }}
             >
@@ -426,7 +443,7 @@ export function ConceptExpansion() {
                   <ConstellationMap
                     node={node}
                     connections={connectedEdges}
-                    onNavigate={(id) => handleNodeClick(id)}
+                    onNavigate={(id) => navigateToNode(id)}
                   />
                 </div>
               )}
@@ -436,7 +453,7 @@ export function ConceptExpansion() {
           {/* Separator */}
           <div
             className="flex-shrink-0 mx-5 my-1"
-            style={{ height: 1, background: 'rgba(255,255,255,0.06)' }}
+            style={{ height: 1, background: 'rgba(123,110,196,0.10)' }}
           />
 
           {/* ── Body ─────────────────────────────────────────────────────── */}
@@ -482,7 +499,7 @@ export function ConceptExpansion() {
                 <div
                   className="px-3.5 py-3 rounded-[10px]"
                   style={{
-                    background: 'rgba(255,255,255,0.02)',
+                    background: 'rgba(123,110,196,0.03)',
                     borderLeft: `2px solid ${accentRaw}55`,
                   }}
                 >
@@ -502,7 +519,7 @@ export function ConceptExpansion() {
                 className="flex-shrink-0 px-3.5 py-3 rounded-[10px] italic leading-relaxed"
                 style={{
                   fontSize: 12,
-                  background: 'rgba(255,255,255,0.02)',
+                  background: 'rgba(123,110,196,0.03)',
                   borderLeft: `1.5px solid ${accentRaw}30`,
                   color: 'var(--text-muted)',
                 }}
@@ -520,8 +537,8 @@ export function ConceptExpansion() {
                     key={i}
                     className="px-2.5 py-0.5 rounded-full text-[9px] font-medium"
                     style={{
-                      background: 'rgba(255,255,255,0.04)',
-                      border: '1px solid rgba(255,255,255,0.08)',
+                      background: 'rgba(123,110,196,0.06)',
+                      border: '1px solid rgba(123,110,196,0.12)',
                       color: 'var(--text-muted)',
                     }}
                   >
@@ -532,23 +549,27 @@ export function ConceptExpansion() {
             )}
 
             {/* ── Next Idea CTA ─────────────────────────────────────────────── */}
-            {nextSuggestion && (
+            {nextNode && (
               <div className="flex-shrink-0 flex flex-col gap-1">
-                <p
-                  className="text-[8px] font-semibold tracking-[0.14em] uppercase flex items-center gap-1.5"
-                  style={{ color: accentRaw, opacity: 0.55 }}
-                >
-                  <ArrowRight size={8} />
-                  Next Idea
-                </p>
+                <div className="flex items-center justify-between">
+                  <p
+                    className="text-[8px] font-semibold tracking-[0.14em] uppercase flex items-center gap-1.5"
+                    style={{ color: accentRaw, opacity: 0.55 }}
+                  >
+                    <ArrowRight size={8} />
+                    Next Up
+                  </p>
+                  {traversalOrder.length > 1 && (
+                    <span className="text-[8px] tabular-nums" style={{ color: 'var(--text-muted)', opacity: 0.35 }}>
+                      {traversalIdx + 1}/{traversalOrder.length}
+                    </span>
+                  )}
+                </div>
                 {(() => {
-                  const target = nextSuggestion.other;
-                  const tc = target.clusterColor ?? accentRaw;
-                  const semType = nextSuggestion.edge.semanticType;
-                  const relLabel = semType ? (SEM_TYPE_LABELS[semType] ?? 'relates to') : 'relates to';
+                  const tc = nextNode.clusterColor ?? accentRaw;
                   return (
                     <motion.button
-                      onClick={() => handleNodeClick(target.id)}
+                      onClick={() => navigateToNode(nextNode.id)}
                       className="w-full rounded-[10px] overflow-hidden text-left"
                       style={{
                         background: `linear-gradient(145deg, ${tc}12 0%, ${tc}06 100%)`,
@@ -561,15 +582,12 @@ export function ConceptExpansion() {
                       <div className="px-3.5 py-3 flex items-center gap-3">
                         <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: tc, boxShadow: `0 0 6px ${tc}` }} />
                         <div className="flex-1 min-w-0">
-                          <p
-                            className="font-semibold leading-tight truncate"
-                            style={{ fontSize: 13, color: 'var(--text-primary)' }}
-                          >
-                            {target.label}
+                          <p className="font-semibold leading-tight truncate" style={{ fontSize: 13, color: 'var(--text-primary)' }}>
+                            {nextNode.label}
                           </p>
-                          {target.metadata?.summary && (
+                          {nextNode.metadata?.summary && (
                             <p className="text-[11px] leading-snug mt-0.5 line-clamp-1" style={{ color: 'var(--text-muted)' }}>
-                              {target.metadata.summary}
+                              {nextNode.metadata.summary}
                             </p>
                           )}
                         </div>
@@ -582,7 +600,7 @@ export function ConceptExpansion() {
             )}
 
             {/* ── Your Understanding ─────────────────────────────────────────── */}
-            <div className="flex-shrink-0 pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+            <div className="flex-shrink-0 pt-3" style={{ borderTop: '1px solid rgba(123,110,196,0.10)' }}>
               <p
                 className="text-[8px] font-semibold tracking-[0.14em] uppercase mb-2"
                 style={{ color: 'var(--text-muted)', opacity: 0.40 }}
@@ -599,8 +617,8 @@ export function ConceptExpansion() {
                       onClick={() => setLearningState(node.id, active ? 'unset' : state)}
                       className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-[8px] text-[10px] font-medium"
                       style={{
-                        background: active ? cfg.bg : 'rgba(255,255,255,0.03)',
-                        border: active ? `1px solid ${cfg.border}` : '1px solid rgba(255,255,255,0.05)',
+                        background: active ? cfg.bg : 'rgba(123,110,196,0.04)',
+                        border: active ? `1px solid ${cfg.border}` : '1px solid rgba(123,110,196,0.10)',
                         color: active ? cfg.color : 'var(--text-muted)',
                         boxShadow: active ? `0 0 10px ${cfg.color}20` : 'none',
                       }}
@@ -612,7 +630,7 @@ export function ConceptExpansion() {
                       <span
                         className="w-1 h-1 rounded-full flex-shrink-0"
                         style={{
-                          background: active ? cfg.color : 'rgba(255,255,255,0.15)',
+                          background: active ? cfg.color : 'rgba(123,110,196,0.20)',
                           boxShadow: active ? `0 0 4px ${cfg.color}` : 'none',
                         }}
                       />
@@ -623,6 +641,43 @@ export function ConceptExpansion() {
               </div>
             </div>
           </div>
+
+          {/* ── Prev / Next footer — always visible ────────────────────────── */}
+          {traversalOrder.length > 1 && (
+            <div
+              className="flex-shrink-0 flex items-stretch"
+              style={{ borderTop: '1px solid rgba(123,110,196,0.10)', background: 'rgba(123,110,196,0.02)' }}
+            >
+              <button
+                onClick={() => prevNode && navigateToNode(prevNode.id)}
+                className="flex-1 flex items-center gap-2 px-4 py-2.5 text-left min-w-0 transition-colors"
+                style={{ color: 'var(--text-muted)' }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(123,110,196,0.06)'; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; }}
+              >
+                <ArrowLeft size={10} className="flex-shrink-0" />
+                <span className="text-[10px] truncate">{prevNode?.label}</span>
+              </button>
+
+              <div
+                className="flex-shrink-0 flex items-center px-3 text-[9px] font-medium tabular-nums"
+                style={{ color: 'var(--text-muted)', opacity: 0.35, borderLeft: '1px solid rgba(123,110,196,0.08)', borderRight: '1px solid rgba(123,110,196,0.08)' }}
+              >
+                {traversalIdx + 1}/{traversalOrder.length}
+              </div>
+
+              <button
+                onClick={() => nextNode && navigateToNode(nextNode.id)}
+                className="flex-1 flex items-center justify-end gap-2 px-4 py-2.5 text-right min-w-0 transition-colors"
+                style={{ color: 'var(--text-muted)' }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(123,110,196,0.06)'; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; }}
+              >
+                <span className="text-[10px] truncate">{nextNode?.label}</span>
+                <ArrowRight size={10} className="flex-shrink-0" />
+              </button>
+            </div>
+          )}
         </motion.div>
       )}
     </AnimatePresence>

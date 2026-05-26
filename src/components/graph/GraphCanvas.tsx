@@ -12,7 +12,7 @@
 
 import { useRef, useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Compass, Map } from 'lucide-react';
+import { ArrowLeft, Compass } from 'lucide-react';
 import { useGraphStore } from '@/store/graph.store';
 import { useGraphInteractions } from '@/hooks/useGraphInteractions';
 import { getLODLevel } from '@/lib/graph/lod';
@@ -43,14 +43,13 @@ export function GraphCanvas({ className }: GraphCanvasProps) {
 
   const {
     graph, zoom, pan, mode, isGenerating,
-    progressiveMode, revealedNodeIds, showFullGraph,
-    selectedNodeId, selectedEdgeId,
+    selectedNodeId, selectedEdgeId, backdropUrl,
   } = useGraphStore();
   const setPan = useGraphStore((s) => s.setPan);
-  const revealedCount = revealedNodeIds?.size ?? (graph?.nodes.length ?? 0);
   const hasSelection = !!(selectedNodeId || selectedEdgeId);
 
   const {
+    handleNodeClick,
     handleCanvasClick,
     handleCanvasDoubleClick,
     handleZoom,
@@ -100,22 +99,15 @@ export function GraphCanvas({ className }: GraphCanvasProps) {
     return () => clearTimeout(t);
   }, [graph?.id, dimensions, fitToContent]);
 
-  // Re-fit when progressive mode reveals more nodes
-  useEffect(() => {
-    if (!progressiveMode || dimensions.width === 0) return;
-    const t = setTimeout(() => fitToContent(dimensions), 80);
-    return () => clearTimeout(t);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [revealedCount]);
 
   // ── Drag-to-pan handlers ───────────────────────────────────────────────────
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (e.button !== 0) return;
-    e.preventDefault(); // prevent browser text-selection on click/pan
-    // Don't start pan drag when pressing on an interactive node
+    // Don't intercept clicks on interactive elements overlaid on the canvas
     const target = e.target as Element;
-    if (target.closest?.('[role="button"]')) return;
+    if (target.closest?.('button, [role="button"], a')) return;
+    e.preventDefault(); // prevent browser text-selection on click/pan
 
     isDraggingRef.current = true;
     didDragRef.current = false;
@@ -181,7 +173,9 @@ export function GraphCanvas({ className }: GraphCanvasProps) {
         className,
       )}
       style={{
-        background: 'radial-gradient(ellipse 100% 80% at 50% 0%, #1A0F38 0%, #0C0818 45%, #080514 100%)',
+        background: backdropUrl
+          ? '#000000'
+          : 'radial-gradient(ellipse 90% 75% at 48% 42%, rgba(255,155,140,0.18) 0%, rgba(255,200,190,0.10) 45%, transparent 65%), radial-gradient(ellipse 60% 55% at 75% 75%, rgba(255,180,170,0.08) 0%, transparent 55%), #FEF8F7',
         cursor: isDragging ? 'grabbing' : 'grab',
       }}
       onMouseDown={handleMouseDown}
@@ -195,37 +189,108 @@ export function GraphCanvas({ className }: GraphCanvasProps) {
       aria-label="Knowledge graph canvas"
       tabIndex={0}
     >
-      {/* Star-field dot-grid — cosmic spatial orientation */}
+      {/* Subtle dot-grid — hidden when backdrop image is active */}
       <svg
         className="absolute inset-0 w-full h-full pointer-events-none"
-        style={{ opacity: hasSelection ? 0.08 : 0.18, transition: 'opacity 400ms ease' }}
+        style={{ opacity: backdropUrl ? 0 : hasSelection ? 0.30 : 0.55, transition: 'opacity 400ms ease' }}
         aria-hidden="true"
       >
         <defs>
-          <pattern id="dotgrid" x="0" y="0" width="32" height="32" patternUnits="userSpaceOnUse">
-            <circle cx="1" cy="1" r="0.6" fill="rgba(255,255,255,0.9)" />
+          <pattern id="dotgrid" x="0" y="0" width="28" height="28" patternUnits="userSpaceOnUse">
+            <circle cx="1" cy="1" r="0.7" fill="rgba(123,110,196,0.22)" />
           </pattern>
         </defs>
         <rect width="100%" height="100%" fill="url(#dotgrid)" />
       </svg>
 
-      {/* Atmospheric nebula glows — warm, spatial, cinematic */}
-      <div
-        className="absolute pointer-events-none"
-        style={{
-          inset: 0,
-          opacity: hasSelection ? 0.4 : 1,
-          transition: 'opacity 400ms ease',
-          background: `
-            radial-gradient(ellipse 60% 50% at 15% 20%, rgba(152,118,238,0.10) 0%, transparent 65%),
-            radial-gradient(ellipse 50% 42% at 85% 72%, rgba(80,208,160,0.07) 0%, transparent 65%),
-            radial-gradient(ellipse 42% 35% at 72% 12%, rgba(240,112,144,0.07) 0%, transparent 60%),
-            radial-gradient(ellipse 38% 30% at 48% 90%, rgba(80,192,232,0.06) 0%, transparent 58%),
-            radial-gradient(ellipse 30% 25% at 30% 60%, rgba(192,96,232,0.05) 0%, transparent 55%)
-          `,
-        }}
+      {/* Backdrop image — user-selected, sits below everything */}
+      {backdropUrl && (
+        <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 0 }}>
+          <img
+            src={backdropUrl}
+            alt=""
+            className="w-full h-full object-cover"
+            style={{ opacity: 1 }}
+            aria-hidden="true"
+          />
+        </div>
+      )}
+
+      {/* Polar reference grid — hidden when backdrop image is active */}
+      {dimensions.width > 0 && !backdropUrl && (
+        <svg
+          className="absolute inset-0 w-full h-full pointer-events-none"
+          style={{ opacity: hasSelection ? 0.3 : 0.7, transition: 'opacity 500ms ease', zIndex: 0 }}
+          aria-hidden="true"
+        >
+          {(() => {
+            const cx = dimensions.width * 0.5;
+            const cy = dimensions.height * 0.52;
+            const maxR = Math.hypot(dimensions.width, dimensions.height) * 0.55;
+            const rings = [0.22, 0.40, 0.60, 0.82].map((f) => f * maxR);
+            const spokes = 8;
+            return (
+              <g>
+                {/* Concentric dashed circles */}
+                {rings.map((r, i) => (
+                  <circle
+                    key={`ring-${i}`}
+                    cx={cx} cy={cy} r={r}
+                    fill="none"
+                    stroke="rgba(123,110,196,0.10)"
+                    strokeWidth={0.8}
+                    strokeDasharray={i % 2 === 0 ? '4 8' : '1 10'}
+                  />
+                ))}
+                {/* Radial spokes */}
+                {Array.from({ length: spokes }).map((_, i) => {
+                  const angle = (i / spokes) * Math.PI * 2 - Math.PI / 8;
+                  return (
+                    <line
+                      key={`spoke-${i}`}
+                      x1={cx} y1={cy}
+                      x2={cx + Math.cos(angle) * maxR}
+                      y2={cy + Math.sin(angle) * maxR}
+                      stroke="rgba(123,110,196,0.05)"
+                      strokeWidth={0.7}
+                    />
+                  );
+                })}
+                {/* Center focal point — tiny dot */}
+                <circle cx={cx} cy={cy} r={2} fill="rgba(123,110,196,0.18)" />
+                <circle cx={cx} cy={cy} r={6} fill="none" stroke="rgba(123,110,196,0.08)" strokeWidth={0.7} />
+              </g>
+            );
+          })()}
+        </svg>
+      )}
+
+      {/* Grain texture — hidden when backdrop image is active */}
+      <svg
+        className="absolute inset-0 w-full h-full pointer-events-none"
+        style={{ opacity: backdropUrl ? 0 : 0.016, zIndex: 1, mixBlendMode: 'multiply' }}
         aria-hidden="true"
-      />
+      >
+        <filter id="grain-filter" x="0%" y="0%" width="100%" height="100%">
+          <feTurbulence type="fractalNoise" baseFrequency="0.72" numOctaves="4" stitchTiles="stitch" result="noise" />
+          <feColorMatrix type="saturate" values="0" in="noise" />
+        </filter>
+        <rect width="100%" height="100%" filter="url(#grain-filter)" />
+      </svg>
+
+      {/* Depth vignette — hidden when backdrop image is active */}
+      {!backdropUrl && (
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background: 'radial-gradient(ellipse 60% 58% at 50% 50%, transparent 25%, rgba(245,243,251,0.30) 72%, rgba(238,234,248,0.55) 100%)',
+            zIndex: 2,
+            transition: 'opacity 400ms ease',
+            opacity: hasSelection ? 0.5 : 1,
+          }}
+          aria-hidden="true"
+        />
+      )}
 
       {/* Graph Renderer — stays alive even when a node is selected */}
       <div
@@ -255,7 +320,7 @@ export function GraphCanvas({ className }: GraphCanvasProps) {
 
         {/* Exploration Guide */}
         {graph && dimensions.width > 0 && (
-          <ExplorationGuide graph={graph} zoom={zoom} pan={pan} dimensions={dimensions} />
+          <ExplorationGuide graph={graph} zoom={zoom} pan={pan} dimensions={dimensions} onNodeClick={handleNodeClick} />
         )}
       </div>
 
@@ -267,7 +332,7 @@ export function GraphCanvas({ className }: GraphCanvasProps) {
         const nodeScreenY = dimensions.height / 2 + pan.y + selNode.y * zoom;
         const panelWidth = Math.min(440, dimensions.width * 0.38);
         const panelLeft = dimensions.width - 20 - panelWidth;
-        const accent = selNode.clusterColor ?? '#9876EE';
+        const accent = selNode.clusterColor ?? '#7B6EC4';
         const cp1x = nodeScreenX + (panelLeft - nodeScreenX) * 0.35;
         const cp2x = nodeScreenX + (panelLeft - nodeScreenX) * 0.65;
         const d = `M ${nodeScreenX} ${nodeScreenY} C ${cp1x} ${nodeScreenY}, ${cp2x} ${nodeScreenY}, ${panelLeft} ${nodeScreenY}`;
@@ -316,40 +381,40 @@ export function GraphCanvas({ className }: GraphCanvasProps) {
             transition={{ duration: 0.7, ease: 'easeInOut' }}
             className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none"
             style={{
-              background: 'radial-gradient(ellipse 100% 80% at 50% 0%, #1A0F38 0%, #0C0818 45%, #080514 100%)',
+              background: 'radial-gradient(ellipse 90% 75% at 48% 42%, rgba(255,155,140,0.18) 0%, rgba(255,200,190,0.10) 45%, transparent 65%), radial-gradient(ellipse 60% 55% at 75% 75%, rgba(255,180,170,0.08) 0%, transparent 55%), #FEF8F7',
               zIndex: 40,
             }}
           >
-            {/* Orbital rings */}
+            {/* Orbital rings — calm, light-mode palette */}
             <div className="relative flex items-center justify-center w-28 h-28">
               {/* Outer ring — slow clockwise */}
               <motion.div
                 className="absolute inset-0 rounded-full"
                 style={{
-                  border: '1.5px solid rgba(152,118,238,0.12)',
-                  borderTopColor: 'rgba(152,118,238,0.75)',
-                  borderRightColor: 'rgba(152,118,238,0.30)',
+                  border: '1.5px solid rgba(123,110,196,0.10)',
+                  borderTopColor: 'rgba(123,110,196,0.60)',
+                  borderRightColor: 'rgba(123,110,196,0.22)',
                 }}
                 animate={{ rotate: 360 }}
                 transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
               />
-              {/* Middle ring — counter-clockwise, different color */}
+              {/* Middle ring — counter-clockwise */}
               <motion.div
                 className="absolute w-[72px] h-[72px] rounded-full"
                 style={{
-                  border: '1px solid rgba(80,208,160,0.08)',
-                  borderBottomColor: 'rgba(80,208,160,0.55)',
-                  borderLeftColor: 'rgba(80,208,160,0.22)',
+                  border: '1px solid rgba(63,168,130,0.08)',
+                  borderBottomColor: 'rgba(63,168,130,0.45)',
+                  borderLeftColor: 'rgba(63,168,130,0.18)',
                 }}
                 animate={{ rotate: -360 }}
                 transition={{ duration: 6.5, repeat: Infinity, ease: 'linear' }}
               />
-              {/* Inner ring — clockwise, accent */}
+              {/* Inner ring — clockwise */}
               <motion.div
                 className="absolute w-10 h-10 rounded-full"
                 style={{
-                  border: '1px solid rgba(240,112,144,0.08)',
-                  borderTopColor: 'rgba(240,112,144,0.40)',
+                  border: '1px solid rgba(184,90,110,0.08)',
+                  borderTopColor: 'rgba(184,90,110,0.35)',
                 }}
                 animate={{ rotate: 360 }}
                 transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
@@ -359,9 +424,9 @@ export function GraphCanvas({ className }: GraphCanvasProps) {
                 className="w-2.5 h-2.5 rounded-full"
                 style={{
                   background: 'var(--accent-primary)',
-                  boxShadow: '0 0 18px rgba(152,118,238,0.9)',
+                  boxShadow: '0 0 12px rgba(123,110,196,0.50)',
                 }}
-                animate={{ scale: [1, 1.5, 1], opacity: [0.7, 1, 0.7] }}
+                animate={{ scale: [1, 1.4, 1], opacity: [0.6, 1, 0.6] }}
                 transition={{ duration: 2.8, repeat: Infinity, ease: 'easeInOut' }}
               />
             </div>
@@ -370,10 +435,10 @@ export function GraphCanvas({ className }: GraphCanvasProps) {
             <motion.p
               className="mt-8 text-[13px] font-light tracking-wide"
               style={{ color: 'var(--text-muted)' }}
-              animate={{ opacity: [0.4, 0.75, 0.4] }}
+              animate={{ opacity: [0.4, 0.80, 0.4] }}
               transition={{ duration: 2.8, repeat: Infinity, ease: 'easeInOut' }}
             >
-              {isGenerating ? 'Mapping your ideas…' : 'Building your universe…'}
+              {isGenerating ? 'Mapping your ideas…' : 'Arranging your graph…'}
             </motion.p>
           </motion.div>
         )}
@@ -386,9 +451,9 @@ export function GraphCanvas({ className }: GraphCanvasProps) {
             <div
               className="w-14 h-14 rounded-[18px] flex items-center justify-center ambient-float"
               style={{
-                background: 'rgba(152, 118, 238, 0.08)',
-                border: '1px solid rgba(152, 118, 238, 0.25)',
-                boxShadow: '0 4px 32px rgba(152, 118, 238, 0.15)',
+                background: 'rgba(123, 110, 196, 0.07)',
+                border: '1px solid rgba(123, 110, 196, 0.20)',
+                boxShadow: '0 4px 24px rgba(123, 110, 196, 0.10)',
               }}
             >
               <Compass size={24} style={{ color: 'var(--accent-primary)' }} />
@@ -405,44 +470,6 @@ export function GraphCanvas({ className }: GraphCanvasProps) {
           </div>
         </div>
       )}
-
-      {/* Progressive Disclosure Banner */}
-      <AnimatePresence>
-        {graph && progressiveMode && revealedNodeIds && (
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 12 }}
-            transition={{ duration: 0.3, delay: 0.6 }}
-            className="absolute bottom-14 left-1/2 -translate-x-1/2 z-10 flex items-center gap-3 px-4 py-2.5 rounded-full pointer-events-auto"
-            style={{
-              background: 'rgba(14, 10, 30, 0.88)',
-              border: '1px solid rgba(255,255,255,0.10)',
-              backdropFilter: 'blur(20px)',
-              WebkitBackdropFilter: 'blur(20px)',
-              boxShadow: '0 4px 24px rgba(0,0,0,0.40)',
-            }}
-          >
-            <div className="flex items-center gap-1.5">
-              <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: 'var(--accent-primary)' }} />
-              <span className="text-[11px] font-medium" style={{ color: 'var(--text-secondary)' }}>
-                Exploring {revealedNodeIds.size} of {graph.nodes.length} concepts
-              </span>
-            </div>
-            <div className="w-px h-3" style={{ background: 'var(--border-default)' }} />
-            <button
-              onClick={showFullGraph}
-              className="flex items-center gap-1 text-[11px] font-medium transition-colors"
-              style={{ color: 'var(--accent-primary)' }}
-              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--accent-bright)'; }}
-              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--accent-primary)'; }}
-            >
-              <Map size={10} />
-              Reveal full map
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* Neighborhood Mode Back Button */}
       <AnimatePresence>
@@ -461,8 +488,8 @@ export function GraphCanvas({ className }: GraphCanvasProps) {
               className="gap-2"
               style={{
                 color: 'var(--text-secondary)',
-                background: 'rgba(20, 16, 40, 0.85)',
-                border: '1px solid rgba(255,255,255,0.10)',
+                background: 'rgba(255, 255, 255, 0.90)',
+                border: '1px solid rgba(123, 110, 196, 0.14)',
                 backdropFilter: 'blur(12px)',
               }}
             >
@@ -474,17 +501,10 @@ export function GraphCanvas({ className }: GraphCanvasProps) {
       </AnimatePresence>
 
       {/* Canvas hint */}
-      {graph && !isDragging && !progressiveMode && (
+      {graph && !isDragging && (
         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 pointer-events-none">
-          <p className="text-[11px] select-none" style={{ color: 'rgba(168,152,200,0.55)' }}>
+          <p className="text-[11px] select-none" style={{ color: 'rgba(123,110,196,0.45)' }}>
             Drag to pan · Scroll to zoom · Click any concept or connection to explore
-          </p>
-        </div>
-      )}
-      {graph && progressiveMode && !isDragging && (
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 pointer-events-none">
-          <p className="text-[11px] select-none" style={{ color: 'rgba(168,152,200,0.55)' }}>
-            Click any concept to explore its connections
           </p>
         </div>
       )}

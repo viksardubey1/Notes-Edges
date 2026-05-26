@@ -14,9 +14,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Upload, FileText, X, Loader2, AlertCircle, PlusCircle, RefreshCw } from 'lucide-react';
 import { useUIStore } from '@/store/ui.store';
 import { useGraphStore } from '@/store/graph.store';
-import { getSession } from '@/lib/auth';
+import { useAuth } from '@/context/AuthContext';
 import { saveGraph } from '@/lib/graphs';
-import { saveGraphLocally } from '@/components/graph/LocalGraphLoader';
 import { cn } from '@/lib/utils';
 import type { GraphData, GraphNode, GraphEdge } from '@/types/graph';
 
@@ -84,6 +83,7 @@ function mergeGraphs(existing: GraphData, incoming: GraphData): { nodes: GraphNo
 export function UploadSheet() {
   const { uploadSheetOpen, closeUploadSheet, breakpoint } = useUIStore();
   const { setGenerating, setGraph, graph, addNodes, addEdges } = useGraphStore();
+  const { session } = useAuth();
 
   const [mode, setMode] = useState<'new' | 'append'>('new');
   const [activeTab, setActiveTab] = useState<'pdf' | 'text'>('text');
@@ -149,8 +149,6 @@ export function UploadSheet() {
       const data = (await res.json()) as { graph?: GraphData; error?: string };
       if (!res.ok || !data.graph) throw new Error(data.error ?? 'Extraction failed');
 
-      const session = getSession();
-
       if (mode === 'append' && graph) {
         // Merge incoming graph into existing
         const { nodes: newNodes, edges: newEdges } = mergeGraphs(graph, data.graph);
@@ -165,12 +163,10 @@ export function UploadSheet() {
           edgeCount: graph.edges.length + newEdges.length,
           updatedAt: new Date().toISOString(),
         };
-        if (session) saveGraph(session.userId, merged);
-        saveGraphLocally(merged);
+        if (session) void saveGraph(session.userId, merged);
       } else {
         // Replace graph entirely
-        if (session) saveGraph(session.userId, data.graph);
-        saveGraphLocally(data.graph);
+        if (session) void saveGraph(session.userId, data.graph);
         setGraph(data.graph);
       }
 
@@ -202,7 +198,7 @@ export function UploadSheet() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px]"
+            className="fixed inset-0 z-[100] bg-black/40 backdrop-blur-[2px]"
             onClick={closeUploadSheet}
             aria-hidden="true"
           />
@@ -214,7 +210,7 @@ export function UploadSheet() {
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={{ type: 'spring', stiffness: 320, damping: 32 }}
-            className="fixed bottom-0 left-0 right-0 z-50 flex flex-col"
+            className="fixed bottom-0 left-0 right-0 z-[110] flex flex-col"
             style={{
               height: isMobile ? '100dvh' : hasGraph ? 560 : 500,
               background: 'var(--bg-surface-1)',

@@ -8,14 +8,15 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { PanelLeft, Search, Upload, Settings, LogOut, Check, Plus, RotateCcw, AlertTriangle, Maximize2 } from 'lucide-react';
+import { PanelLeft, LogOut, Check, Plus, RotateCcw, AlertTriangle, Upload, ChevronDown } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useUIStore } from '@/store/ui.store';
 import { useGraphStore } from '@/store/graph.store';
-import { getSession, signOut } from '@/lib/auth';
+import { useAuth } from '@/context/AuthContext';
+import { signOut } from '@/lib/auth';
 import { renameGraph } from '@/lib/graphs';
 import { AddNodeDialog } from '@/components/graph/AddNodeDialog';
 import { cn } from '@/lib/utils';
@@ -26,8 +27,8 @@ interface CommandBarProps {
 }
 
 export function CommandBar({ projectName = 'Untitled Graph', graphId }: CommandBarProps) {
-  const { toggleSidebar, sidebarOpen, openUploadSheet, openSearchPalette } = useUIStore();
-  const { graph, clearGraph, fitToContent } = useGraphStore();
+  const { toggleSidebar, sidebarOpen, openUploadSheet } = useUIStore();
+  const { graph, clearGraph } = useGraphStore();
   const router = useRouter();
 
   const [isEditingName, setIsEditingName] = useState(false);
@@ -36,6 +37,8 @@ export function CommandBar({ projectName = 'Untitled Graph', graphId }: CommandB
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const resetRef = useRef<HTMLDivElement>(null);
   const [addNodeOpen, setAddNodeOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setNameValue(graph?.name ?? projectName);
@@ -52,13 +55,24 @@ export function CommandBar({ projectName = 'Untitled Graph', graphId }: CommandB
     return () => document.removeEventListener('mousedown', handler);
   }, [showResetConfirm]);
 
-  const session = typeof window !== 'undefined' ? getSession() : null;
+  useEffect(() => {
+    if (!userMenuOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setUserMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [userMenuOpen]);
+
+  const { session } = useAuth();
 
   const commitName = () => {
     const trimmed = nameValue.trim() || (graph?.name ?? projectName);
     setNameValue(trimmed);
     setIsEditingName(false);
-    if (graph && session) renameGraph(session.userId, graph.id, trimmed);
+    if (graph && session) void renameGraph(session.userId, graph.id, trimmed);
   };
 
   const handleNameKeyDown = (e: React.KeyboardEvent) => {
@@ -66,7 +80,7 @@ export function CommandBar({ projectName = 'Untitled Graph', graphId }: CommandB
     if (e.key === 'Escape') { setNameValue(graph?.name ?? projectName); setIsEditingName(false); }
   };
 
-  const handleLogout = () => { signOut(); router.push('/login'); };
+  const handleLogout = () => { void signOut().then(() => router.push('/login')); };
   const handleReset = () => { clearGraph(); setShowResetConfirm(false); };
 
   return (
@@ -74,8 +88,8 @@ export function CommandBar({ projectName = 'Untitled Graph', graphId }: CommandB
       <div
         className={cn('flex items-center justify-between h-full w-full px-4 border-b')}
         style={{
-          background: 'rgba(12, 8, 26, 0.92)',
-          borderColor: 'rgba(255, 255, 255, 0.08)',
+          background: 'rgba(255, 255, 255, 0.94)',
+          borderColor: 'rgba(123, 110, 196, 0.12)',
           backdropFilter: 'blur(24px)',
           WebkitBackdropFilter: 'blur(24px)',
         }}
@@ -90,14 +104,14 @@ export function CommandBar({ projectName = 'Untitled Graph', graphId }: CommandB
           >
             <div
               className="w-7 h-7 rounded-[8px] flex items-center justify-center flex-shrink-0 transition-all group-hover:scale-105 group-hover:shadow-md"
-              style={{ background: 'linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-warm) 100%)' }}
+              style={{ background: 'linear-gradient(135deg, #8855CC 0%, #E8607A 100%)' }}
             >
               <svg width="14" height="14" viewBox="0 0 12 12" fill="none">
+                <line x1="4.7" y1="5.4" x2="7.7" y2="3.5" stroke="white" strokeWidth="0.9" strokeLinecap="round" opacity="0.70" />
+                <line x1="4.7" y1="6.6" x2="7.7" y2="8.5" stroke="white" strokeWidth="0.9" strokeLinecap="round" opacity="0.70" />
                 <circle cx="3" cy="6" r="1.8" fill="white" opacity="0.95" />
-                <circle cx="9" cy="3" r="1.4" fill="white" opacity="0.80" />
-                <circle cx="9" cy="9" r="1.4" fill="white" opacity="0.80" />
-                <line x1="4.7" y1="5.4" x2="7.7" y2="3.5" stroke="white" strokeWidth="0.9" opacity="0.65" />
-                <line x1="4.7" y1="6.6" x2="7.7" y2="8.5" stroke="white" strokeWidth="0.9" opacity="0.65" />
+                <circle cx="9" cy="3" r="1.4" fill="white" opacity="0.85" />
+                <circle cx="9" cy="9" r="1.4" fill="white" opacity="0.85" />
               </svg>
             </div>
           </button>
@@ -162,54 +176,35 @@ export function CommandBar({ projectName = 'Untitled Graph', graphId }: CommandB
           )}
         </div>
 
-        {/* Graph stats pill */}
-        {graph && (
-          <div className="hidden md:flex items-center gap-2 flex-shrink-0 mx-3">
-            <span
-              className="text-[11px] px-2.5 py-1 rounded-full font-medium"
-              style={{
-                background: 'var(--bg-surface-2)',
-                color: 'var(--text-muted)',
-                border: '1px solid var(--border-default)',
-              }}
-            >
-              {graph.nodeCount} concepts · {graph.edgeCount} links
-            </span>
-          </div>
-        )}
+        {/* Center: primary action */}
+        <div className="flex items-center gap-2 flex-shrink-0 mx-3">
+          <button
+            onClick={openUploadSheet}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] text-[12px] font-medium transition-all"
+            style={{
+              background: 'var(--accent-primary)',
+              color: '#fff',
+            }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--accent-bright)'; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--accent-primary)'; }}
+          >
+            <Upload size={12} />
+            Add notes
+          </button>
+          <kbd
+            className="hidden md:flex items-center gap-1 px-1.5 py-0.5 rounded-[5px] text-[10px] font-medium select-none"
+            style={{
+              background: 'var(--bg-surface-2)',
+              color: 'var(--text-muted)',
+              border: '1px solid var(--border-default)',
+            }}
+          >
+            ⌘K
+          </kbd>
+        </div>
 
         {/* Right: Actions + user */}
         <div className="flex items-center gap-0.5 flex-shrink-0">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost" size="icon"
-                onClick={openSearchPalette}
-                aria-label="Search (⌘K)"
-                style={{ color: 'var(--text-muted)' } as React.CSSProperties}
-              >
-                <Search size={16} />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Search (⌘K)</TooltipContent>
-          </Tooltip>
-
-          {graph && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost" size="icon"
-                  onClick={() => fitToContent({ width: window.innerWidth, height: window.innerHeight })}
-                  aria-label="Fit to view"
-                  style={{ color: 'var(--text-muted)' } as React.CSSProperties}
-                >
-                  <Maximize2 size={15} />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Fit to view</TooltipContent>
-            </Tooltip>
-          )}
-
           {graph && (
             <Tooltip>
               <TooltipTrigger asChild>
@@ -223,22 +218,6 @@ export function CommandBar({ projectName = 'Untitled Graph', graphId }: CommandB
                 </Button>
               </TooltipTrigger>
               <TooltipContent>Add concept manually</TooltipContent>
-            </Tooltip>
-          )}
-
-          {graphId && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost" size="icon"
-                  onClick={openUploadSheet}
-                  aria-label="Upload notes"
-                  style={{ color: 'var(--text-muted)' } as React.CSSProperties}
-                >
-                  <Upload size={16} />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Upload notes</TooltipContent>
             </Tooltip>
           )}
 
@@ -312,52 +291,91 @@ export function CommandBar({ projectName = 'Untitled Graph', graphId }: CommandB
             </div>
           )}
 
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost" size="icon"
-                aria-label="Settings"
-                onClick={() => router.push('/settings')}
-                style={{ color: 'var(--text-muted)' } as React.CSSProperties}
-              >
-                <Settings size={16} />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Settings</TooltipContent>
-          </Tooltip>
-
-          {/* User avatar + logout */}
+          {/* User menu */}
           {session && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={handleLogout}
-                  className="ml-1.5 flex items-center gap-1.5 px-2.5 py-1.5 rounded-[10px] transition-colors"
-                  style={{
-                    background: 'var(--bg-surface-2)',
-                    border: '1px solid var(--border-default)',
-                  }}
-                  onMouseEnter={(e) => {
-                    (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-surface-3)';
-                    (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border-default)';
-                  }}
-                  onMouseLeave={(e) => {
-                    (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-surface-2)';
-                    (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border-default)';
-                  }}
-                  aria-label="Sign out"
+            <div className="relative ml-1.5" ref={userMenuRef}>
+              <button
+                onClick={() => setUserMenuOpen((v) => !v)}
+                className="flex items-center gap-2 px-2 py-1.5 rounded-[10px] transition-colors"
+                style={{
+                  background: userMenuOpen ? 'var(--bg-surface-3)' : 'var(--bg-surface-2)',
+                  border: '1px solid var(--border-default)',
+                }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-surface-3)'; }}
+                onMouseLeave={(e) => { if (!userMenuOpen) (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-surface-2)'; }}
+                aria-label="User menu"
+                aria-expanded={userMenuOpen}
+              >
+                <span
+                  className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0"
+                  style={{ background: 'var(--accent-glow)', color: 'var(--accent-primary)' }}
                 >
-                  <span
-                    className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold flex-shrink-0"
-                    style={{ background: 'var(--accent-glow)', color: 'var(--accent-primary)' }}
+                  {session.name.charAt(0).toUpperCase()}
+                </span>
+                <span className="text-[12px] font-medium max-w-[96px] truncate hidden sm:block"
+                  style={{ color: 'var(--text-secondary)' }}>
+                  {session.name.split(' ')[0]}
+                </span>
+                <ChevronDown size={11} style={{ color: 'var(--text-muted)', flexShrink: 0, transform: userMenuOpen ? 'rotate(180deg)' : 'none', transition: 'transform 150ms' }} />
+              </button>
+
+              <AnimatePresence>
+                {userMenuOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.96, y: -4 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.96, y: -4 }}
+                    transition={{ duration: 0.14 }}
+                    className="absolute right-0 top-full mt-2 w-[220px] rounded-[14px] overflow-hidden z-50"
+                    style={{
+                      background: 'var(--bg-surface-1)',
+                      border: '1px solid var(--border-default)',
+                      boxShadow: '0 8px 32px rgba(37,30,61,0.12), 0 2px 8px rgba(37,30,61,0.06)',
+                    }}
                   >
-                    {session.name.charAt(0).toUpperCase()}
-                  </span>
-                  <LogOut size={12} style={{ color: 'var(--text-muted)' }} />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent>Sign out ({session.email})</TooltipContent>
-            </Tooltip>
+                    {/* Profile info */}
+                    <div className="px-4 py-3.5" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                      <div className="flex items-center gap-2.5">
+                        <span
+                          className="w-8 h-8 rounded-full flex items-center justify-center text-[12px] font-bold flex-shrink-0"
+                          style={{ background: 'var(--accent-glow)', color: 'var(--accent-primary)' }}
+                        >
+                          {session.name.charAt(0).toUpperCase()}
+                        </span>
+                        <div className="min-w-0">
+                          <p className="text-[13px] font-semibold truncate" style={{ color: 'var(--text-primary)' }}>
+                            {session.name}
+                          </p>
+                          <p className="text-[11px] truncate" style={{ color: 'var(--text-muted)' }}>
+                            {session.email}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="p-1.5">
+                      <button
+                        onClick={() => { setUserMenuOpen(false); handleLogout(); }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-[9px] text-[12px] font-medium transition-colors text-left"
+                        style={{ color: 'var(--text-secondary)' }}
+                        onMouseEnter={(e) => {
+                          (e.currentTarget as HTMLButtonElement).style.background = 'rgba(208,56,88,0.07)';
+                          (e.currentTarget as HTMLButtonElement).style.color = '#D03858';
+                        }}
+                        onMouseLeave={(e) => {
+                          (e.currentTarget as HTMLButtonElement).style.background = 'transparent';
+                          (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-secondary)';
+                        }}
+                      >
+                        <LogOut size={13} />
+                        Sign out
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           )}
         </div>
       </div>

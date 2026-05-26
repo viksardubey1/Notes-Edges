@@ -44,10 +44,13 @@ export function SocialProof() {
           transition={{ duration: 0.5 }}
           className="text-center mb-16"
         >
-          <p className="text-[11px] text-[#4D7FFF] tracking-[0.12em] uppercase font-medium mb-4">
+          <p className="text-[11px] tracking-[0.12em] uppercase font-medium mb-4" style={{ color: '#7B6EC4' }}>
             From the community
           </p>
-          <h2 className="font-[family-name:var(--font-fraunces)] text-[40px] text-[#F0F0F5] leading-tight">
+          <h2
+            className="font-[family-name:var(--font-fraunces)] text-[40px] leading-tight"
+            style={{ color: '#251E3D' }}
+          >
             When it clicks, it really clicks.
           </h2>
         </motion.div>
@@ -57,10 +60,10 @@ export function SocialProof() {
       <div className="relative">
         {/* Left fade */}
         <div className="absolute left-0 top-0 bottom-0 w-16 z-10 pointer-events-none"
-          style={{ background: 'linear-gradient(to right, #0A0A0F, transparent)' }} />
+          style={{ background: 'linear-gradient(to right, #F5F3FB, transparent)' }} />
         {/* Right fade */}
         <div className="absolute right-0 top-0 bottom-0 w-16 z-10 pointer-events-none"
-          style={{ background: 'linear-gradient(to left, #0A0A0F, transparent)' }} />
+          style={{ background: 'linear-gradient(to left, #F5F3FB, transparent)' }} />
 
         <div className="flex gap-6 overflow-x-auto px-8 pb-4 scroll-smooth"
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
@@ -72,28 +75,32 @@ export function SocialProof() {
               viewport={{ once: true, margin: '-40px' }}
               transition={{ duration: 0.4, delay: i * 0.08 }}
               className="flex-shrink-0 w-[320px] flex flex-col justify-between gap-6 p-7 rounded-[14px]"
-              style={{ background: '#111118', border: '1px solid #2A2A3F' }}
+              style={{ background: '#FFFFFF', border: '1px solid rgba(123,110,196,0.14)' }}
             >
               {/* Quote mark */}
               <div>
                 <svg width="24" height="18" viewBox="0 0 24 18" fill="none" className="mb-4" aria-hidden="true">
-                  <path d="M0 18V10.8C0 4.8 3.6 1.2 10.8 0L12 2.4C8.4 3.6 6.6 5.6 6.6 8.4H10.8V18H0ZM13.2 18V10.8C13.2 4.8 16.8 1.2 24 0L25.2 2.4C21.6 3.6 19.8 5.6 19.8 8.4H24V18H13.2Z"
-                    fill="#2A2A3F" />
+                  <path
+                    d="M0 18V10.8C0 4.8 3.6 1.2 10.8 0L12 2.4C8.4 3.6 6.6 5.6 6.6 8.4H10.8V18H0ZM13.2 18V10.8C13.2 4.8 16.8 1.2 24 0L25.2 2.4C21.6 3.6 19.8 5.6 19.8 8.4H24V18H13.2Z"
+                    fill="rgba(123,110,196,0.18)"
+                  />
                 </svg>
-                <p className="text-[14px] text-[#8888AA] leading-relaxed">
+                <p className="text-[14px] leading-relaxed" style={{ color: '#5A5272' }}>
                   &ldquo;{t.quote}&rdquo;
                 </p>
               </div>
 
               {/* Author */}
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
-                  style={{ background: '#1A1A26', border: '1px solid #2A2A3F' }}>
-                  <span className="text-[11px] font-medium text-[#4D7FFF]">{t.initials}</span>
+                <div
+                  className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
+                  style={{ background: 'rgba(123,110,196,0.08)', border: '1px solid rgba(123,110,196,0.14)' }}
+                >
+                  <span className="text-[11px] font-medium" style={{ color: '#7B6EC4' }}>{t.initials}</span>
                 </div>
                 <div>
-                  <p className="text-[13px] font-medium text-[#F0F0F5]">{t.name}</p>
-                  <p className="text-[11px] text-[#4A4A6A]">{t.role}</p>
+                  <p className="text-[13px] font-medium" style={{ color: '#251E3D' }}>{t.name}</p>
+                  <p className="text-[11px]" style={{ color: '#9C95B5' }}>{t.role}</p>
                 </div>
               </div>
             </motion.div>

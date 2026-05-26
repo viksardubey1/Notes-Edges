@@ -141,9 +141,9 @@ export const semantic = {
 
   layout: {
     commandBarHeight: 48,
-    sidebarWidth: 280,
-    sidebarCollapsedWidth: 48,
-    sidebarWideWidth: 320,
+    sidebarWidth: 248,
+    sidebarCollapsedWidth: 44,
+    sidebarWideWidth: 268,
     nodeDetailPanelWidth: 320,
     minimapWidth: 160,
     minimapHeight: 120,

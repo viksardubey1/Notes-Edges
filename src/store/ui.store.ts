@@ -22,7 +22,7 @@ export const useUIStore = create<UIState>()((set, get) => ({
   sidebarWidth: semantic.layout.sidebarWidth,
 
   // ─── Panels ─────────────────────────────────────────────────────────────────
-  nodeDetailWidth: 500,
+  nodeDetailWidth: 560,
   nodeDetailOpen: false,
   uploadSheetOpen: false,
   searchPaletteOpen: false,
@@ -51,7 +51,7 @@ export const useUIStore = create<UIState>()((set, get) => ({
       sidebarWidth: getSidebarWidthForBreakpoint(state.breakpoint, open),
     })),
 
-  setNodeDetailWidth: (width: number) => set({ nodeDetailWidth: Math.max(320, Math.min(640, width)) }),
+  setNodeDetailWidth: (width: number) => set({ nodeDetailWidth: Math.max(320, Math.min(740, width)) }),
   openNodeDetail: () => set({ nodeDetailOpen: true }),
   closeNodeDetail: () => set({ nodeDetailOpen: false }),
 

@@ -8,7 +8,7 @@ const FEATURES = [
     icon: Sparkles,
     headline: 'Concepts surface themselves.',
     description:
-      'Claude reads your notes and extracts the ideas that matter. Every key concept becomes a node — no tagging, no manual linking, no configuration.',
+      'AI reads your notes and extracts the ideas that matter. Every key concept becomes a node — no tagging, no manual linking, no configuration.',
   },
   {
     icon: GitMerge,
@@ -20,7 +20,7 @@ const FEATURES = [
     icon: Infinity,
     headline: 'Grows every time you add.',
     description:
-      'Each new upload expands the graph. New nodes emerge from the center and find their place among what you already know. Your graph is never finished.',
+      'Each new upload expands the graph. New nodes emerge and find their place among what you already know. Your graph is never finished.',
   },
 ] as const;
 
@@ -36,10 +36,13 @@ export function FeatureHighlights() {
           transition={{ duration: 0.5 }}
           className="text-center mb-20"
         >
-          <p className="text-[11px] text-[#4D7FFF] tracking-[0.12em] uppercase font-medium mb-4">
+          <p className="text-[11px] tracking-[0.12em] uppercase font-medium mb-4" style={{ color: '#7B6EC4' }}>
             What makes it different
           </p>
-          <h2 className="font-[family-name:var(--font-fraunces)] text-[40px] text-[#F0F0F5] leading-tight">
+          <h2
+            className="font-[family-name:var(--font-fraunces)] text-[40px] leading-tight"
+            style={{ color: '#251E3D' }}
+          >
             The graph does the work.
           </h2>
         </motion.div>
@@ -60,17 +63,17 @@ export function FeatureHighlights() {
                 {/* Icon */}
                 <div
                   className="w-14 h-14 rounded-[12px] flex items-center justify-center"
-                  style={{ background: '#111118', border: '1px solid #2A2A3F' }}
+                  style={{ background: '#FFFFFF', border: '1px solid rgba(123,110,196,0.14)' }}
                 >
-                  <Icon size={28} color="#4D7FFF" strokeWidth={1.5} aria-hidden="true" />
+                  <Icon size={26} color="#7B6EC4" strokeWidth={1.5} aria-hidden="true" />
                 </div>
 
                 {/* Copy */}
                 <div className="flex flex-col gap-2">
-                  <h3 className="text-[17px] font-medium text-[#F0F0F5] leading-snug">
+                  <h3 className="text-[17px] font-medium leading-snug" style={{ color: '#251E3D' }}>
                     {feature.headline}
                   </h3>
-                  <p className="text-[14px] text-[#8888AA] leading-relaxed">
+                  <p className="text-[14px] leading-relaxed" style={{ color: '#5A5272' }}>
                     {feature.description}
                   </p>
                 </div>

@@ -16,6 +16,22 @@ import type {
 // Immer requires this plugin to mutate Set/Map inside drafts
 enableMapSet();
 
+// ── Backdrop persistence ───────────────────────────────────────────────────────
+
+const BACKDROP_KEY_PREFIX = 'ne_backdrop_';
+
+function loadBackdrop(graphId: string): string | null {
+  if (typeof window === 'undefined') return null;
+  try { return localStorage.getItem(BACKDROP_KEY_PREFIX + graphId); } catch { return null; }
+}
+
+function persistBackdrop(graphId: string, url: string | null): void {
+  try {
+    if (url) localStorage.setItem(BACKDROP_KEY_PREFIX + graphId, url);
+    else localStorage.removeItem(BACKDROP_KEY_PREFIX + graphId);
+  } catch { /* quota exceeded */ }
+}
+
 // ── Visited node persistence ───────────────────────────────────────────────────
 
 const VISITED_NODES_KEY = 'ne_visited_nodes';
@@ -60,47 +76,6 @@ function persistLearningStates(states: Record<string, LearningState>): void {
   }
 }
 
-// ── Progressive disclosure helpers ────────────────────────────────────────────
-
-/**
- * Build a neighbour adjacency map sorted by edge weight descending.
- * Returns Map<nodeId, [{nodeId, weight}]>
- */
-function buildAdjacency(edges: GraphEdge[]): Map<string, { nodeId: string; weight: number }[]> {
-  const adj = new Map<string, { nodeId: string; weight: number }[]>();
-  for (const e of edges) {
-    const push = (from: string, to: string) => {
-      const list = adj.get(from) ?? [];
-      list.push({ nodeId: to, weight: e.weight });
-      adj.set(from, list);
-    };
-    push(e.sourceId, e.targetId);
-    push(e.targetId, e.sourceId);
-  }
-  // Sort each neighbour list by weight desc
-  for (const [, list] of adj) list.sort((a, b) => b.weight - a.weight);
-  return adj;
-}
-
-/**
- * Compute the initial revealed set: root node (highest centrality) + top-5 neighbours.
- */
-function computeInitialRevealed(graph: GraphData): Set<string> {
-  if (graph.nodes.length === 0) return new Set();
-  // Prefer the intelligenceSummary mainConcept, otherwise highest centrality node
-  const rootId = graph.intelligenceSummary?.mainConcept
-    ? graph.nodes.find((n) => n.id === graph.intelligenceSummary!.mainConcept)?.id
-    : undefined;
-  const root = rootId
-    ? graph.nodes.find((n) => n.id === rootId)
-    : graph.nodes.reduce((a, b) => (a.centrality > b.centrality ? a : b));
-  if (!root) return new Set();
-
-  const adj = buildAdjacency(graph.edges);
-  const neighbours = (adj.get(root.id) ?? []).slice(0, 5).map((n) => n.nodeId);
-  return new Set([root.id, ...neighbours]);
-}
-
 // ── Store ──────────────────────────────────────────────────────────────────────
 
 export const useGraphStore = create<GraphState>()(
@@ -121,7 +96,7 @@ export const useGraphStore = create<GraphState>()(
     mode: 'default',
 
     // ─── Viewport ────────────────────────────────────────────────────────────
-    zoom: 1,
+    zoom: 1.25,
     pan: { x: 0, y: 0 },
 
     // ─── Filters ─────────────────────────────────────────────────────────────
@@ -132,12 +107,11 @@ export const useGraphStore = create<GraphState>()(
     isGenerating: false,
     isClusterModeActive: false,
 
-    // ─── Progressive disclosure ───────────────────────────────────────────────
-    revealedNodeIds: null,
-    progressiveMode: false,
-
     // ─── Learning states (persisted) ─────────────────────────────────────────
     learningStates: loadLearningStates(),
+
+    // ─── Backdrop image ───────────────────────────────────────────────────────
+    backdropUrl: null as string | null,
 
     // ─── Visit history ────────────────────────────────────────────────────────
     visitedNodeIds: loadVisitedNodes(),
@@ -147,17 +121,18 @@ export const useGraphStore = create<GraphState>()(
 
     setGraph: (graph: GraphData) =>
       set((state) => {
-        // Spread normalization: clamp node positions to a comfortable span so
-        // fitToContent always produces a readable zoom level.
-        // Target span scales with node count: ~80px per node, clamped 600–900px.
+        // Spread normalization: only fires for truly degenerate inputs (all
+        // nodes piled at the same point, or absurdly large positions from bad
+        // data). Normal ring-layout + collision-resolution positions are left
+        // untouched (90 % tolerance means it only fires if span is off by > 90%).
         const xs = graph.nodes.map((n) => n.x ?? 0);
         const ys = graph.nodes.map((n) => n.y ?? 0);
         if (graph.nodes.length > 2) {
           const minX = Math.min(...xs), maxX = Math.max(...xs);
           const minY = Math.min(...ys), maxY = Math.max(...ys);
           const span = Math.max(maxX - minX, maxY - minY);
-          const target = Math.max(600, Math.min(900, 80 * Math.sqrt(graph.nodes.length)));
-          if (span > 0 && Math.abs(span - target) / target > 0.15) {
+          const target = Math.max(900, Math.min(1800, 160 * Math.sqrt(graph.nodes.length)));
+          if (span > 0 && Math.abs(span - target) / target > 0.90) {
             const scale = target / span;
             const cx = (minX + maxX) / 2;
             const cy = (minY + maxY) / 2;
@@ -177,8 +152,7 @@ export const useGraphStore = create<GraphState>()(
         state.selectedEdgeId = null;
         state.mode = 'default';
         state.filteredNodeIds = null;
-        state.revealedNodeIds = null;
-        state.progressiveMode = false;
+        state.backdropUrl = loadBackdrop(graph.id);
       }),
 
     selectNode: (nodeId: string | null) => {
@@ -334,11 +308,15 @@ export const useGraphStore = create<GraphState>()(
         state.mode = 'default';
         state.filteredNodeIds = null;
         state.searchQuery = '';
-        state.revealedNodeIds = null;
-        state.progressiveMode = false;
         state.navigationHistory = [];
         state.multiSelectedNodeIds = new Set();
       }),
+
+    setBackdrop: (url: string | null) => {
+      const graphId = get().graph?.id;
+      set((state) => { state.backdropUrl = url; });
+      if (graphId) persistBackdrop(graphId, url);
+    },
 
     clearVisited: () => {
       set((state) => {
@@ -351,10 +329,7 @@ export const useGraphStore = create<GraphState>()(
     fitToContent: (dimensions: { width: number; height: number }) =>
       set((draft) => {
         if (!draft.graph || draft.graph.nodes.length === 0) return;
-        // In progressive mode, fit to the revealed subset only
-        const nodes = draft.progressiveMode && draft.revealedNodeIds
-          ? draft.graph.nodes.filter((n) => draft.revealedNodeIds!.has(n.id))
-          : draft.graph.nodes;
+        const nodes = draft.graph.nodes;
         if (nodes.length === 0) return;
         const maxR = Math.max(...nodes.map((n) => n.size ?? 12));
         const pad = maxR + 96;
@@ -367,130 +342,11 @@ export const useGraphStore = create<GraphState>()(
         const gW = maxX - minX;
         const gH = maxY - minY;
         if (gW <= 0 || gH <= 0) return;
-        const zoom = Math.max(0.3, Math.min(dimensions.width / gW, dimensions.height / gH, 1.6) * 0.85);
+        const zoom = Math.max(0.35, Math.min(dimensions.width / gW, dimensions.height / gH, 1.6) * 0.85);
         draft.zoom = zoom;
         draft.pan = { x: -((minX + maxX) / 2) * zoom, y: -((minY + maxY) / 2) * zoom };
       }),
 
-    // ── Progressive disclosure actions ────────────────────────────────────────
-
-    revealNode: (nodeId: string) =>
-      set((state) => {
-        if (!state.graph || !state.progressiveMode) return;
-        if (!state.revealedNodeIds) {
-          state.revealedNodeIds = new Set([nodeId]);
-        } else {
-          state.revealedNodeIds.add(nodeId);
-        }
-        // Reveal top-3 unshown neighbours of this node by edge weight
-        const neighbours = state.graph.edges
-          .filter((e) => e.sourceId === nodeId || e.targetId === nodeId)
-          .map((e) => ({
-            nId: e.sourceId === nodeId ? e.targetId : e.sourceId,
-            weight: e.weight,
-          }))
-          .filter((n) => !state.revealedNodeIds!.has(n.nId))
-          .sort((a, b) => b.weight - a.weight)
-          .slice(0, 3);
-        for (const { nId } of neighbours) state.revealedNodeIds.add(nId);
-        // Auto-exit progressive mode once all nodes are revealed
-        if (state.revealedNodeIds.size >= state.graph.nodes.length) {
-          state.revealedNodeIds = null;
-          state.progressiveMode = false;
-        }
-      }),
-
-    toggleNeighborVisibility: (nodeId: string) =>
-      set((state) => {
-        if (!state.graph) return;
-        // Auto-enter progressive mode if not already active
-        if (!state.progressiveMode || !state.revealedNodeIds) {
-          state.revealedNodeIds = computeInitialRevealed(state.graph);
-          state.progressiveMode = true;
-        }
-        if (!state.revealedNodeIds) return;
-        if (state.revealedNodeIds.has(nodeId)) {
-          // Hide: only if it won't orphan itself (has at least one other revealed connection)
-          const otherRevealedConnections = state.graph.edges.filter(
-            (e) =>
-              (e.sourceId === nodeId || e.targetId === nodeId) &&
-              state.revealedNodeIds!.has(e.sourceId === nodeId ? e.targetId : e.sourceId),
-          );
-          if (otherRevealedConnections.length > 0) {
-            state.revealedNodeIds.delete(nodeId);
-          }
-          // If it would be orphaned, just delete anyway — user explicitly asked
-          else {
-            state.revealedNodeIds.delete(nodeId);
-          }
-        } else {
-          // Reveal
-          state.revealedNodeIds.add(nodeId);
-        }
-        // Auto-exit progressive mode once all nodes are revealed
-        if (state.revealedNodeIds.size >= state.graph.nodes.length) {
-          state.revealedNodeIds = null;
-          state.progressiveMode = false;
-        }
-      }),
-
-    revealAllNeighbors: (nodeId: string) =>
-      set((state) => {
-        if (!state.graph || !state.progressiveMode) return;
-        if (!state.revealedNodeIds) state.revealedNodeIds = new Set([nodeId]);
-        const neighbourIds = state.graph.edges
-          .filter((e) => e.sourceId === nodeId || e.targetId === nodeId)
-          .map((e) => (e.sourceId === nodeId ? e.targetId : e.sourceId));
-        for (const nId of neighbourIds) state.revealedNodeIds.add(nId);
-        if (state.revealedNodeIds.size >= state.graph.nodes.length) {
-          state.revealedNodeIds = null;
-          state.progressiveMode = false;
-        }
-      }),
-
-    hideNeighbors: (nodeId: string) =>
-      set((state) => {
-        if (!state.graph) return;
-        // Auto-enter progressive mode if not already active
-        if (!state.progressiveMode || !state.revealedNodeIds) {
-          state.revealedNodeIds = computeInitialRevealed(state.graph);
-          state.progressiveMode = true;
-        }
-        if (!state.revealedNodeIds) return;
-        // Collect all direct neighbours
-        const directNeighbours = new Set(
-          state.graph.edges
-            .filter((e) => e.sourceId === nodeId || e.targetId === nodeId)
-            .map((e) => (e.sourceId === nodeId ? e.targetId : e.sourceId)),
-        );
-        // Only remove a neighbour if it has no other revealed node pointing to it
-        // (i.e. its only revealed connection is nodeId) — prevents orphaning
-        for (const nId of directNeighbours) {
-          const otherRevealedConnections = state.graph.edges.filter(
-            (e) =>
-              (e.sourceId === nId || e.targetId === nId) &&
-              e.sourceId !== nodeId &&
-              e.targetId !== nodeId &&
-              state.revealedNodeIds!.has(e.sourceId === nId ? e.targetId : e.sourceId),
-          );
-          if (otherRevealedConnections.length === 0) {
-            state.revealedNodeIds.delete(nId);
-          }
-        }
-      }),
-
-    showFullGraph: () =>
-      set((state) => {
-        state.revealedNodeIds = null;
-        state.progressiveMode = false;
-      }),
-
-    resetProgressiveMode: () =>
-      set((state) => {
-        if (!state.graph) return;
-        state.revealedNodeIds = computeInitialRevealed(state.graph);
-        state.progressiveMode = true;
-      }),
   })),
 );
 

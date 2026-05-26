@@ -145,12 +145,8 @@ export interface GraphState {
   /** Stack of previously selected node IDs for back navigation (session only) */
   navigationHistory: string[];
 
-  /**
-   * Progressive disclosure — which node IDs are currently visible.
-   * null = full graph shown. Set = only those nodes + their connecting edges render.
-   */
-  revealedNodeIds: Set<string> | null;
-  progressiveMode: boolean;
+  /** Custom backdrop image — data URL, persisted per graph ID */
+  backdropUrl: string | null;
 
   setGraph: (graph: GraphData) => void;
   selectNode: (nodeId: string | null) => void;
@@ -181,18 +177,8 @@ export interface GraphState {
   /** Go back to the previously selected node. */
   navigateBack: () => void;
   fitToContent: (dimensions: { width: number; height: number }) => void;
-  /** Reveal a node + its strongest unshown neighbours. */
-  revealNode: (nodeId: string) => void;
-  /** Toggle a single node's visibility on the map. */
-  toggleNeighborVisibility: (nodeId: string) => void;
-  /** Reveal ALL direct neighbours of a node (not just the top-3). */
-  revealAllNeighbors: (nodeId: string) => void;
-  /** Hide all neighbours of a node (keep the node itself visible). */
-  hideNeighbors: (nodeId: string) => void;
-  /** Show all nodes immediately (exit progressive mode). */
-  showFullGraph: () => void;
-  /** Reset back to root + top-5 neighbours. */
-  resetProgressiveMode: () => void;
+  /** Set or clear the graph backdrop image. */
+  setBackdrop: (url: string | null) => void;
 }
 
 export type GraphMode =

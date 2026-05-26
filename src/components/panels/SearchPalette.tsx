@@ -121,7 +121,7 @@ export function SearchPalette() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
-            className="fixed inset-0 z-50"
+            className="fixed inset-0 z-[100]"
             style={{ background: 'rgba(26, 22, 40, 0.40)', backdropFilter: 'blur(6px)' }}
             onClick={closeSearchPalette}
           />
@@ -132,7 +132,7 @@ export function SearchPalette() {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.97, y: -8 }}
             transition={{ duration: 0.18, ease: [0.32, 0.72, 0, 1] }}
-            className="fixed left-1/2 z-50 w-full max-w-[540px] overflow-hidden rounded-[20px]"
+            className="fixed left-1/2 z-[110] w-full max-w-[540px] overflow-hidden rounded-[20px]"
             style={{
               top: '18vh',
               transform: 'translateX(-50%)',

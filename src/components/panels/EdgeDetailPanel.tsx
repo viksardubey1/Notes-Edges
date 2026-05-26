@@ -109,17 +109,17 @@ function ConnectionBridge({ sourceNode, targetNode, relColor }: BridgeProps) {
 
       {/* Connection path */}
       <path
+        id="edp-curve"
         d={`M ${lx + 16} ${cy} C ${W * 0.37} ${cy - 10} ${W * 0.63} ${cy - 10} ${rx - 16} ${cy}`}
         stroke="url(#edp-line)" strokeWidth={1.8} fill="none" opacity={0.75}
       />
 
-      {/* Flowing particle — bounces along the connection */}
-      <motion.circle
-        cx={lx + 16} cy={cy} r={2.4}
-        fill={relColor} opacity={0.92}
-        animate={{ x: [0, rx - 16 - (lx + 16), 0] }}
-        transition={{ duration: 2.6, repeat: Infinity, ease: 'easeInOut' }}
-      />
+      {/* Flowing particle — follows the curve via animateMotion */}
+      <circle r={2.4} fill={relColor} opacity={0.92}>
+        <animateMotion dur="2.6s" repeatCount="indefinite" keyTimes="0;0.5;1" calcMode="spline" keySplines="0.45 0 0.55 1; 0.45 0 0.55 1">
+          <mpath href="#edp-curve" />
+        </animateMotion>
+      </circle>
 
       {/* Source orb */}
       <circle cx={lx} cy={cy} r={15} fill="url(#edp-src)" stroke={srcColor} strokeWidth={1} strokeOpacity={0.55} />
@@ -168,8 +168,8 @@ export function EdgeDetailPanel() {
       <div
         className="flex flex-col h-full border-l"
         style={{
-          background: 'rgba(12, 8, 26, 0.92)',
-          borderColor: 'rgba(255, 255, 255, 0.08)',
+          background: 'rgba(255, 255, 255, 0.92)',
+          borderColor: 'rgba(123, 110, 196, 0.12)',
           backdropFilter: 'blur(24px)',
           WebkitBackdropFilter: 'blur(24px)',
         }}
@@ -211,8 +211,8 @@ export function EdgeDetailPanel() {
     <div
       className="flex flex-col h-full border-l"
       style={{
-        background: 'rgba(12, 8, 26, 0.92)',
-        borderColor: 'rgba(255, 255, 255, 0.08)',
+        background: 'rgba(255, 255, 255, 0.92)',
+        borderColor: 'rgba(123, 110, 196, 0.12)',
         backdropFilter: 'blur(24px)',
         WebkitBackdropFilter: 'blur(24px)',
       }}
@@ -322,9 +322,9 @@ export function EdgeDetailPanel() {
           <div
             className="px-4 py-3 rounded-[12px]"
             style={{
-              background: 'rgba(28, 22, 56, 0.60)',
-              border: `1px solid ${relColor}28`,
-              borderLeft: `2px solid ${relColor}80`,
+              background: `${relColor}08`,
+              border: `1px solid ${relColor}22`,
+              borderLeft: `2px solid ${relColor}70`,
             }}
           >
             <p className="text-[13px] leading-[1.65] font-light" style={{ color: 'var(--text-primary)' }}>
@@ -361,7 +361,7 @@ export function EdgeDetailPanel() {
               {Math.round(edge.weight * 100)}%
             </span>
           </div>
-          <div className="h-1.5 rounded-full overflow-hidden mb-2" style={{ background: 'rgba(255,255,255,0.06)' }}>
+          <div className="h-1.5 rounded-full overflow-hidden mb-2" style={{ background: 'rgba(37,30,61,0.08)' }}>
             <motion.div
               className="h-full rounded-full"
               initial={{ width: 0 }}
@@ -391,8 +391,8 @@ export function EdgeDetailPanel() {
               whileTap={{ scale: 0.975 }}
               className="w-full flex items-center justify-between px-4 py-3 rounded-[12px] text-left transition-all"
               style={{
-                background: sourceNode.clusterColor ? `${sourceNode.clusterColor}16` : 'rgba(255,255,255,0.04)',
-                border: `1px solid ${sourceNode.clusterColor ? sourceNode.clusterColor + '35' : 'rgba(255,255,255,0.10)'}`,
+                background: sourceNode.clusterColor ? `${sourceNode.clusterColor}10` : 'rgba(123,110,196,0.05)',
+                border: `1px solid ${sourceNode.clusterColor ? sourceNode.clusterColor + '30' : 'rgba(123,110,196,0.14)'}`,
               }}
             >
               <div className="flex items-center gap-2.5 min-w-0">
@@ -413,8 +413,8 @@ export function EdgeDetailPanel() {
               whileTap={{ scale: 0.975 }}
               className="w-full flex items-center justify-between px-4 py-3 rounded-[12px] text-left transition-all"
               style={{
-                background: targetNode.clusterColor ? `${targetNode.clusterColor}16` : 'rgba(255,255,255,0.04)',
-                border: `1px solid ${targetNode.clusterColor ? targetNode.clusterColor + '35' : 'rgba(255,255,255,0.10)'}`,
+                background: targetNode.clusterColor ? `${targetNode.clusterColor}10` : 'rgba(123,110,196,0.05)',
+                border: `1px solid ${targetNode.clusterColor ? targetNode.clusterColor + '30' : 'rgba(123,110,196,0.14)'}`,
               }}
             >
               <div className="flex items-center gap-2.5 min-w-0">

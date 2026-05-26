@@ -25,10 +25,10 @@ import { useGraphStore, getNeighborNodeIds } from '@/store/graph.store';
 import { LatexText } from '@/components/ui/latex-text';
 import { useUIStore } from '@/store/ui.store';
 import { useGraphInteractions } from '@/hooks/useGraphInteractions';
-import { getSession } from '@/lib/auth';
+import { useAuth } from '@/context/AuthContext';
 import { saveGraph } from '@/lib/graphs';
-import { saveGraphLocally } from '@/components/graph/LocalGraphLoader';
 import type { GraphNode, SemanticEdgeType, LearningState } from '@/types/graph';
+import { buildTraversalOrder } from '@/lib/traversal';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -182,10 +182,11 @@ function EditBtn({ onClick }: { onClick: () => void }) {
   );
 }
 
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 export function NodeDetailPanel() {
-  const [deeperExpanded, setDeeperExpanded] = useState(false);
+  const [deeperExpanded, setDeeperExpanded] = useState(true);
   const [editingField, setEditingField] = useState<'label' | 'summary' | 'why' | null>(null);
   const [draftValue, setDraftValue] = useState('');
   const [connectionsExpanded, setConnectionsExpanded] = useState(false);
@@ -194,10 +195,11 @@ export function NodeDetailPanel() {
 
   const {
     graph, selectedNodeId, selectNode, setMode, learningStates, setLearningState,
-    visitedNodeIds, navigationHistory, navigateBack, updateNode, clearVisited,
+    navigationHistory, navigateBack, updateNode, clearVisited,
   } = useGraphStore();
   const { closeNodeDetail } = useUIStore();
-  const { handleNodeClick } = useGraphInteractions();
+  const { handleNodeClick, navigateToNode } = useGraphInteractions();
+  const { session } = useAuth();
 
   const node = useMemo(
     () => graph?.nodes.find((n) => n.id === selectedNodeId) ?? null,
@@ -217,63 +219,32 @@ export function NodeDetailPanel() {
       .sort((a, b) => b.edge.weight - a.edge.weight);
   }, [graph, selectedNodeId, node]);
 
-  // Next Idea — always returns something.
-  // Priority: unvisited neighbor → any unvisited node (BFS) → highest-weight neighbor (revisit) → most central other node
-  const nextSuggestion = useMemo(() => {
-    if (!node || connectedEdges.length === 0) return null;
-    const prevId = navigationHistory.length > 0 ? navigationHistory[navigationHistory.length - 1] : null;
+  // Stable topological traversal order for the whole graph (recomputes only when graph changes)
+  const traversalOrder = useMemo(() => {
+    if (!graph) return [];
+    return buildTraversalOrder(graph.nodes, graph.edges);
+  }, [graph]);
 
-    // 1. Prefer an unvisited direct neighbor (not the node we just came from)
-    const unvisited = connectedEdges.filter(({ other }) => other && !visitedNodeIds.has(other.id));
-    if (unvisited.length > 0) {
-      const notPrev = unvisited.filter(({ other }) => other?.id !== prevId);
-      return notPrev.length > 0 ? notPrev[0] : unvisited[0];
-    }
+  // Position in the traversal sequence. Falls back to 0 so next/prev are always valid.
+  const traversalIdx = useMemo(() => {
+    if (traversalOrder.length === 0) return 0;
+    const idx = node ? traversalOrder.indexOf(node.id) : -1;
+    return idx === -1 ? 0 : idx;
+  }, [node, traversalOrder]);
 
-    // 2. Fall back to highest-weight neighbor that isn't where we came from (revisit)
-    const byWeight = [...connectedEdges]
-      .filter(({ other }) => other && other.id !== prevId)
-      .sort((a, b) => b.edge.weight - a.edge.weight);
-    return byWeight.length > 0 ? byWeight[0] : connectedEdges[0];
-  }, [node, connectedEdges, visitedNodeIds, navigationHistory]);
+  // Always returns a node as long as the graph has 2+ nodes.
+  // Circular: next after last wraps to first, prev before first wraps to last.
+  const nextInOrder = useMemo(() => {
+    if (!graph || !node || traversalOrder.length < 2) return null;
+    const nextIdx = (traversalIdx + 1) % traversalOrder.length;
+    return graph.nodes.find((n) => n.id === traversalOrder[nextIdx]) ?? null;
+  }, [graph, node, traversalIdx, traversalOrder]);
 
-  // Cross-graph next: nearest unvisited node anywhere in the graph (BFS)
-  const nearestUnvisited = useMemo(() => {
-    if (!graph || !node) return null;
-    const prevId = navigationHistory.length > 0 ? navigationHistory[navigationHistory.length - 1] : null;
-
-    // If there are unvisited nodes anywhere, BFS to the closest one
-    const adj = new Map<string, string[]>();
-    for (const e of graph.edges) {
-      const a = adj.get(e.sourceId) ?? []; a.push(e.targetId); adj.set(e.sourceId, a);
-      const b = adj.get(e.targetId) ?? []; b.push(e.sourceId); adj.set(e.targetId, b);
-    }
-    const seen = new Set([node.id]);
-    const queue: { id: string; hops: number }[] = [{ id: node.id, hops: 0 }];
-    const candidates: { id: string; hops: number }[] = [];
-    while (queue.length > 0) {
-      const { id: cur, hops } = queue.shift()!;
-      for (const nbr of adj.get(cur) ?? []) {
-        if (seen.has(nbr)) continue;
-        seen.add(nbr);
-        if (!visitedNodeIds.has(nbr)) candidates.push({ id: nbr, hops: hops + 1 });
-        else queue.push({ id: nbr, hops: hops + 1 });
-      }
-      if (candidates.length > 0 && queue[0]?.hops > candidates[0].hops) break;
-    }
-    if (candidates.length > 0) {
-      const notPrev = candidates.filter((c) => c.id !== prevId);
-      const best = notPrev.length > 0 ? notPrev[0] : candidates[0];
-      const bestNode = graph.nodes.find((n) => n.id === best.id) ?? null;
-      return bestNode ? { node: bestNode, hops: best.hops, isUnvisited: true } : null;
-    }
-
-    // Graph fully explored — suggest the most central node that isn't current or previous
-    const mostCentral = graph.nodes
-      .filter((n) => n.id !== node.id && n.id !== prevId)
-      .sort((a, b) => b.centrality - a.centrality)[0] ?? null;
-    return mostCentral ? { node: mostCentral, hops: null, isUnvisited: false } : null;
-  }, [graph, node, visitedNodeIds, navigationHistory]);
+  const prevInOrder = useMemo(() => {
+    if (!graph || !node || traversalOrder.length < 2) return null;
+    const prevIdx = (traversalIdx - 1 + traversalOrder.length) % traversalOrder.length;
+    return graph.nodes.find((n) => n.id === traversalOrder[prevIdx]) ?? null;
+  }, [graph, node, traversalIdx, traversalOrder]);
 
   const startEdit = (field: 'label' | 'summary' | 'why', currentValue: string) => {
     setDraftValue(currentValue);
@@ -299,9 +270,7 @@ export function NodeDetailPanel() {
       return { ...n, metadata: { ...n.metadata, whyItMatters: trimmed } };
     });
     const updatedGraph = { ...graph, nodes: updatedNodes, updatedAt: now };
-    const session = getSession();
-    if (session) saveGraph(session.userId, updatedGraph);
-    saveGraphLocally(updatedGraph);
+    if (session) void saveGraph(session.userId, updatedGraph);
     setEditingField(null);
   };
 
@@ -316,9 +285,9 @@ export function NodeDetailPanel() {
   const accent = node?.clusterColor ?? 'var(--accent-primary)';
   const accentRaw = node?.clusterColor ?? '#9876EE';
 
-  // Visible connection cards (4 primary, rest collapsible)
-  const primaryConnections = connectedEdges.slice(0, 4);
-  const extraConnections = connectedEdges.slice(4);
+  // Visible connection cards (6 primary, rest collapsible)
+  const primaryConnections = connectedEdges.slice(0, 6);
+  const extraConnections = connectedEdges.slice(6);
 
   return (
     <div
@@ -484,14 +453,28 @@ export function NodeDetailPanel() {
                   </div>
 
                   {/* Stats row */}
-                  <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
-                    {connectedEdges.length} connection{connectedEdges.length !== 1 ? 's' : ''}
+                  <div className="flex flex-wrap items-center gap-2 mt-1">
+                    <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                      {connectedEdges.length} connection{connectedEdges.length !== 1 ? 's' : ''}
+                    </span>
                     {node.metadata?.depthLevel && node.metadata.depthLevel !== 'surface' && (
-                      <span style={{ color: `${accentRaw}BB` }}>
-                        {' '}· {node.metadata.depthLevel === 'mastered' ? 'Deep coverage' : 'Well explained'}
+                      <span className="text-[10px] px-2 py-0.5 rounded-full font-medium"
+                        style={{ background: `${accentRaw}14`, color: accentRaw, border: `1px solid ${accentRaw}28` }}>
+                        {node.metadata.depthLevel === 'mastered' ? 'Deep' : node.metadata.depthLevel === 'explained' ? 'Explained' : 'Surface'}
                       </span>
                     )}
-                  </p>
+                    {node.centrality > 0 && (() => {
+                      const allNodes = graph?.nodes ?? [];
+                      const rank = allNodes.filter(n => n.centrality > node.centrality).length + 1;
+                      const pct = Math.round((1 - (rank - 1) / Math.max(allNodes.length - 1, 1)) * 100);
+                      return pct >= 70 ? (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full font-medium"
+                          style={{ background: 'rgba(212,168,64,0.12)', color: '#D4A840', border: '1px solid rgba(212,168,64,0.22)' }}>
+                          Core concept
+                        </span>
+                      ) : null;
+                    })()}
+                  </div>
                 </div>
 
                 {/* ConceptOrbit mini-visualization */}
@@ -557,37 +540,40 @@ export function NodeDetailPanel() {
               </div>
             </div>
 
-            {/* ── Continue Exploring — momentum card ─────────────────────── */}
-            <div className="px-6 mb-6 flex-shrink-0">
-              <p className="text-[9px] font-semibold tracking-[0.14em] uppercase mb-3 flex items-center gap-1.5"
-                style={{ color: accentRaw, opacity: 0.55 }}>
-                <ArrowRight size={9} />
-                Next Idea
-              </p>
-
-              {nextSuggestion?.other ? (() => {
-                const target = nextSuggestion.other!;
-                const tc = target.clusterColor ?? accentRaw;
-                const semType = nextSuggestion.edge.semanticType as SemanticEdgeType | undefined;
-                return (
-                  <motion.button
-                    onClick={() => handleNodeClick(target.id)}
-                    className="w-full rounded-[18px] overflow-hidden text-left"
-                    style={{
-                      background: `linear-gradient(145deg, ${tc}12 0%, ${tc}06 60%, rgba(152,118,238,0.04) 100%)`,
-                      border: `1px solid ${tc}30`,
-                      boxShadow: `0 4px 24px ${tc}12, inset 0 1px 0 rgba(255,255,255,0.04)`,
-                    }}
-                    whileHover={{ scale: 1.015, boxShadow: `0 6px 32px ${tc}22, inset 0 1px 0 rgba(255,255,255,0.06)` }}
-                    whileTap={{ scale: 0.985 }}
-                    transition={{ duration: 0.15 }}
-                  >
-                    <div className="px-5 py-5">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex-1 min-w-0">
-                          {/* Relationship type pill */}
-                          {semType && (
-                            <div className="mb-2.5">
+            {/* ── Next in Sequence — always shown when graph has >1 node ── */}
+            {nextInOrder && (
+              <div className="px-6 mb-6 flex-shrink-0">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-[9px] font-semibold tracking-[0.14em] uppercase flex items-center gap-1.5"
+                    style={{ color: accentRaw, opacity: 0.55 }}>
+                    <ArrowRight size={9} />
+                    Next Up
+                  </p>
+                  {traversalOrder.length > 1 && (
+                    <span className="text-[9px] font-medium tabular-nums" style={{ color: 'var(--text-muted)', opacity: 0.4 }}>
+                      {traversalIdx + 1} / {traversalOrder.length}
+                    </span>
+                  )}
+                </div>
+                <motion.button
+                  onClick={() => navigateToNode(nextInOrder.id)}
+                  className="w-full rounded-[18px] overflow-hidden text-left"
+                  style={{
+                    background: `linear-gradient(145deg, ${(nextInOrder.clusterColor ?? accentRaw)}12 0%, ${(nextInOrder.clusterColor ?? accentRaw)}06 60%, rgba(152,118,238,0.04) 100%)`,
+                    border: `1px solid ${(nextInOrder.clusterColor ?? accentRaw)}30`,
+                    boxShadow: `0 4px 24px ${(nextInOrder.clusterColor ?? accentRaw)}12, inset 0 1px 0 rgba(255,255,255,0.04)`,
+                  }}
+                  whileHover={{ scale: 1.015 }}
+                  whileTap={{ scale: 0.985 }}
+                  transition={{ duration: 0.15 }}
+                >
+                  <div className="px-5 py-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        {(() => {
+                          const semType = connectedEdges.find((c) => c.other?.id === nextInOrder.id)?.edge.semanticType as SemanticEdgeType | undefined;
+                          return semType ? (
+                            <div className="mb-2">
                               <span className="inline-flex items-center gap-1 text-[9px] font-semibold tracking-[0.08em] uppercase px-2 py-0.5 rounded-full"
                                 style={{
                                   background: `${SEM_TYPE_COLORS[semType] ?? '#9876EE'}18`,
@@ -597,65 +583,34 @@ export function NodeDetailPanel() {
                                 {SEM_TYPE_LABELS[semType] ?? semType}
                               </span>
                             </div>
-                          )}
-                          {/* Target name */}
-                          <p className="text-[16px] font-semibold leading-tight tracking-tight mb-1"
-                            style={{ color: 'var(--text-primary)' }}>
-                            {target.label}
+                          ) : null;
+                        })()}
+                        {traversalIdx === traversalOrder.length - 1 && traversalOrder.length > 1 && (
+                          <p className="text-[9px] font-medium mb-1.5" style={{ color: 'var(--text-muted)', opacity: 0.45 }}>loops back</p>
+                        )}
+                        <p className="text-[15px] font-semibold leading-tight tracking-tight"
+                          style={{ color: 'var(--text-primary)' }}>
+                          {nextInOrder.label}
+                        </p>
+                        {nextInOrder.metadata?.summary && (
+                          <p className="text-[11px] leading-relaxed line-clamp-2 mt-1.5"
+                            style={{ color: 'var(--text-muted)' }}>
+                            {nextInOrder.metadata.summary}
                           </p>
-                          {/* Preview snippet */}
-                          {target.metadata?.summary && (
-                            <p className="text-[11px] leading-relaxed line-clamp-2 mt-1.5"
-                              style={{ color: 'var(--text-muted)' }}>
-                              {target.metadata.summary}
-                            </p>
-                          )}
-                        </div>
-                        {/* Cluster orb + arrow */}
-                        <div className="flex-shrink-0 flex flex-col items-center gap-2 pt-0.5">
-                          <div className="w-4 h-4 rounded-full"
-                            style={{ background: tc, boxShadow: `0 0 14px ${tc}90` }} />
-                          <ArrowRight size={14} style={{ color: tc, opacity: 0.7 }} />
-                        </div>
+                        )}
+                      </div>
+                      <div className="flex-shrink-0 flex flex-col items-center gap-2 pt-0.5">
+                        <div className="w-4 h-4 rounded-full flex-shrink-0"
+                          style={{ background: nextInOrder.clusterColor ?? accentRaw, boxShadow: `0 0 14px ${(nextInOrder.clusterColor ?? accentRaw)}90` }} />
+                        <ArrowRight size={14} style={{ color: nextInOrder.clusterColor ?? accentRaw, opacity: 0.7 }} />
                       </div>
                     </div>
-                    {/* Bottom accent line */}
-                    <div className="h-[1.5px]"
-                      style={{ background: `linear-gradient(90deg, ${tc}50 0%, ${tc}00 100%)` }} />
-                  </motion.button>
-                );
-              })() : nearestUnvisited ? (
-                <motion.button
-                  onClick={() => handleNodeClick(nearestUnvisited.node.id)}
-                  className="w-full flex items-center gap-4 px-5 py-4 rounded-[18px] text-left"
-                  style={{
-                    background: nearestUnvisited.node.clusterColor
-                      ? `${nearestUnvisited.node.clusterColor}10`
-                      : 'rgba(152,118,238,0.06)',
-                    border: `1px solid ${nearestUnvisited.node.clusterColor ? nearestUnvisited.node.clusterColor + '28' : 'rgba(152,118,238,0.16)'}`,
-                  }}
-                  whileHover={{ scale: 1.01 }}
-                  whileTap={{ scale: 0.99 }}
-                  transition={{ duration: 0.13 }}
-                >
-                  <div className="w-3 h-3 rounded-full flex-shrink-0"
-                    style={{ background: nearestUnvisited.node.clusterColor ?? 'var(--accent-primary)' }} />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[14px] font-semibold leading-tight truncate" style={{ color: 'var(--text-primary)' }}>
-                      {nearestUnvisited.node.label}
-                    </p>
-                    <p className="text-[10px] mt-0.5" style={{ color: 'var(--text-muted)', opacity: 0.6 }}>
-                      {nearestUnvisited.isUnvisited
-                        ? nearestUnvisited.hops !== null
-                          ? `${nearestUnvisited.hops} hop${nearestUnvisited.hops !== 1 ? 's' : ''} away · unvisited`
-                          : 'unvisited'
-                        : 'Worth revisiting'}
-                    </p>
                   </div>
-                  <ArrowRight size={14} style={{ color: nearestUnvisited.node.clusterColor ?? 'var(--accent-primary)', opacity: 0.55 }} />
+                  <div className="h-[1.5px]"
+                    style={{ background: `linear-gradient(90deg, ${(nextInOrder.clusterColor ?? accentRaw)}50 0%, ${(nextInOrder.clusterColor ?? accentRaw)}00 100%)` }} />
                 </motion.button>
-              ) : null}
-            </div>
+              </div>
+            )}
 
             {/* ── Connection Threads — relationship cards ────────────────── */}
             {connectedEdges.length > 0 && (
@@ -667,14 +622,14 @@ export function NodeDetailPanel() {
                   </p>
                 </div>
 
-                {/* 2-column relationship cards */}
-                <div className="grid grid-cols-2 gap-2">
+                {/* 3-column relationship cards */}
+                <div className="grid grid-cols-3 gap-2">
                   {primaryConnections.map(({ edge, other, direction }) => (
                     other && (
                       <RelationshipCard
                         key={edge.id}
                         conn={{ edge, other, direction }}
-                        onNavigate={() => handleNodeClick(other.id)}
+                        onNavigate={() => navigateToNode(other.id)}
                       />
                     )
                   ))}
@@ -692,13 +647,13 @@ export function NodeDetailPanel() {
                           transition={{ duration: 0.2 }}
                           className="overflow-hidden"
                         >
-                          <div className="grid grid-cols-2 gap-2 mb-2">
+                          <div className="grid grid-cols-3 gap-2 mb-2">
                             {extraConnections.map(({ edge, other, direction }) => (
                               other && (
                                 <RelationshipCard
                                   key={edge.id}
                                   conn={{ edge, other, direction }}
-                                  onNavigate={() => handleNodeClick(other.id)}
+                                  onNavigate={() => navigateToNode(other.id)}
                                 />
                               )
                             ))}
@@ -959,6 +914,46 @@ export function NodeDetailPanel() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* ── Prev / Next — always visible, outside scroll area ─────────────── */}
+      {node && traversalOrder.length > 1 && (
+        <div
+          className="flex-shrink-0 flex items-stretch"
+          style={{
+            borderTop: '1px solid rgba(255,255,255,0.07)',
+            background: 'rgba(255,255,255,0.02)',
+          }}
+        >
+          <button
+            onClick={() => navigateToNode(traversalOrder[(traversalIdx - 1 + traversalOrder.length) % traversalOrder.length])}
+            className="flex-1 flex items-center gap-2 px-4 py-3 text-left transition-colors min-w-0"
+            style={{ color: 'var(--text-muted)' }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.05)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-primary)'; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)'; }}
+          >
+            <ArrowLeft size={11} className="flex-shrink-0" />
+            <span className="text-[11px] truncate">{prevInOrder?.label}</span>
+          </button>
+
+          <div
+            className="flex-shrink-0 flex items-center px-3 text-[10px] font-medium tabular-nums"
+            style={{ color: 'var(--text-muted)', opacity: 0.35, borderLeft: '1px solid rgba(255,255,255,0.06)', borderRight: '1px solid rgba(255,255,255,0.06)' }}
+          >
+            {traversalIdx + 1}/{traversalOrder.length}
+          </div>
+
+          <button
+            onClick={() => navigateToNode(traversalOrder[(traversalIdx + 1) % traversalOrder.length])}
+            className="flex-1 flex items-center justify-end gap-2 px-4 py-3 text-right transition-colors min-w-0"
+            style={{ color: 'var(--text-muted)' }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.05)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-primary)'; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)'; }}
+          >
+            <span className="text-[11px] truncate">{nextInOrder?.label}</span>
+            <ArrowRight size={11} className="flex-shrink-0" />
+          </button>
+        </div>
+      )}
     </div>
   );
 }

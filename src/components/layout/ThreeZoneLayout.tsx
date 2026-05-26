@@ -71,7 +71,7 @@ export function ThreeZoneLayout({
       {/* Command Bar */}
       {!focusModeActive && (
         <div
-          className="relative z-30 flex-shrink-0"
+          className="relative z-[55] flex-shrink-0"
           style={{ height: semantic.layout.commandBarHeight }}
         >
           {commandBar}
@@ -110,7 +110,7 @@ export function ThreeZoneLayout({
               transform: nodeDetailOpen ? 'translateX(0)' : 'translateX(100%)',
               transition: 'transform 350ms cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 400ms ease',
               boxShadow: nodeDetailOpen
-                ? '-32px 0 80px rgba(0,0,0,0.60), -1px 0 0 rgba(255,255,255,0.06)'
+                ? '-16px 0 40px rgba(37,30,61,0.10), -1px 0 0 rgba(123,110,196,0.10)'
                 : 'none',
             }}
           >

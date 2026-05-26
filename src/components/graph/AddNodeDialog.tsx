@@ -12,9 +12,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Plus } from 'lucide-react';
 import { useGraphStore } from '@/store/graph.store';
 import { useUIStore } from '@/store/ui.store';
-import { getSession } from '@/lib/auth';
+import { useAuth } from '@/context/AuthContext';
 import { saveGraph } from '@/lib/graphs';
-import { saveGraphLocally } from '@/components/graph/LocalGraphLoader';
 import type { GraphNode } from '@/types/graph';
 
 // Warm cluster fallback colors for manually added nodes
@@ -33,6 +32,7 @@ export function AddNodeDialog({ open, onClose }: AddNodeDialogProps) {
   const { graph, pan, zoom, addNodes } = useGraphStore();
   const { openNodeDetail } = useUIStore();
   const selectNode = useGraphStore((s) => s.selectNode);
+  const { session } = useAuth();
 
   const [label, setLabel] = useState('');
   const [type, setType] = useState<GraphNode['type']>('concept');
@@ -109,9 +109,7 @@ export function AddNodeDialog({ open, onClose }: AddNodeDialogProps) {
       nodeCount: graph.nodes.length + 1,
       updatedAt: now,
     };
-    const session = getSession();
-    if (session) saveGraph(session.userId, updated);
-    saveGraphLocally(updated);
+    if (session) void saveGraph(session.userId, updated);
 
     // Select the new node
     selectNode(id);

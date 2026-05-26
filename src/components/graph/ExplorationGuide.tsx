@@ -11,7 +11,7 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Compass } from 'lucide-react';
+import { Compass, MousePointerClick } from 'lucide-react';
 import { useGraphStore } from '@/store/graph.store';
 import type { GraphData } from '@/types/graph';
 
@@ -20,9 +20,10 @@ interface ExplorationGuideProps {
   zoom: number;
   pan: { x: number; y: number };
   dimensions: { width: number; height: number };
+  onNodeClick: (nodeId: string) => void;
 }
 
-export function ExplorationGuide({ graph, zoom, pan, dimensions }: ExplorationGuideProps) {
+export function ExplorationGuide({ graph, zoom, pan, dimensions, onNodeClick }: ExplorationGuideProps) {
   const { selectedNodeId } = useGraphStore();
   const [visible, setVisible] = useState(false);
   const [graphKey, setGraphKey] = useState<string | null>(null);
@@ -103,36 +104,52 @@ export function ExplorationGuide({ graph, zoom, pan, dimensions }: ExplorationGu
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: -4, scale: 0.97 }}
           transition={{ duration: 0.35, ease: [0.34, 1.56, 0.64, 1] }}
-          className="absolute pointer-events-none z-20"
+          className="absolute z-20"
           style={{
             left: tooltipX,
             top: tooltipY,
             transform: 'translate(-50%, -100%)',
           }}
         >
-          {/* Tooltip card */}
-          <div
-            className="flex flex-col gap-2 px-3.5 py-3 rounded-[12px]"
+          {/* Tooltip card — clickable */}
+          <button
+            onClick={(e) => { e.stopPropagation(); onNodeClick(mainNode.id); setVisible(false); }}
+            className="flex flex-col gap-2 px-3.5 py-3 rounded-[12px] text-left w-full group"
             style={{
-              background: 'rgba(14, 10, 30, 0.92)',
-              border: '1px solid rgba(255, 255, 255, 0.10)',
-              boxShadow: `0 0 0 1px var(--accent-glow), 0 8px 32px rgba(0,0,0,0.50)`,
+              background: 'rgba(255, 255, 255, 0.94)',
+              border: '1px solid rgba(123, 110, 196, 0.22)',
+              boxShadow: '0 4px 24px rgba(37,30,61,0.10), 0 1px 4px rgba(37,30,61,0.06)',
               backdropFilter: 'blur(20px)',
               WebkitBackdropFilter: 'blur(20px)',
               minWidth: 180,
               maxWidth: 240,
+              cursor: 'pointer',
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(123,110,196,0.50)';
+              (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 6px 28px rgba(123,110,196,0.18), 0 1px 4px rgba(37,30,61,0.06)';
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(123,110,196,0.22)';
+              (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 4px 24px rgba(37,30,61,0.10), 0 1px 4px rgba(37,30,61,0.06)';
             }}
           >
             {/* Header */}
-            <div className="flex items-center gap-1.5">
-              <motion.div
-                animate={{ opacity: [0.6, 1, 0.6] }}
-                transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-              >
-                <Compass size={11} style={{ color: 'var(--accent-primary)' }} />
-              </motion.div>
-              <span className="text-[10px] uppercase tracking-[0.08em] font-medium" style={{ color: 'var(--accent-primary)' }}>
-                Start here
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5">
+                <motion.div
+                  animate={{ opacity: [0.6, 1, 0.6] }}
+                  transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+                >
+                  <Compass size={11} style={{ color: 'var(--accent-primary)' }} />
+                </motion.div>
+                <span className="text-[10px] uppercase tracking-[0.08em] font-medium" style={{ color: 'var(--accent-primary)' }}>
+                  Start here
+                </span>
+              </div>
+              <span className="flex items-center gap-1 text-[10px]" style={{ color: 'var(--text-muted)' }}>
+                <MousePointerClick size={10} />
+                click to open
               </span>
             </div>
 
@@ -160,7 +177,7 @@ export function ExplorationGuide({ graph, zoom, pan, dimensions }: ExplorationGu
                 </div>
               </div>
             )}
-          </div>
+          </button>
 
           {/* Arrow pointer */}
           <div
@@ -171,7 +188,7 @@ export function ExplorationGuide({ graph, zoom, pan, dimensions }: ExplorationGu
               height: 0,
               borderLeft: '6px solid transparent',
               borderRight: '6px solid transparent',
-              borderTop: '6px solid rgba(255,255,255,0.10)',
+              borderTop: '6px solid rgba(123,110,196,0.16)',
             }}
           />
           <div
@@ -182,7 +199,7 @@ export function ExplorationGuide({ graph, zoom, pan, dimensions }: ExplorationGu
               height: 0,
               borderLeft: '5px solid transparent',
               borderRight: '5px solid transparent',
-              borderTop: '5px solid rgba(14,10,30,0.92)',
+              borderTop: '5px solid rgba(255,255,255,0.94)',
             }}
           />
         </motion.div>

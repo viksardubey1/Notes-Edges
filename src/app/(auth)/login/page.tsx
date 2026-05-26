@@ -1,18 +1,27 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { signIn } from '@/lib/auth';
+import { GoogleButton } from '@/components/auth/GoogleButton';
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Handle errors forwarded from the OAuth callback
+  useEffect(() => {
+    const err = searchParams.get('error');
+    if (err === 'auth_failed') setError('Google sign-in failed. Please try again.');
+    else if (err === 'missing_code') setError('Authentication was cancelled. Please try again.');
+  }, [searchParams]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -22,10 +31,8 @@ export default function LoginPage() {
     if (!password) { setError('Password is required.'); return; }
 
     setLoading(true);
-    // Small delay for UX feedback
-    await new Promise((r) => setTimeout(r, 400));
 
-    const result = signIn(email, password);
+    const result = await signIn(email, password);
     if (!result.ok) {
       setError(result.error);
       setLoading(false);
@@ -37,9 +44,19 @@ export default function LoginPage() {
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-5" noValidate>
-      <div>
-        <h1 className="text-[21px] font-semibold" style={{ color: 'var(--text-primary)' }}>Welcome back</h1>
-        <p className="text-[13px] mt-1" style={{ color: 'var(--text-secondary)' }}>Sign in to your account</p>
+      <div className="mb-1">
+        <h1 className="text-[22px] font-semibold tracking-tight" style={{ color: 'var(--text-primary)' }}>Welcome back</h1>
+        <p className="text-[13px] mt-1" style={{ color: 'var(--text-muted)' }}>Sign in to continue</p>
+      </div>
+
+      {/* Google OAuth */}
+      <GoogleButton label="Continue with Google" />
+
+      {/* Divider */}
+      <div className="flex items-center gap-3">
+        <div className="flex-1 h-px" style={{ background: 'var(--border-default)' }} />
+        <span className="text-[11px] font-medium" style={{ color: 'var(--text-muted)' }}>or</span>
+        <div className="flex-1 h-px" style={{ background: 'var(--border-default)' }} />
       </div>
 
       <div className="flex flex-col gap-1.5">
@@ -85,7 +102,7 @@ export default function LoginPage() {
       {error && (
         <div className="px-3 py-2.5 rounded-[8px] text-[12px]"
           style={{ background: 'rgba(224,88,120,0.10)', border: '1px solid rgba(224,88,120,0.30)', color: '#E05878' }}
-          role="alert">
+          role="alert" aria-live="polite">
           {error}
         </div>
       )}
@@ -97,7 +114,7 @@ export default function LoginPage() {
         onMouseEnter={(e) => { if (!loading) (e.currentTarget as HTMLButtonElement).style.background = 'var(--accent-bright)'; }}
         onMouseLeave={(e) => { if (!loading) (e.currentTarget as HTMLButtonElement).style.background = 'var(--accent-primary)'; }}
       >
-        {loading ? <><Loader2 size={14} className="animate-spin" /> Signing in…</> : 'Sign in'}
+        {loading ? <><Loader2 size={14} className="animate-spin" /> Signing in…</> : 'Sign in with email'}
       </button>
 
       <p className="text-[12px] text-center" style={{ color: 'var(--text-muted)' }}>
