@@ -19,9 +19,9 @@ function estimateLabelWidth(label: string): number {
 }
 
 function comfortRadius(node: GraphNode): number {
-  const br = Math.max(14, node.size ?? 12);
+  const br = Math.max(18, node.size ?? 14);
   const halfLabel = estimateLabelWidth(node.label) / 2;
-  return Math.max(br + 10, halfLabel, 54);
+  return Math.max(br + 12, halfLabel, 56);
 }
 
 // ── Layout ────────────────────────────────────────────────────────────────────
@@ -37,10 +37,10 @@ export function repositionNodes(nodes: GraphNode[]): Map<string, { x: number; y:
   }
   const clusterIds = [...clusters.keys()];
 
-  // Outer ring: generous cluster separation so inter-cluster edges aren't crowded.
-  // ~85 px per cluster is empirically comfortable at typical zoom levels.
-  const outerRadius = Math.max(180, clusterIds.length * 65);
+  // Outer ring: generous cluster separation
+  const outerRadius = Math.max(210, clusterIds.length * 72);
   const positions = new Map<string, { x: number; y: number }>();
+  const nodeById = new Map<string, GraphNode>(nodes.map((n) => [n.id, n]));
 
   clusterIds.forEach((cid, ci) => {
     const clusterAngle = (2 * Math.PI * ci) / clusterIds.length - Math.PI / 2;
@@ -51,9 +51,8 @@ export function repositionNodes(nodes: GraphNode[]): Map<string, { x: number; y:
     // Highest-centrality node sits at the cluster centroid
     const sorted = [...members].sort((a, b) => (b.centrality ?? 0) - (a.centrality ?? 0));
 
-    // Inner ring: sized so adjacent arc spacing ≈ 145 px regardless of cluster size.
-    // Formula: arc = 2 * r * sin(π / n) → r = 145 / (2 * sin(π / n)) ≈ n * 24 px.
-    const innerRadius = Math.max(60, sorted.length * 18);
+    // Inner ring: wide enough so nodes start with meaningful separation
+    const innerRadius = Math.max(70, sorted.length * 22);
 
     sorted.forEach((n, ni) => {
       if (ni === 0) {
@@ -68,20 +67,21 @@ export function repositionNodes(nodes: GraphNode[]): Map<string, { x: number; y:
     });
   });
 
-  // ── Label-aware collision resolution ─────────────────────────────────────
-  // Each pair gets a *dynamic* minSep = cr_i + cr_j + 14 so that both label
-  // bounding boxes have a clear 14 px gap between them.
-  const crMap = new Map(nodes.map((n) => [n.id, comfortRadius(n)]));
+  // Label-aware collision resolution — push nodes apart until labels don't overlap.
+  // minSep = sum of comfort radii + 24px breathing gap between label edges.
+  const LABEL_GAP = 14;
   const pts = [...positions.entries()].map(([id, p]) => ({ id, x: p.x, y: p.y }));
 
-  for (let iter = 0; iter < 150; iter++) {
+  for (let iter = 0; iter < 200; iter++) {
     let moved = false;
     for (let i = 0; i < pts.length; i++) {
       for (let j = i + 1; j < pts.length; j++) {
+        const ni = nodeById.get(pts[i].id);
+        const nj = nodeById.get(pts[j].id);
+        const minSep = (ni ? comfortRadius(ni) : 56) + (nj ? comfortRadius(nj) : 56) + LABEL_GAP;
         const dx = pts[j].x - pts[i].x;
         const dy = pts[j].y - pts[i].y;
         const dist = Math.sqrt(dx * dx + dy * dy) || 0.01;
-        const minSep = (crMap.get(pts[i].id) ?? 54) + (crMap.get(pts[j].id) ?? 54) + 8;
         if (dist < minSep) {
           const push = (minSep - dist) / 2;
           const ux = dx / dist;

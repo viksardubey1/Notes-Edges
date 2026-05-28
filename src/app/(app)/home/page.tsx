@@ -312,7 +312,7 @@ export default function HomePage() {
 
     // One-time migration: re-layout all stored graphs to the new spacing.
     // Runs once per browser, tracked by a localStorage flag.
-    const MIGRATION_KEY = 'ne_reposition_v7';
+    const MIGRATION_KEY = 'ne_reposition_v14';
     if (!localStorage.getItem(MIGRATION_KEY)) {
       fetch('/api/admin/reposition-graphs', { method: 'POST' })
         .then((r) => r.json())

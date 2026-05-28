@@ -99,59 +99,42 @@ export function GraphControls({ zoom, onZoomIn, onZoomOut, onFitToScreen }: Grap
         <div className="h-px mx-2" style={{ background: 'var(--border-subtle)' }} />
 
         {/* Fit to screen */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              onClick={onFitToScreen}
-              aria-label="Fit to screen"
-              className="flex items-center gap-2 px-2.5 py-1.5 transition-colors duration-100 hover:bg-black/5"
-              style={{ color: 'var(--text-muted)' }}
-            >
-              <Maximize2 size={12} />
-              <span className="text-[11px]">Fit view</span>
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="left">Fit graph to screen</TooltipContent>
-        </Tooltip>
+        <button
+          onClick={onFitToScreen}
+          aria-label="Fit to screen"
+          className="flex items-center gap-2 px-2.5 py-1.5 transition-colors duration-100 hover:bg-black/5"
+          style={{ color: 'var(--text-muted)' }}
+        >
+          <Maximize2 size={12} />
+          <span className="text-[11px]">Fit view</span>
+        </button>
 
         {graph && (
           <>
             <div className="h-px mx-2" style={{ background: 'var(--border-subtle)' }} />
 
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  aria-label={backdropUrl ? 'Change backdrop image' : 'Set backdrop image'}
-                  className="flex items-center gap-2 px-2.5 py-1.5 transition-colors duration-100 hover:bg-black/5"
-                  style={{ color: backdropUrl ? 'var(--accent-primary)' : 'var(--text-muted)' }}
-                >
-                  <ImagePlus size={12} />
-                  <span className="text-[11px]">Backdrop</span>
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="left">
-                {backdropUrl ? 'Change backdrop image' : 'Set a backdrop image'}
-              </TooltipContent>
-            </Tooltip>
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              aria-label={backdropUrl ? 'Change backdrop image' : 'Set backdrop image'}
+              className="flex items-center gap-2 px-2.5 py-1.5 transition-colors duration-100 hover:bg-black/5"
+              style={{ color: backdropUrl ? 'var(--accent-primary)' : 'var(--text-muted)' }}
+            >
+              <ImagePlus size={12} />
+              <span className="text-[11px]">Backdrop</span>
+            </button>
 
             {backdropUrl && (
               <>
                 <div className="h-px mx-2" style={{ background: 'var(--border-subtle)' }} />
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      onClick={() => setBackdrop(null)}
-                      aria-label="Remove backdrop"
-                      className="flex items-center gap-2 px-2.5 py-1.5 transition-colors duration-100 hover:bg-black/5"
-                      style={{ color: 'var(--accent-warm)' }}
-                    >
-                      <X size={12} />
-                      <span className="text-[11px]">Remove</span>
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="left">Remove backdrop image</TooltipContent>
-                </Tooltip>
+                <button
+                  onClick={() => setBackdrop(null)}
+                  aria-label="Remove backdrop"
+                  className="flex items-center gap-2 px-2.5 py-1.5 transition-colors duration-100 hover:bg-black/5"
+                  style={{ color: 'var(--accent-warm)' }}
+                >
+                  <X size={12} />
+                  <span className="text-[11px]">Remove</span>
+                </button>
               </>
             )}
           </>

@@ -507,9 +507,9 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions }: SVGRende
           </g>
         )}
 
-        {/* ── Nodes ─────────────────────────────────────────────────────────── */}
+        {/* ── Nodes (non-selected) ──────────────────────────────────────────── */}
         <g className="nodes">
-          {graph.nodes.map((node) => {
+          {graph.nodes.filter((n) => n.id !== selectedNodeId).map((node) => {
             if (!activeNodeIds.has(node.id)) return null;
 
             const isSelected    = selectedNodeId === node.id;
@@ -567,10 +567,6 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions }: SVGRende
               fillColor = `url(#ng-mastered-${node.clusterColor.slice(1)})`;
             else if (tier === 'understood' && node.clusterColor)
               fillColor = `url(#ng-understood-${node.clusterColor.slice(1)})`;
-            else if (tier === 'unexplored')
-              fillColor = node.clusterColor
-                ? node.clusterColor + (hasBackdrop ? '99' : '28')
-                : hasBackdrop ? 'rgba(123,110,196,0.55)' : 'rgba(123,110,196,0.14)';
             else if (node.clusterColor)
               fillColor = `url(#ng-${node.clusterColor.slice(1)})`;
             else fillColor = 'var(--color-node-fill)';
@@ -688,14 +684,14 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions }: SVGRende
                 {isFrontier && selectedNodeId && (
                   <motion.circle
                     key={`frontier-${node.id}-${selectedNodeId}`}
-                    r={radius + 12}
+                    r={radius + 10}
                     fill="none"
                     stroke="var(--accent-warm)"
-                    strokeWidth={1.8}
+                    strokeWidth={1.2}
                     className="pointer-events-none"
                     animate={{
-                      r: [radius + 10, radius + 20, radius + 10],
-                      opacity: [0.55, 0.08, 0.55],
+                      r: [radius + 8, radius + 16, radius + 8],
+                      opacity: [0.30, 0.04, 0.30],
                     }}
                     transition={{ duration: 1.9, repeat: Infinity, ease: 'easeInOut', delay: 0.15 }}
                   />
@@ -716,8 +712,8 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions }: SVGRende
 
                 {/* ── Centrality glow — core ────────────────────────────────── */}
                 {isCore && (
-                  <circle r={radius + (isNeighbor ? 18 : 12)} fill={glowColor}
-                    opacity={isNeighbor ? 0.12 : 0.06}
+                  <circle r={radius + (isNeighbor ? 14 : 12)} fill={glowColor}
+                    opacity={isNeighbor ? 0.07 : 0.06}
                     filter="url(#nodeGlow)" className="pointer-events-none"
                     style={{ transition: 'r 300ms ease-out, opacity 300ms ease-out' }}
                   />
@@ -725,8 +721,8 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions }: SVGRende
 
                 {/* ── Centrality glow — important ───────────────────────────── */}
                 {isImportant && (
-                  <circle r={radius + (isNeighbor ? 12 : 8)} fill={glowColor}
-                    opacity={isNeighbor ? 0.10 : 0.04}
+                  <circle r={radius + (isNeighbor ? 10 : 8)} fill={glowColor}
+                    opacity={isNeighbor ? 0.06 : 0.04}
                     filter="url(#nodeGlow)" className="pointer-events-none"
                     style={{ transition: 'r 300ms ease-out, opacity 300ms ease-out' }}
                   />
@@ -734,8 +730,8 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions }: SVGRende
 
                 {/* ── Neighbor ambient halo ─────────────────────────────────── */}
                 {isNeighbor && !isSelected && (
-                  <circle r={radius + 8} fill={node.clusterColor ?? 'var(--accent-primary)'}
-                    opacity={0.08} filter="url(#nodeGlow)" className="pointer-events-none"
+                  <circle r={radius + 6} fill={node.clusterColor ?? 'var(--accent-primary)'}
+                    opacity={0.05} filter="url(#nodeGlow)" className="pointer-events-none"
                   />
                 )}
 
@@ -867,40 +863,301 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions }: SVGRende
                   />
                 )}
 
-                {/* ── Label ─────────────────────────────────────────────────── */}
-                {renderLabel && (() => {
-                  const labelText = truncateWords(node.label, 4);
-                  const fontSize  = isSelected ? 13 : tier === 'mastered' ? 12 : 11;
-                  const labelW    = labelText.length * (fontSize * 0.52) + 14;
-                  const labelY    = radius + 5;
-                  const labelFill = isSelected ? '#5A4AAA'
-                    : tier === 'mastered'   ? '#3A90B8'
-                    : tier === 'understood' ? '#3A9870'
-                    : tier === 'reviewing'  ? '#B88A30'
-                    : isNeighbor ? '#5A5272'
-                    : tier === 'unexplored' ? '#857FAA'
-                    : '#504A6A';
-                  const backdropLabelFill = isSelected ? '#2A1E60' : '#251E3D';
-                  return (
-                    <g
-                      style={{ pointerEvents: 'none', userSelect: 'none' }}
-                      filter={hasBackdrop ? 'url(#labelShadow)' : undefined}
-                    >
-                      <rect
-                        x={-labelW / 2} y={labelY + 1} width={labelW} height={fontSize + 5}
-                        rx={4} fill={hasBackdrop ? 'rgba(255,255,255,0.97)' : 'rgba(245,243,251,0.90)'} opacity={1}
-                      />
-                      <text dy="1em" y={labelY} textAnchor="middle"
-                        fill={hasBackdrop ? backdropLabelFill : labelFill} fontSize={fontSize}
-                        fontFamily="Geist, system-ui, sans-serif"
-                        fontWeight={isSelected || tier === 'mastered' ? '600' : '500'}
-                        style={{ transition: 'fill 200ms ease-out' }}
-                      >
-                        {labelText}
-                      </text>
-                    </g>
-                  );
-                })()}
+              </g>
+            );
+          })}
+        </g>
+
+        {/* ── Non-selected labels ───────────────────────────────────────────── */}
+        <g className="node-labels" style={{ pointerEvents: 'none', userSelect: 'none' }}>
+          {graph.nodes.filter((n) => n.id !== selectedNodeId).map((node) => {
+            if (!activeNodeIds.has(node.id)) return null;
+
+            const isSelected  = selectedNodeId === node.id;
+            const isHovered   = hoveredNodeId  === node.id;
+            const isNeighbor  = neighborNodeIds.has(node.id);
+            const isEdgeEndpt = selectedEdgeNodeIds.has(node.id);
+            const hasSelection = selectedNodeId !== null || selectedEdgeId !== null;
+
+            const ls = (learningStates[node.id] ?? 'unset') as LearningState;
+            const tier: VisualTier = LEARNING_STATE_TO_TIER[ls] ?? 'visited';
+            const tierCfg = TIER_CONFIG[tier];
+            const radius = (node.size ?? 14) * tierCfg.radiusMult;
+            const nodeDepth = selectedNodeId ? (nodeDepthMap.get(node.id) ?? 3) : 0;
+
+            const labelCentralityThreshold =
+              tier === 'unexplored'
+                ? (zoom < 1.0 ? 0.62 : 0.40)
+                : zoom < 0.5 ? 0.42
+                : zoom < 0.8 ? 0.22
+                : zoom < 1.2 ? 0.10 : 0;
+
+            const alwaysShowLabel = isSelected || isHovered || isNeighbor
+              || tier === 'mastered' || tier === 'understood';
+            const showLabel = alwaysShowLabel || (
+              (lodLevel.showLabels || (isHovered && lodLevel.showLabelsOnHover)) &&
+              node.centrality >= labelCentralityThreshold
+            );
+            if (!(showLabel && 12 * zoom >= 8)) return null;
+
+            // Mirror node opacity so labels fade with their node
+            const distFromCenter = Math.hypot((node.x ?? 0) - graphCx, (node.y ?? 0) - graphCy);
+            const depthFade = !hasSelection
+              ? Math.max(hasBackdrop ? 0.82 : 0.75, 1 - (distFromCenter / graphMaxDist) * (hasBackdrop ? 0.15 : 0.18))
+              : 1;
+            let labelOpacity = depthFade;
+            if (!hasSelection && tier === 'unexplored') labelOpacity = Math.min(labelOpacity, 0.75);
+            if (hasSelection) {
+              if (selectedNodeId !== null) {
+                if (isNeighbor) labelOpacity = 0.45;
+                else if (nodeDepth === 2) labelOpacity = 0.15;
+                else labelOpacity = 0.08;
+              } else {
+                labelOpacity = isEdgeEndpt ? 0.45 : 0.08;
+              }
+            }
+            if (filteredNodeIds !== null) labelOpacity = filteredNodeIds.has(node.id) ? 1 : 0.08;
+
+            const labelText = truncateWords(node.label, 4);
+            const fontSize  = isSelected ? 13 : tier === 'mastered' ? 12 : 11;
+            const labelW    = labelText.length * (fontSize * 0.52) + 14;
+            const labelY    = radius + 5;
+            const labelFill = isSelected ? '#5A4AAA'
+              : tier === 'mastered'   ? '#3A90B8'
+              : tier === 'understood' ? '#3A9870'
+              : tier === 'reviewing'  ? '#B88A30'
+              : isNeighbor ? '#5A5272'
+              : tier === 'unexplored' ? '#857FAA'
+              : '#504A6A';
+            const backdropLabelFill = isSelected ? '#2A1E60' : '#251E3D';
+
+            return (
+              <g
+                key={`label-${node.id}`}
+                transform={`translate(${node.x ?? 0}, ${node.y ?? 0})`}
+                style={{ opacity: labelOpacity, transition: 'opacity 320ms ease-out' }}
+                filter={hasBackdrop ? 'url(#labelShadow)' : undefined}
+              >
+                <rect
+                  x={-labelW / 2} y={labelY + 1} width={labelW} height={fontSize + 5}
+                  rx={4} fill={hasBackdrop ? 'rgba(255,255,255,0.97)' : 'rgba(245,243,251,0.90)'} opacity={1}
+                />
+                <text dy="1em" y={labelY} textAnchor="middle"
+                  fill={hasBackdrop ? backdropLabelFill : labelFill} fontSize={fontSize}
+                  fontFamily="Geist, system-ui, sans-serif"
+                  fontWeight={isSelected || tier === 'mastered' ? '600' : '500'}
+                  style={{ transition: 'fill 200ms ease-out' }}
+                >
+                  {labelText}
+                </text>
+              </g>
+            );
+          })}
+        </g>
+
+        {/* ── Selected node body ────────────────────────────────────────────── */}
+        <g className="nodes">
+          {graph.nodes.filter((n) => n.id === selectedNodeId).map((node) => {
+            if (!activeNodeIds.has(node.id)) return null;
+
+            const isSelected    = selectedNodeId === node.id;
+            const isHovered     = hoveredNodeId  === node.id;
+            const isNeighbor    = neighborNodeIds.has(node.id);
+            const isEdgeEndpt   = selectedEdgeNodeIds.has(node.id);
+            const isFrontier    = frontierNodeIds.has(node.id);
+            const isNextSuggest = node.id === nextSuggestionNodeId;
+            const hasSelection  = selectedNodeId !== null || selectedEdgeId !== null;
+
+            const ls = (learningStates[node.id] ?? 'unset') as LearningState;
+            const tier: VisualTier = LEARNING_STATE_TO_TIER[ls] ?? 'visited';
+            const tierCfg = TIER_CONFIG[tier];
+            const radius = (node.size ?? 14) * tierCfg.radiusMult;
+            const nodeDepth = selectedNodeId ? (nodeDepthMap.get(node.id) ?? 3) : 0;
+
+            const distFromCenter = Math.hypot((node.x ?? 0) - graphCx, (node.y ?? 0) - graphCy);
+            const depthFade = !hasSelection
+              ? Math.max(hasBackdrop ? 0.82 : 0.75, 1 - (distFromCenter / graphMaxDist) * (hasBackdrop ? 0.15 : 0.18))
+              : 1;
+            let nodeOpacity = depthFade;
+            if (!hasSelection && tier === 'unexplored') nodeOpacity = Math.min(nodeOpacity, 0.75);
+            if (hasSelection) {
+              if (selectedNodeId !== null) {
+                if (isSelected || isNeighbor) nodeOpacity = 1;
+                else if (nodeDepth === 2) nodeOpacity = 0.68;
+                else nodeOpacity = 0.30;
+              } else {
+                nodeOpacity = isEdgeEndpt ? 1 : 0.12;
+              }
+            }
+            if (filteredNodeIds !== null) nodeOpacity = filteredNodeIds.has(node.id) ? 1 : 0.08;
+
+            let nodeFilter: string | undefined;
+            if (selectedNodeId !== null) {
+              if (nodeDepth === 2) nodeFilter = 'url(#depthFog-light)';
+              else if (nodeDepth >= 3) nodeFilter = 'url(#depthFog-heavy)';
+            }
+
+            let fillColor: string;
+            if (isSelected)    fillColor = 'url(#ng-selected)';
+            else if (isEdgeEndpt || isHovered) fillColor = 'url(#ng-hover)';
+            else if (tier === 'mastered' && node.clusterColor)
+              fillColor = `url(#ng-mastered-${node.clusterColor.slice(1)})`;
+            else if (tier === 'understood' && node.clusterColor)
+              fillColor = `url(#ng-understood-${node.clusterColor.slice(1)})`;
+            else if (node.clusterColor)
+              fillColor = `url(#ng-${node.clusterColor.slice(1)})`;
+            else fillColor = 'var(--color-node-fill)';
+
+            let strokeColor: string;
+            let strokeWidth: number;
+            let strokeDash: string | undefined;
+            if (isSelected) {
+              strokeColor = 'var(--accent-bright)'; strokeWidth = 2;
+            } else if (isEdgeEndpt) {
+              strokeColor = node.clusterColor ? node.clusterColor + 'CC' : 'var(--accent-primary)'; strokeWidth = 2;
+            } else if (isNextSuggest) {
+              strokeColor = 'var(--accent-warm)'; strokeWidth = 1.5;
+            } else if (isNeighbor) {
+              strokeColor = node.clusterColor ? node.clusterColor + 'CC' : 'var(--accent-primary)'; strokeWidth = 1.8;
+            } else {
+              if (tier === 'mastered')        { strokeColor = '#60C0E8';    strokeWidth = 1.5; }
+              else if (tier === 'understood') { strokeColor = '#60C898CC';  strokeWidth = 1.2; }
+              else if (tier === 'reviewing')  { strokeColor = '#D4A84099';  strokeWidth = 1.0; }
+              else if (tier === 'unexplored') {
+                strokeColor = node.clusterColor ? node.clusterColor + '40' : 'rgba(123,110,196,0.22)';
+                strokeWidth = 0.7; strokeDash = '3 2';
+              } else {
+                strokeColor = node.clusterColor ? node.clusterColor + 'AA' : 'var(--color-node-ring)';
+                strokeWidth = 1;
+              }
+            }
+
+            const glowColor   = node.clusterColor ?? 'var(--accent-primary)';
+            const isCore      = node.centrality >= 0.65;
+            const isImportant = node.centrality >= 0.4 && node.centrality < 0.65;
+            const revealDelay = nodeRevealDelay.get(node.id) ?? 0;
+            const learningRingColor = ls === 'unset' ? null
+              : ls === 'understood' ? 'var(--color-state-understood)'
+              : ls === 'reviewing'  ? 'var(--color-state-reviewing)'
+              : ls === 'weak'       ? 'var(--color-state-weak)'
+              : ls === 'mastered'   ? 'var(--color-state-mastered)'
+              : null;
+
+            return (
+              <g
+                key={`sel-body-${node.id}`}
+                transform={`translate(${node.x ?? 0}, ${node.y ?? 0})`}
+                className="pointer-events-auto cursor-pointer"
+                onClick={(e) => { e.stopPropagation(); handleNodeClick(node.id, e.shiftKey); }}
+                onDoubleClick={(e) => { e.stopPropagation(); handleNodeDoubleClick(node.id); }}
+                onMouseEnter={() => hoverNode(node.id)}
+                onMouseLeave={() => hoverNode(null)}
+                role="button"
+                aria-label={`Concept: ${node.label}`}
+                tabIndex={0}
+                style={{ opacity: nodeOpacity, filter: nodeFilter, transition: 'opacity 320ms ease-out, filter 320ms ease-out', outline: 'none' }}
+              >
+                {/* Strong outer glow — clearly outshines neighbor halos */}
+                <circle r={radius + 22} fill="var(--accent-primary)"
+                  opacity={0.18} filter="url(#nodeGlow)" className="pointer-events-none"
+                />
+
+                {/* Centrality glow (selected gets full brightness, not dimmed) */}
+                {isCore && (
+                  <circle r={radius + 18} fill={glowColor}
+                    opacity={0.14} filter="url(#nodeGlow)" className="pointer-events-none" />
+                )}
+                {isImportant && (
+                  <circle r={radius + 14} fill={glowColor}
+                    opacity={0.10} filter="url(#nodeGlow)" className="pointer-events-none" />
+                )}
+
+                {/* Learning state ring */}
+                {learningRingColor && !['mastered', 'understood', 'reviewing'].includes(tier) && (
+                  <circle r={radius + 6} fill="none"
+                    strokeWidth={1.5} stroke={learningRingColor} opacity={0.7}
+                    className="pointer-events-none" />
+                )}
+
+                {/* Selection pulse ring — prominent, clearly beats frontier/neighbor rings */}
+                <motion.circle r={radius + 8} fill="none"
+                  stroke="var(--accent-primary)" strokeWidth={2.5} strokeOpacity={0.7}
+                  className="pointer-events-none"
+                  animate={{ r: [radius + 7, radius + 16, radius + 7], opacity: [0.75, 0.12, 0.75] }}
+                  transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
+                />
+                {/* Steady inner selection ring */}
+                <circle r={radius + 5} fill="none"
+                  stroke="var(--accent-bright)" strokeWidth={1.5} opacity={0.55}
+                  className="pointer-events-none" />
+
+                {/* White halo */}
+                {hasBackdrop ? (
+                  <motion.circle
+                    initial={{ r: 0 }} animate={{ r: radius + 4 }}
+                    transition={{ delay: revealDelay, duration: 0.4, ease: [0.34, 1.56, 0.64, 1] }}
+                    fill="rgba(255,255,255,0.92)" filter="url(#nodeBackdropShadow)"
+                    style={{ pointerEvents: 'none' }}
+                  />
+                ) : (
+                  <motion.circle
+                    initial={{ r: 0 }} animate={{ r: radius + 3 }}
+                    transition={{ delay: revealDelay, duration: 0.4, ease: [0.34, 1.56, 0.64, 1] }}
+                    fill="rgba(255,255,255,0.88)" stroke="rgba(255,255,255,0.60)" strokeWidth={1.5}
+                    style={{ pointerEvents: 'none' }}
+                  />
+                )}
+
+                {/* Node body */}
+                <motion.circle
+                  key={`${graph.id}-${node.id}`}
+                  initial={{ r: 0 }} animate={{ r: radius }}
+                  transition={{ delay: revealDelay, duration: 0.4, ease: [0.34, 1.56, 0.64, 1] }}
+                  fill={fillColor} stroke={strokeColor} strokeWidth={strokeWidth}
+                  strokeDasharray={strokeDash}
+                  style={{ transition: 'fill 250ms ease-out, stroke 250ms ease-out' }}
+                />
+              </g>
+            );
+          })}
+        </g>
+
+        {/* ── Selected node label ───────────────────────────────────────────── */}
+        <g className="node-labels" style={{ pointerEvents: 'none', userSelect: 'none' }}>
+          {graph.nodes.filter((n) => n.id === selectedNodeId).map((node) => {
+            if (!activeNodeIds.has(node.id)) return null;
+
+            const isSelected  = true;
+            const isNeighbor  = false;
+            const ls = (learningStates[node.id] ?? 'unset') as LearningState;
+            const tier: VisualTier = LEARNING_STATE_TO_TIER[ls] ?? 'visited';
+            const tierCfg = TIER_CONFIG[tier];
+            const radius = (node.size ?? 14) * tierCfg.radiusMult;
+
+            const labelText = truncateWords(node.label, 4);
+            const fontSize  = 13;
+            const labelW    = labelText.length * (fontSize * 0.52) + 14;
+            const labelY    = radius + 5;
+            const labelFill = '#5A4AAA';
+            const backdropLabelFill = '#2A1E60';
+
+            return (
+              <g
+                key={`sel-label-${node.id}`}
+                transform={`translate(${node.x ?? 0}, ${node.y ?? 0})`}
+                filter={hasBackdrop ? 'url(#labelShadow)' : undefined}
+              >
+                <rect
+                  x={-labelW / 2} y={labelY + 1} width={labelW} height={fontSize + 5}
+                  rx={4} fill={hasBackdrop ? 'rgba(255,255,255,0.97)' : 'rgba(245,243,251,0.90)'} opacity={1}
+                />
+                <text dy="1em" y={labelY} textAnchor="middle"
+                  fill={hasBackdrop ? backdropLabelFill : labelFill} fontSize={fontSize}
+                  fontFamily="Geist, system-ui, sans-serif" fontWeight="600"
+                  style={{ transition: 'fill 200ms ease-out' }}
+                >
+                  {labelText}
+                </text>
               </g>
             );
           })}

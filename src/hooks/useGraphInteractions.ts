@@ -11,7 +11,7 @@
 
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, useRef } from 'react';
 import { useGraphStore, getNeighborNodeIds } from '@/store/graph.store';
 import { useUIStore } from '@/store/ui.store';
 import { clamp } from '@/lib/utils';
@@ -41,28 +41,36 @@ export function useGraphInteractions() {
 
   const { openNodeDetail, closeNodeDetail } = useUIStore();
 
+  // Remember zoom level before we zoomed in on a node, so we can restore it on deselect.
+  const preNodeZoom = useRef<number | null>(null);
+
   const handleNodeClick = useCallback(
     (nodeId: string, shiftKey = false): void => {
       if (shiftKey) { multiSelectNode(nodeId); return; }
       if (selectedNodeId === nodeId) { clearSelection(); return; }
 
       selectNode(nodeId);
-      // Close edge panel if it was open; node detail is handled by ConceptExpansion overlay
       closeNodeDetail();
 
-      // Smooth camera pan: center the selected node in the viewport.
+      const NODE_CLICK_ZOOM = 1.6;
+      // Only save the pre-click zoom if we're actually going to zoom in.
+      if (zoom < NODE_CLICK_ZOOM) {
+        preNodeZoom.current = zoom;
+      }
+      const targetZoom = Math.max(zoom, NODE_CLICK_ZOOM);
+      setZoom(targetZoom);
+
       if (graph) {
         const node = graph.nodes.find((n) => n.id === nodeId);
         if (node && node.x != null && node.y != null) {
-          // Offset -220px so node sits left of center, giving the right panel space.
           setPan({
-            x: -(node.x * zoom) - 220,
-            y: -(node.y * zoom),
+            x: -(node.x * targetZoom) - 220,
+            y: -(node.y * targetZoom),
           });
         }
       }
     },
-    [selectedNodeId, graph, zoom, selectNode, clearSelection, multiSelectNode, closeNodeDetail, setPan],
+    [selectedNodeId, graph, zoom, selectNode, clearSelection, multiSelectNode, closeNodeDetail, setZoom, setPan],
   );
 
   // Navigate to a node without toggling selection or closing the detail panel.
@@ -70,17 +78,20 @@ export function useGraphInteractions() {
   const navigateToNode = useCallback(
     (nodeId: string): void => {
       selectNode(nodeId);
+      const NODE_CLICK_ZOOM = 1.6;
+      const targetZoom = Math.max(zoom, NODE_CLICK_ZOOM);
+      setZoom(targetZoom);
       if (graph) {
         const node = graph.nodes.find((n) => n.id === nodeId);
         if (node && node.x != null && node.y != null) {
           setPan({
-            x: -(node.x * zoom) - 220,
-            y: -(node.y * zoom),
+            x: -(node.x * targetZoom) - 220,
+            y: -(node.y * targetZoom),
           });
         }
       }
     },
-    [graph, zoom, selectNode, setPan],
+    [graph, zoom, selectNode, setZoom, setPan],
   );
 
   const handleNodeDoubleClick = useCallback(
@@ -103,7 +114,13 @@ export function useGraphInteractions() {
 
   const handleCanvasClick = useCallback((): void => {
     clearSelection();
-  }, [clearSelection]);
+    closeNodeDetail();
+    // Restore the zoom level we had before clicking a node.
+    if (preNodeZoom.current !== null) {
+      setZoom(preNodeZoom.current);
+      preNodeZoom.current = null;
+    }
+  }, [clearSelection, closeNodeDetail, setZoom]);
 
   const handleCanvasDoubleClick = useCallback((): void => {
     setZoom(1.25);

@@ -85,8 +85,19 @@ const CLUSTER_COLORS: Record<string, string> = {
   'cluster-e': '#5AA0A8',
 };
 
+// Extended palette for cluster IDs beyond the 5 predefined ones
+const CLUSTER_PALETTE = [
+  '#C86870', '#5EAB82', '#9080C0', '#C89840', '#5AA0A8',
+  '#D4748C', '#4FA88A', '#7B6FD4', '#C4A030', '#3A98B0',
+  '#B05868', '#5A9878', '#8868C8', '#C49030', '#4A90A8',
+];
+
 function clusterColor(id: string): string {
-  return CLUSTER_COLORS[id] ?? '#4A4A6A';
+  if (CLUSTER_COLORS[id]) return CLUSTER_COLORS[id];
+  // Deterministic hash so the same cluster ID always maps to the same color
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) >>> 0;
+  return CLUSTER_PALETTE[hash % CLUSTER_PALETTE.length];
 }
 
 // ── Label-aware comfort radius for raw API nodes ─────────────────────────────
@@ -100,7 +111,7 @@ function rawComfortRadius(n: RawNode): number {
   const size = 8 + Math.min(1, Math.max(0, n.centrality)) * 16; // mirrors GraphNode size calc
   const br = Math.max(14, size);
   const halfLabel = estimateLabelWidth(n.label) / 2;
-  return Math.max(br + 10, halfLabel, 54);
+  return Math.max(br + 8, halfLabel, 42);
 }
 
 function assignPositions(nodes: RawNode[]): Map<string, { x: number; y: number }> {
@@ -113,7 +124,7 @@ function assignPositions(nodes: RawNode[]): Map<string, { x: number; y: number }
   const clusterIds = [...clusters.keys()];
 
   // Outer ring: generous cluster separation (~85 px per cluster).
-  const outerRadius = Math.max(180, clusterIds.length * 65);
+  const outerRadius = Math.max(180, clusterIds.length * 60);
   const positions = new Map<string, { x: number; y: number }>();
 
   clusterIds.forEach((cid, ci) => {
@@ -125,7 +136,7 @@ function assignPositions(nodes: RawNode[]): Map<string, { x: number; y: number }
     const sorted = [...members].sort((a, b) => (b.centrality ?? 0) - (a.centrality ?? 0));
 
     // Inner ring: sized so adjacent arc spacing ≈ 145 px (n * 24 px formula).
-    const innerRadius = Math.max(60, sorted.length * 18);
+    const innerRadius = Math.max(55, sorted.length * 16);
 
     sorted.forEach((n, ni) => {
       if (ni === 0) {
@@ -140,21 +151,19 @@ function assignPositions(nodes: RawNode[]): Map<string, { x: number; y: number }
     });
   });
 
-  // ── Label-aware collision resolution ──────────────────────────────────────
-  // Dynamic minSep per pair = cr_i + cr_j + 14 so label bounding boxes never touch.
-  const crMap = new Map(nodes.map((n) => [n.id, rawComfortRadius(n)]));
+  // Minimal collision resolution — only prevents exact overlaps.
+  const MIN_SEP = 50;
   const pts = [...positions.entries()].map(([id, p]) => ({ id, x: p.x, y: p.y }));
 
-  for (let iter = 0; iter < 150; iter++) {
+  for (let iter = 0; iter < 60; iter++) {
     let moved = false;
     for (let i = 0; i < pts.length; i++) {
       for (let j = i + 1; j < pts.length; j++) {
         const dx = pts[j].x - pts[i].x;
         const dy = pts[j].y - pts[i].y;
         const dist = Math.sqrt(dx * dx + dy * dy) || 0.01;
-        const minSep = (crMap.get(pts[i].id) ?? 54) + (crMap.get(pts[j].id) ?? 54) + 8;
-        if (dist < minSep) {
-          const push = (minSep - dist) / 2;
+        if (dist < MIN_SEP) {
+          const push = (MIN_SEP - dist) / 2;
           const ux = dx / dist;
           const uy = dy / dist;
           pts[i].x -= ux * push;
