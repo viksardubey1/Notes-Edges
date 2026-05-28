@@ -20,6 +20,10 @@ export type AuthResult =
   | { ok: true; session: Session }
   | { ok: false; error: string };
 
+export type SimpleResult =
+  | { ok: true }
+  | { ok: false; error: string };
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function toSession(user: { id: string; email?: string; user_metadata?: Record<string, unknown> }): Session {
@@ -100,6 +104,30 @@ export async function getSession(): Promise<Session | null> {
   const { data } = await supabase.auth.getSession();
   if (!data.session?.user) return null;
   return toSession(data.session.user);
+}
+
+export async function forgotPassword(email: string): Promise<SimpleResult> {
+  let res: Response;
+  try {
+    res = await fetch('/api/auth/forgot-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+  } catch {
+    return { ok: false, error: 'Network error. Please check your connection.' };
+  }
+  if (!res.ok) {
+    const json = await res.json() as { error?: string };
+    return { ok: false, error: json.error ?? 'Failed to send reset email.' };
+  }
+  return { ok: true };
+}
+
+export async function resetPassword(password: string): Promise<SimpleResult> {
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) return { ok: false, error: 'Reset link has expired or is invalid. Please request a new one.' };
+  return { ok: true };
 }
 
 export async function updateDisplayName(userId: string, name: string): Promise<void> {

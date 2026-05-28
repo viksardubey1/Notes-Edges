@@ -16,11 +16,14 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Handle errors forwarded from the OAuth callback
+  const [success, setSuccess] = useState('');
+
+  // Handle errors forwarded from the OAuth callback, and reset success
   useEffect(() => {
     const err = searchParams.get('error');
     if (err === 'auth_failed') setError('Google sign-in failed. Please try again.');
     else if (err === 'missing_code') setError('Authentication was cancelled. Please try again.');
+    if (searchParams.get('reset') === 'success') setSuccess('Password updated. You can now sign in.');
   }, [searchParams]);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -75,6 +78,9 @@ export default function LoginPage() {
       <div className="flex flex-col gap-1.5">
         <div className="flex items-center justify-between">
           <label htmlFor="password" className="text-[12px] font-medium" style={{ color: 'var(--text-secondary)' }}>Password</label>
+          <Link href="/forgot-password" className="text-[11px] transition-colors" style={{ color: 'var(--accent-primary)' }}>
+            Forgot password?
+          </Link>
         </div>
         <div className="relative">
           <input
@@ -98,6 +104,14 @@ export default function LoginPage() {
           </button>
         </div>
       </div>
+
+      {success && (
+        <div className="px-3 py-2.5 rounded-[8px] text-[12px]"
+          style={{ background: 'rgba(78,180,130,0.10)', border: '1px solid rgba(78,180,130,0.30)', color: '#3A9870' }}
+          role="status" aria-live="polite">
+          {success}
+        </div>
+      )}
 
       {error && (
         <div className="px-3 py-2.5 rounded-[8px] text-[12px]"
