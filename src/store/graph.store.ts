@@ -96,7 +96,7 @@ export const useGraphStore = create<GraphState>()(
     mode: 'default',
 
     // ─── Viewport ────────────────────────────────────────────────────────────
-    zoom: 1.25,
+    zoom: 1.6,
     pan: { x: 0, y: 0 },
 
     // ─── Filters ─────────────────────────────────────────────────────────────
@@ -342,7 +342,7 @@ export const useGraphStore = create<GraphState>()(
         const gW = maxX - minX;
         const gH = maxY - minY;
         if (gW <= 0 || gH <= 0) return;
-        const zoom = Math.max(0.35, Math.min(dimensions.width / gW, dimensions.height / gH, 1.6) * 0.85);
+        const zoom = Math.max(0.35, Math.min(dimensions.width / gW, dimensions.height / gH, 2.0) * 1.05);
         draft.zoom = zoom;
         draft.pan = { x: -((minX + maxX) / 2) * zoom, y: -((minY + maxY) / 2) * zoom };
       }),
