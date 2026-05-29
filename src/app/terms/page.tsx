@@ -142,7 +142,11 @@ export default function TermsPage() {
 
           <Section title="14. Contact">
             <p style={{ color: '#5A5272' }}>
-              Questions about these Terms? You can reach us via the feedback option in the app settings, or by opening a support request from within your account.
+              Questions about these Terms? Email us at{' '}
+              <a href="mailto:notes.edges.support@gmail.com" style={{ color: '#7B6EC4' }}>
+                notes.edges.support@gmail.com
+              </a>{' '}
+              or reach us via the feedback option in the app settings.
             </p>
           </Section>
 

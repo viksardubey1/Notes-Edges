@@ -146,7 +146,11 @@ export default function PrivacyPage() {
 
           <Section title="11. Contact">
             <p style={{ color: '#5A5272' }}>
-              Questions or concerns about this policy? You can reach us via the feedback option in the app settings, or by opening a support request from within your account.
+              Questions or concerns about this policy? Email us at{' '}
+              <a href="mailto:notes.edges.support@gmail.com" style={{ color: '#7B6EC4' }}>
+                notes.edges.support@gmail.com
+              </a>{' '}
+              or reach us via the feedback option in the app settings.
             </p>
           </Section>
 
