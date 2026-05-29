@@ -897,7 +897,7 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions }: SVGRende
             if (!hasSelection && tier === 'unexplored') labelOpacity = Math.min(labelOpacity, 0.75);
             if (hasSelection) {
               if (selectedNodeId !== null) {
-                if (isNeighbor) labelOpacity = 0.45;
+                if (isNeighbor) labelOpacity = 0.62;
                 else if (nodeDepth === 2) labelOpacity = 0.15;
                 else labelOpacity = 0.08;
               } else {
