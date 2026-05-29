@@ -39,11 +39,11 @@ export const metadata: Metadata = {
     description: 'Your knowledge, finally connected.',
     type: 'website',
     url: '/',
-    images: [{ url: '/og-image.png', width: 200, height: 196, alt: 'Notes & Edges' }],
+    images: [{ url: 'https://notes-edges.com/og-image.png', width: 200, height: 196, alt: 'Notes & Edges' }],
   },
   twitter: {
     card: 'summary',
-    images: ['/og-image.png'],
+    images: ['https://notes-edges.com/og-image.png'],
   },
 };
 
