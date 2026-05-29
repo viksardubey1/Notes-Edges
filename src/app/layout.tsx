@@ -33,10 +33,12 @@ export const metadata: Metadata = {
     'Upload your notes. Watch your ideas become a living knowledge graph. Notes & Edges transforms what you have read, learned, and thought into a map of understanding.',
   keywords: ['knowledge graph', 'notes', 'AI', 'second brain', 'learning'],
   authors: [{ name: 'Notes & Edges' }],
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? 'https://notesandedges.com'),
   openGraph: {
     title: 'Notes & Edges — Think in graphs.',
     description: 'Your knowledge, finally connected.',
     type: 'website',
+    url: '/',
   },
 };
 
