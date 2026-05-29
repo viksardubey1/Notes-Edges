@@ -8,7 +8,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { PanelLeft, LogOut, Check, Plus, RotateCcw, AlertTriangle, Upload, ChevronDown, Copy } from 'lucide-react';
+import { PanelLeft, LogOut, Check, Plus, RotateCcw, AlertTriangle, Upload, ChevronDown, Copy, Share2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
@@ -39,6 +39,7 @@ export function CommandBar({ projectName = 'Untitled Graph', graphId }: CommandB
   const [addNodeOpen, setAddNodeOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [isCopying, setIsCopying] = useState(false);
+  const [shareCopied, setShareCopied] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -85,6 +86,15 @@ export function CommandBar({ projectName = 'Untitled Graph', graphId }: CommandB
   const handleReset = () => { clearGraph(); setShowResetConfirm(false); };
 
   const isOwnGraph = !graph || !session || graph.userId === session.userId;
+
+  const handleShare = () => {
+    if (!graph) return;
+    const url = `${window.location.origin}/graph/${graph.id}`;
+    void navigator.clipboard.writeText(url).then(() => {
+      setShareCopied(true);
+      setTimeout(() => setShareCopied(false), 2000);
+    });
+  };
 
   const handleMakeCopy = async () => {
     if (!graph || !session || isCopying) return;
@@ -239,6 +249,22 @@ export function CommandBar({ projectName = 'Untitled Graph', graphId }: CommandB
         {/* Right: Actions + user */}
         <div className="flex items-center gap-0.5 flex-shrink-0">
           {graph && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost" size="icon"
+                  onClick={handleShare}
+                  aria-label="Share graph"
+                  style={{ color: shareCopied ? 'var(--accent-primary)' : 'var(--text-muted)' } as React.CSSProperties}
+                >
+                  {shareCopied ? <Check size={15} /> : <Share2 size={15} />}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{shareCopied ? 'Link copied!' : 'Share graph'}</TooltipContent>
+            </Tooltip>
+          )}
+
+          {graph && isOwnGraph && (
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
