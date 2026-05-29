@@ -20,9 +20,10 @@ export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get('code');
 
-  // Only allow relative redirects to prevent open-redirect attacks
+  // Only allow relative redirects to prevent open-redirect attacks.
+  // Must start with '/' but NOT '//' (protocol-relative URLs like //evil.com).
   const rawNext = searchParams.get('next') ?? '/home';
-  const next = rawNext.startsWith('/') ? rawNext : '/home';
+  const next = rawNext.startsWith('/') && !rawNext.startsWith('//') ? rawNext : '/home';
 
   if (!code) {
     return NextResponse.redirect(`${origin}/login?error=missing_code`);

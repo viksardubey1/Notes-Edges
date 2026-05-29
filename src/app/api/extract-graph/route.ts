@@ -11,6 +11,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
 import { sanitizeForPrompt, rateLimitBody, LIMITS } from '@/lib/sanitize';
 import type { GraphData, GraphNode, GraphEdge, SemanticEdgeType, DepthLevel, GraphIntelligenceSummary } from '@/types/graph';
@@ -259,6 +261,25 @@ RULES:
 - centrality: 1.0 = everything depends on understanding this; 0.1 = peripheral detail`;
 
 export async function POST(req: NextRequest) {
+  // ── Auth check ─────────────────────────────────────────────────────────────
+  const cookieStore = await cookies();
+  const supabaseAuth = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() { return cookieStore.getAll(); },
+        setAll(cookiesToSet) {
+          for (const { name, value, options } of cookiesToSet) cookieStore.set(name, value, options);
+        },
+      },
+    },
+  );
+  const { data: { session } } = await supabaseAuth.auth.getSession();
+  if (!session) {
+    return NextResponse.json({ error: 'Authentication required.' }, { status: 401 });
+  }
+
   // ── Rate limiting ──────────────────────────────────────────────────────────
   const ip = getClientIp(req);
   const rl = checkRateLimit(`ai:extract:${ip}`, AI_RATE_LIMIT.max, AI_RATE_LIMIT.windowMs);

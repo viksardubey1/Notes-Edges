@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { Logo } from '@/components/ui/Logo';
 
-const LAST_UPDATED = 'May 25, 2025';
+const LAST_UPDATED = 'May 26, 2026';
 
 export default function TermsPage() {
   return (
@@ -142,7 +142,7 @@ export default function TermsPage() {
 
           <Section title="14. Contact">
             <p style={{ color: '#5A5272' }}>
-              Questions about these Terms? You can reach us through the app.
+              Questions about these Terms? You can reach us via the feedback option in the app settings, or by opening a support request from within your account.
             </p>
           </Section>
 

@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { Logo } from '@/components/ui/Logo';
 
-const LAST_UPDATED = 'May 25, 2025';
+const LAST_UPDATED = 'May 26, 2026';
 
 export default function PrivacyPage() {
   return (
@@ -68,7 +68,7 @@ export default function PrivacyPage() {
 
           <Section title="3. AI Processing">
             <p style={{ color: '#5A5272' }}>
-              To generate your knowledge graph, your note content is sent to a third-party AI provider (currently Anthropic). This transmission is encrypted in transit. We do not permit our AI providers to use your note content to train their own models, and our agreements with them restrict use of your data to processing your requests only.
+              To generate your knowledge graph, your note content is sent to a third-party AI provider (currently Google, via the Gemini API). This transmission is encrypted in transit. We do not permit our AI providers to use your note content to train their own models, and our agreements with them restrict use of your data to processing your requests only.
             </p>
             <p className="mt-3" style={{ color: '#5A5272' }}>
               You should not paste content that is confidential, classified, or subject to non-disclosure obligations unless you are comfortable with it being transmitted to an AI processing service.
@@ -81,7 +81,7 @@ export default function PrivacyPage() {
             </p>
             <ul className="flex flex-col gap-2 list-none pl-0 mt-3">
               {[
-                'Service providers — Supabase (database and authentication), Vercel (hosting), and Anthropic (AI processing). Each is bound by data processing agreements.',
+                'Service providers — Supabase (database and authentication) and Google (AI processing via the Gemini API). Each is bound by data processing agreements.',
                 'Legal requirements — if required by law, court order, or to protect the rights, property, or safety of Notes & Edges or its users.',
                 'Business transfers — in the event of a merger, acquisition, or sale of assets, your data may transfer to the successor entity, subject to the same privacy commitments.',
               ].map((item, i) => (
@@ -146,7 +146,7 @@ export default function PrivacyPage() {
 
           <Section title="11. Contact">
             <p style={{ color: '#5A5272' }}>
-              Questions or concerns about this policy? You can reach us through the app.
+              Questions or concerns about this policy? You can reach us via the feedback option in the app settings, or by opening a support request from within your account.
             </p>
           </Section>
 
