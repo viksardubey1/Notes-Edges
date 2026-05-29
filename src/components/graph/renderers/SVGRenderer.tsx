@@ -1173,7 +1173,7 @@ function EdgeLabelPill({ edge, sourceNode, targetNode, semType }: EdgeLabelPillP
   const midX = ((sourceNode.x ?? 0) + (targetNode.x ?? 0)) / 2;
   const midY = ((sourceNode.y ?? 0) + (targetNode.y ?? 0)) / 2;
   const typeStyle = EDGE_TYPE_STYLES[semType] ?? EDGE_TYPE_STYLES.default;
-  const text = SEM_TYPE_LABEL[semType as SemanticEdgeType] ?? truncateWords(edge.label, 4);
+  const text = (edge.label ? truncateWords(edge.label, 4) : null) ?? SEM_TYPE_LABEL[semType as SemanticEdgeType] ?? '';
   const width = text.length * 6.5 + 16;
   return (
     <g transform={`translate(${midX}, ${midY})`} className="pointer-events-none">
