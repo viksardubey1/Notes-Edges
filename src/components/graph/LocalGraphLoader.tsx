@@ -21,17 +21,26 @@ interface LocalGraphLoaderProps {
 
 export function LocalGraphLoader({ graphId, fallback }: LocalGraphLoaderProps) {
   const setGraph = useGraphStore((s) => s.setGraph);
-  const { session } = useAuth();
+  const { session, loading } = useAuth();
 
   useEffect(() => {
-    if (!session) {
-      setGraph(fallback);
-      return;
+    if (loading) return;
+
+    if (session) {
+      loadGraph(session.userId, graphId).then((graph) => {
+        if (graph) { setGraph(graph); return; }
+        // Fall back to public API if RLS blocked it
+        fetch(`/api/graphs/${graphId}`)
+          .then((r) => r.ok ? r.json() : null)
+          .then((data) => setGraph(data?.graph ?? fallback));
+      });
+    } else {
+      // Not logged in — fetch via public API
+      fetch(`/api/graphs/${graphId}`)
+        .then((r) => r.ok ? r.json() : null)
+        .then((data) => setGraph(data?.graph ?? fallback));
     }
-    loadGraph(session.userId, graphId).then((graph) => {
-      setGraph(graph ?? fallback);
-    });
-  }, [graphId, fallback, session, setGraph]);
+  }, [graphId, fallback, session, loading, setGraph]);
 
   return null;
 }
