@@ -697,18 +697,6 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions }: SVGRende
                   />
                 )}
 
-                {/* ── Neighbor awakening pulse ───────────────────────────────── */}
-                {isNeighbor && selectedNodeId && (
-                  <motion.circle
-                    key={`awaken-${node.id}-${selectedNodeId}`}
-                    r={radius * 0.6}
-                    fill={node.clusterColor ?? 'var(--accent-primary)'}
-                    className="pointer-events-none"
-                    initial={{ r: radius * 0.6, opacity: 0.55 }}
-                    animate={{ r: radius * 2.8, opacity: 0 }}
-                    transition={{ duration: 0.75, ease: 'easeOut', delay: 0.05 }}
-                  />
-                )}
 
                 {/* ── Centrality glow — core ────────────────────────────────── */}
                 {isCore && (
@@ -1079,40 +1067,40 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions }: SVGRende
                     className="pointer-events-none" />
                 )}
 
-                {/* Selection pulse ring — prominent, clearly beats frontier/neighbor rings */}
-                <motion.circle r={radius + 8} fill="none"
-                  stroke="var(--accent-primary)" strokeWidth={2.5} strokeOpacity={0.7}
+                {/* Selection ring — bounces out from node edge on select */}
+                <motion.circle fill="none"
+                  stroke="var(--accent-primary)" strokeWidth={2.5} strokeOpacity={0.55}
                   className="pointer-events-none"
-                  animate={{ r: [radius + 7, radius + 16, radius + 7], opacity: [0.75, 0.12, 0.75] }}
-                  transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
+                  initial={{ r: radius }} animate={{ r: radius + 8 }}
+                  transition={{ type: 'spring', stiffness: 280, damping: 18 }}
                 />
-                {/* Steady inner selection ring */}
-                <circle r={radius + 5} fill="none"
+                {/* Inner selection ring */}
+                <motion.circle fill="none"
                   stroke="var(--accent-bright)" strokeWidth={1.5} opacity={0.55}
-                  className="pointer-events-none" />
+                  className="pointer-events-none"
+                  initial={{ r: radius }} animate={{ r: radius + 5 }}
+                  transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                />
 
-                {/* White halo */}
+                {/* White halo — bounces out from node edge */}
                 {hasBackdrop ? (
                   <motion.circle
-                    initial={{ r: 0 }} animate={{ r: radius + 4 }}
-                    transition={{ delay: revealDelay, duration: 0.4, ease: [0.34, 1.56, 0.64, 1] }}
+                    initial={{ r: radius }} animate={{ r: radius + 4 }}
+                    transition={{ type: 'spring', stiffness: 320, damping: 22 }}
                     fill="rgba(255,255,255,0.92)" filter="url(#nodeBackdropShadow)"
                     style={{ pointerEvents: 'none' }}
                   />
                 ) : (
                   <motion.circle
-                    initial={{ r: 0 }} animate={{ r: radius + 3 }}
-                    transition={{ delay: revealDelay, duration: 0.4, ease: [0.34, 1.56, 0.64, 1] }}
+                    initial={{ r: radius }} animate={{ r: radius + 3 }}
+                    transition={{ type: 'spring', stiffness: 320, damping: 22 }}
                     fill="rgba(255,255,255,0.88)" stroke="rgba(255,255,255,0.60)" strokeWidth={1.5}
                     style={{ pointerEvents: 'none' }}
                   />
                 )}
 
                 {/* Node body */}
-                <motion.circle
-                  key={`${graph.id}-${node.id}`}
-                  initial={{ r: 0 }} animate={{ r: radius }}
-                  transition={{ delay: revealDelay, duration: 0.4, ease: [0.34, 1.56, 0.64, 1] }}
+                <circle r={radius}
                   fill={fillColor} stroke={strokeColor} strokeWidth={strokeWidth}
                   strokeDasharray={strokeDash}
                   style={{ transition: 'fill 250ms ease-out, stroke 250ms ease-out' }}
