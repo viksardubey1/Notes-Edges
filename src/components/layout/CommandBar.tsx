@@ -89,9 +89,18 @@ export function CommandBar({ projectName = 'Untitled Graph', graphId }: CommandB
   const handleMakeCopy = async () => {
     if (!graph || !session || isCopying) return;
     setIsCopying(true);
-    const clone = await cloneGraph(session.userId, graph.id);
-    setIsCopying(false);
-    if (clone) router.push(`/graph/${clone.id}`);
+    try {
+      const clone = await cloneGraph(session.userId, graph);
+      if (clone) {
+        router.push(`/graph/${clone.id}`);
+      } else {
+        console.error('[CommandBar] cloneGraph returned null');
+      }
+    } catch (err) {
+      console.error('[CommandBar] handleMakeCopy error:', err);
+    } finally {
+      setIsCopying(false);
+    }
   };
 
   return (

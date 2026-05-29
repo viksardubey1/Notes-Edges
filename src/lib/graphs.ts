@@ -104,17 +104,8 @@ export async function deleteGraph(_userId: string, graphId: string): Promise<voi
   if (error) console.error('[graphs] deleteGraph error:', error.message);
 }
 
-/** Clone another user's graph into the current user's account. */
-export async function cloneGraph(userId: string, sourceGraphId: string): Promise<GraphData | null> {
-  const { data, error } = await supabase
-    .from('graphs')
-    .select('*')
-    .eq('id', sourceGraphId)
-    .single();
-
-  if (error || !data) return null;
-
-  const source = rowToGraphData(data as GraphRow);
+/** Clone a graph (already loaded) into the current user's account. */
+export async function cloneGraph(userId: string, source: GraphData): Promise<GraphData | null> {
   const now = new Date().toISOString();
   const newId = `graph-${Date.now()}`;
   const clone: GraphData = {
@@ -126,6 +117,11 @@ export async function cloneGraph(userId: string, sourceGraphId: string): Promise
     updatedAt: now,
   };
 
-  await saveGraph(userId, clone);
-  return clone;
+  try {
+    await saveGraph(userId, clone);
+    return clone;
+  } catch (err) {
+    console.error('[graphs] cloneGraph error:', err);
+    return null;
+  }
 }
