@@ -12,6 +12,7 @@ import { motion } from 'framer-motion';
 import { useAuth } from '@/context/AuthContext';
 import { listGraphs, deleteGraph } from '@/lib/graphs';
 import type { GraphData } from '@/types/graph';
+import posthog from 'posthog-js';
 
 // ── Mini SVG thumbnail ────────────────────────────────────────────────────────
 function MiniGraphPreview({ graph, w = 200, h = 130 }: { graph: GraphData; w?: number; h?: number }) {
@@ -77,7 +78,10 @@ function ContinueCard({ graph }: { graph: GraphData }) {
 
   return (
     <motion.button
-      onClick={() => router.push(`/graph/${graph.id}`)}
+      onClick={() => {
+        posthog.capture('graph_opened', { graph_id: graph.id, graph_name: graph.name, node_count: graph.nodeCount, source: 'continue_card' });
+        router.push(`/graph/${graph.id}`);
+      }}
       className="w-full text-left group"
       whileHover={{ y: -2 }}
       transition={{ duration: 0.18 }}
@@ -168,7 +172,10 @@ function GraphCard({ graph, onDelete }: { graph: GraphData; onDelete: () => void
         boxShadow: '0 2px 16px rgba(37,30,61,0.05)',
         transition: 'box-shadow 200ms ease, border-color 200ms ease',
       }}
-      onClick={() => router.push(`/graph/${graph.id}`)}
+      onClick={() => {
+        posthog.capture('graph_opened', { graph_id: graph.id, graph_name: graph.name, node_count: graph.nodeCount, source: 'graph_card' });
+        router.push(`/graph/${graph.id}`);
+      }}
       whileHover={{ y: -4 }}
       transition={{ duration: 0.18 }}
       onMouseEnter={(e) => {
@@ -331,6 +338,8 @@ export default function HomePage() {
 
   const handleDelete = (graphId: string) => {
     if (!session) return;
+    const graph = graphs.find((g) => g.id === graphId);
+    posthog.capture('graph_deleted', { graph_id: graphId, graph_name: graph?.name });
     void deleteGraph(session.userId, graphId);
     setGraphs((prev) => prev.filter((g) => g.id !== graphId));
   };

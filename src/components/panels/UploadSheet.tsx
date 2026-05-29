@@ -18,6 +18,7 @@ import { useAuth } from '@/context/AuthContext';
 import { saveGraph } from '@/lib/graphs';
 import { cn } from '@/lib/utils';
 import type { GraphData, GraphNode, GraphEdge } from '@/types/graph';
+import posthog from 'posthog-js';
 
 // ── Merge helper ──────────────────────────────────────────────────────────────
 
@@ -164,10 +165,22 @@ export function UploadSheet() {
           updatedAt: new Date().toISOString(),
         };
         if (session) void saveGraph(session.userId, merged);
+        posthog.capture('graph_notes_appended', {
+          graph_id: graph.id,
+          new_nodes_added: newNodes.length,
+          new_edges_added: newEdges.length,
+          input_type: activeTab,
+        });
       } else {
         // Replace graph entirely
         if (session) void saveGraph(session.userId, data.graph);
         setGraph(data.graph);
+        posthog.capture('graph_replaced', {
+          graph_id: data.graph.id,
+          node_count: data.graph.nodeCount,
+          edge_count: data.graph.edgeCount,
+          input_type: activeTab,
+        });
       }
 
       setText('');

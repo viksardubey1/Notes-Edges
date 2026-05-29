@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { signUp } from '@/lib/auth';
 import { GoogleButton } from '@/components/auth/GoogleButton';
+import posthog from 'posthog-js';
 
 export default function SignUpPage() {
   return (
@@ -49,6 +50,14 @@ function SignUpForm() {
       setLoading(false);
       return;
     }
+
+    posthog.identify(result.session.userId, {
+      email: result.session.email,
+      name: result.session.name,
+    });
+    posthog.capture('user_signed_up', {
+      method: 'email',
+    });
 
     router.push('/welcome?step=2');
   }

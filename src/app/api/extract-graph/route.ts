@@ -16,6 +16,7 @@ import { cookies } from 'next/headers';
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
 import { sanitizeForPrompt, rateLimitBody, LIMITS } from '@/lib/sanitize';
 import type { GraphData, GraphNode, GraphEdge, SemanticEdgeType, DepthLevel, GraphIntelligenceSummary } from '@/types/graph';
+import { getPostHogClient } from '@/lib/posthog-server';
 
 // 20 graph extractions per 15 minutes per IP (each call is expensive)
 const AI_RATE_LIMIT = { max: 20, windowMs: 15 * 60 * 1000 };
@@ -435,6 +436,19 @@ export async function POST(req: NextRequest) {
       edges,
       intelligenceSummary,
     };
+
+    const posthog = getPostHogClient();
+    posthog.capture({
+      distinctId: session.user.id,
+      event: 'server_graph_extracted',
+      properties: {
+        graph_id: graph.id,
+        graph_name: graph.name,
+        node_count: graph.nodeCount,
+        edge_count: graph.edgeCount,
+        input_type: pdfBase64 ? 'pdf' : 'text',
+      },
+    });
 
     return NextResponse.json({ graph });
   } catch (err) {

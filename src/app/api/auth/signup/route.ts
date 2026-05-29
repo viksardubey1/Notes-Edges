@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
 import { validateEmail, sanitizeName, rateLimitBody, LIMITS } from '@/lib/sanitize';
+import { getPostHogClient } from '@/lib/posthog-server';
 
 const WINDOW_MS = 15 * 60 * 1000;
 const MAX_ATTEMPTS = 5;
@@ -61,6 +62,10 @@ export async function POST(req: NextRequest) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
   if (!data.user) return NextResponse.json({ error: 'Sign-up failed. Please try again.' }, { status: 400 });
+
+  const posthog = getPostHogClient();
+  posthog.identify({ distinctId: data.user.id, properties: { email: data.user.email ?? email, name } });
+  posthog.capture({ distinctId: data.user.id, event: 'server_signup', properties: { email: data.user.email ?? email, name } });
 
   const session = data.session;
 

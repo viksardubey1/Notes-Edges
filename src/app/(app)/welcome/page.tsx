@@ -20,6 +20,7 @@ import { useAuth } from '@/context/AuthContext';
 import { saveGraph } from '@/lib/graphs';
 import type { GraphData } from '@/types/graph';
 import type { TextAnalysis } from '@/app/api/analyze-text/route';
+import posthog from 'posthog-js';
 
 type Step = 1 | 2 | 3;
 
@@ -144,6 +145,14 @@ function WelcomeContent() {
       // Save to user's collection and legacy key
       if (session) void saveGraph(session.userId, data.graph);
 
+      posthog.capture('graph_generated', {
+        graph_id: data.graph.id,
+        graph_name: data.graph.name,
+        node_count: data.graph.nodeCount,
+        edge_count: data.graph.edgeCount,
+        input_type: activeTab,
+      });
+
       setPhaseIdx(EXTRACT_PHASES.length - 1);
       await new Promise((r) => setTimeout(r, 600));
       router.push(`/graph/${data.graph.id}`);
@@ -151,6 +160,10 @@ function WelcomeContent() {
       if (phaseInterval) clearInterval(phaseInterval);
       discoveryTimers.current.forEach(clearTimeout);
       const msg = err instanceof Error ? err.message : String(err);
+      posthog.capture('graph_generation_failed', {
+        error_message: msg,
+        input_type: activeTab,
+      });
       setExtractError(msg);
       setStep(2);
       setIsLoading(false);

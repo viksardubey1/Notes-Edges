@@ -20,6 +20,7 @@ import { signOut } from '@/lib/auth';
 import { renameGraph, cloneGraph } from '@/lib/graphs';
 import { AddNodeDialog } from '@/components/graph/AddNodeDialog';
 import { cn } from '@/lib/utils';
+import posthog from 'posthog-js';
 
 interface CommandBarProps {
   projectName?: string;
@@ -74,7 +75,10 @@ export function CommandBar({ projectName = 'Untitled Graph', graphId }: CommandB
     const trimmed = nameValue.trim() || (graph?.name ?? projectName);
     setNameValue(trimmed);
     setIsEditingName(false);
-    if (graph && session) void renameGraph(session.userId, graph.id, trimmed);
+    if (graph && session) {
+      void renameGraph(session.userId, graph.id, trimmed);
+      posthog.capture('graph_renamed', { graph_id: graph.id, new_name: trimmed });
+    }
   };
 
   const handleNameKeyDown = (e: React.KeyboardEvent) => {
@@ -91,6 +95,7 @@ export function CommandBar({ projectName = 'Untitled Graph', graphId }: CommandB
     if (!graph) return;
     const url = `${window.location.origin}/graph/${graph.id}`;
     void navigator.clipboard.writeText(url).then(() => {
+      posthog.capture('graph_shared', { graph_id: graph.id, graph_name: graph.name });
       setShareCopied(true);
       setTimeout(() => setShareCopied(false), 2000);
     });
@@ -102,12 +107,14 @@ export function CommandBar({ projectName = 'Untitled Graph', graphId }: CommandB
     try {
       const clone = await cloneGraph(session.userId, graph);
       if (clone) {
+        posthog.capture('graph_copied', { source_graph_id: graph.id, new_graph_id: clone.id, graph_name: graph.name });
         router.push(`/graph/${clone.id}`);
       } else {
         console.error('[CommandBar] cloneGraph returned null');
       }
     } catch (err) {
       console.error('[CommandBar] handleMakeCopy error:', err);
+      posthog.captureException(err);
     } finally {
       setIsCopying(false);
     }

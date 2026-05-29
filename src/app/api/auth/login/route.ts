@@ -10,6 +10,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
 import { validateEmail, rateLimitBody, LIMITS } from '@/lib/sanitize';
+import { getPostHogClient } from '@/lib/posthog-server';
 
 const WINDOW_MS = 15 * 60 * 1000; // 15 minutes
 const MAX_ATTEMPTS = 5;
@@ -57,6 +58,13 @@ export async function POST(req: NextRequest) {
   if (error || !data.session) {
     return NextResponse.json({ error: 'Invalid email or password.' }, { status: 401 });
   }
+
+  const posthog = getPostHogClient();
+  posthog.capture({
+    distinctId: data.user.id,
+    event: 'server_login',
+    properties: { email: data.user.email ?? email },
+  });
 
   return NextResponse.json({
     access_token: data.session.access_token,
