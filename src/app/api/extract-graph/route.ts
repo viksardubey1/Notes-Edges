@@ -437,22 +437,42 @@ export async function POST(req: NextRequest) {
       intelligenceSummary,
     };
 
-    const posthog = getPostHogClient();
-    posthog.capture({
-      distinctId: session.user.id,
-      event: 'server_graph_extracted',
-      properties: {
-        graph_id: graph.id,
-        graph_name: graph.name,
-        node_count: graph.nodeCount,
-        edge_count: graph.edgeCount,
-        input_type: pdfBase64 ? 'pdf' : 'text',
-      },
-    });
+    try {
+      const posthog = getPostHogClient();
+      posthog?.capture({
+        distinctId: session.user.id,
+        event: 'server_graph_extracted',
+        properties: {
+          graph_id: graph.id,
+          graph_name: graph.name,
+          node_count: graph.nodeCount,
+          edge_count: graph.edgeCount,
+          input_type: pdfBase64 ? 'pdf' : 'text',
+        },
+      });
+    } catch (phErr) {
+      console.error('[extract-graph] posthog capture error (non-fatal):', phErr instanceof Error ? phErr.message : String(phErr));
+    }
 
     return NextResponse.json({ graph });
   } catch (err) {
-    console.error('[extract-graph] error:', err instanceof Error ? err.message : String(err));
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error('[extract-graph] error:', msg);
+
+    // Surface specific failure reasons where possible
+    if (msg.includes('API_KEY') || msg.includes('api key') || msg.includes('API key')) {
+      return NextResponse.json({ error: 'AI service not configured. Contact support.' }, { status: 500 });
+    }
+    if (msg.includes('quota') || msg.includes('RESOURCE_EXHAUSTED')) {
+      return NextResponse.json({ error: 'AI quota exceeded. Try again in a few minutes.' }, { status: 429 });
+    }
+    if (msg.includes('JSON') || msg.includes('parse') || msg.includes('Unexpected token')) {
+      return NextResponse.json({ error: 'AI returned an unexpected response. Please try again.' }, { status: 500 });
+    }
+    if (msg.includes('No concepts extracted')) {
+      return NextResponse.json({ error: 'No concepts found — try longer or more detailed text.' }, { status: 422 });
+    }
+
     return NextResponse.json({ error: 'Extraction failed. Please try again.' }, { status: 500 });
   }
 }
