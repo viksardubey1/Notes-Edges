@@ -64,8 +64,8 @@ export async function POST(req: NextRequest) {
   if (!data.user) return NextResponse.json({ error: 'Sign-up failed. Please try again.' }, { status: 400 });
 
   const posthog = getPostHogClient();
-  posthog.identify({ distinctId: data.user.id, properties: { email: data.user.email ?? email, name } });
-  posthog.capture({ distinctId: data.user.id, event: 'server_signup', properties: { email: data.user.email ?? email, name } });
+  posthog?.identify({ distinctId: data.user.id, properties: { email: data.user.email ?? email, name } });
+  posthog?.capture({ distinctId: data.user.id, event: 'server_signup', properties: { email: data.user.email ?? email, name } });
 
   const session = data.session;
 

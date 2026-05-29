@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
   }
 
   const posthog = getPostHogClient();
-  posthog.capture({
+  posthog?.capture({
     distinctId: data.user.id,
     event: 'server_login',
     properties: { email: data.user.email ?? email },
