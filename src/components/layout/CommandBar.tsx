@@ -8,7 +8,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { PanelLeft, LogOut, Check, Plus, RotateCcw, AlertTriangle, Upload, ChevronDown } from 'lucide-react';
+import { PanelLeft, LogOut, Check, Plus, RotateCcw, AlertTriangle, Upload, ChevronDown, Copy } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
@@ -17,7 +17,7 @@ import { useUIStore } from '@/store/ui.store';
 import { useGraphStore } from '@/store/graph.store';
 import { useAuth } from '@/context/AuthContext';
 import { signOut } from '@/lib/auth';
-import { renameGraph } from '@/lib/graphs';
+import { renameGraph, cloneGraph } from '@/lib/graphs';
 import { AddNodeDialog } from '@/components/graph/AddNodeDialog';
 import { cn } from '@/lib/utils';
 
@@ -38,6 +38,7 @@ export function CommandBar({ projectName = 'Untitled Graph', graphId }: CommandB
   const resetRef = useRef<HTMLDivElement>(null);
   const [addNodeOpen, setAddNodeOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [isCopying, setIsCopying] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -82,6 +83,16 @@ export function CommandBar({ projectName = 'Untitled Graph', graphId }: CommandB
 
   const handleLogout = () => { void signOut().then(() => router.push('/login')); };
   const handleReset = () => { clearGraph(); setShowResetConfirm(false); };
+
+  const isOwnGraph = !graph || !session || graph.userId === session.userId;
+
+  const handleMakeCopy = async () => {
+    if (!graph || !session || isCopying) return;
+    setIsCopying(true);
+    const clone = await cloneGraph(session.userId, graph.id);
+    setIsCopying(false);
+    if (clone) router.push(`/graph/${clone.id}`);
+  };
 
   return (
     <>
@@ -178,29 +189,42 @@ export function CommandBar({ projectName = 'Untitled Graph', graphId }: CommandB
 
         {/* Center: primary action */}
         <div className="flex items-center gap-2 flex-shrink-0 mx-3">
-          <button
-            onClick={openUploadSheet}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] text-[12px] font-medium transition-all"
-            style={{
-              background: 'var(--accent-primary)',
-              color: '#fff',
-            }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--accent-bright)'; }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--accent-primary)'; }}
-          >
-            <Upload size={12} />
-            Add notes
-          </button>
-          <kbd
-            className="hidden md:flex items-center gap-1 px-1.5 py-0.5 rounded-[5px] text-[10px] font-medium select-none"
-            style={{
-              background: 'var(--bg-surface-2)',
-              color: 'var(--text-muted)',
-              border: '1px solid var(--border-default)',
-            }}
-          >
-            ⌘K
-          </kbd>
+          {isOwnGraph ? (
+            <>
+              <button
+                onClick={openUploadSheet}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] text-[12px] font-medium transition-all"
+                style={{ background: 'var(--accent-primary)', color: '#fff' }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--accent-bright)'; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--accent-primary)'; }}
+              >
+                <Upload size={12} />
+                Add notes
+              </button>
+              <kbd
+                className="hidden md:flex items-center gap-1 px-1.5 py-0.5 rounded-[5px] text-[10px] font-medium select-none"
+                style={{
+                  background: 'var(--bg-surface-2)',
+                  color: 'var(--text-muted)',
+                  border: '1px solid var(--border-default)',
+                }}
+              >
+                ⌘K
+              </kbd>
+            </>
+          ) : (
+            <button
+              onClick={() => { void handleMakeCopy(); }}
+              disabled={isCopying}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] text-[12px] font-medium transition-all disabled:opacity-60"
+              style={{ background: 'var(--accent-primary)', color: '#fff' }}
+              onMouseEnter={(e) => { if (!isCopying) (e.currentTarget as HTMLButtonElement).style.background = 'var(--accent-bright)'; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--accent-primary)'; }}
+            >
+              <Copy size={12} />
+              {isCopying ? 'Copying…' : 'Make a copy'}
+            </button>
+          )}
         </div>
 
         {/* Right: Actions + user */}

@@ -13,6 +13,7 @@ import type { GraphData } from '@/types/graph';
 
 interface GraphRow {
   id: string;
+  user_id: string;
   name: string;
   node_count: number;
   edge_count: number;
@@ -28,6 +29,7 @@ function rowToGraphData(row: GraphRow): GraphData {
   return {
     ...row.data,
     id: row.id,
+    userId: row.user_id,
     name: row.name,
     nodeCount: row.node_count,
     edgeCount: row.edge_count,
@@ -100,4 +102,30 @@ export async function deleteGraph(_userId: string, graphId: string): Promise<voi
     .eq('id', graphId);
 
   if (error) console.error('[graphs] deleteGraph error:', error.message);
+}
+
+/** Clone another user's graph into the current user's account. */
+export async function cloneGraph(userId: string, sourceGraphId: string): Promise<GraphData | null> {
+  const { data, error } = await supabase
+    .from('graphs')
+    .select('*')
+    .eq('id', sourceGraphId)
+    .single();
+
+  if (error || !data) return null;
+
+  const source = rowToGraphData(data as GraphRow);
+  const now = new Date().toISOString();
+  const newId = `graph-${Date.now()}`;
+  const clone: GraphData = {
+    ...source,
+    id: newId,
+    userId,
+    name: `${source.name} (copy)`,
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  await saveGraph(userId, clone);
+  return clone;
 }
