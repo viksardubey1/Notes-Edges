@@ -4,7 +4,9 @@ export const runtime = 'edge';
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
 
-export default function OGImage() {
+export default async function OGImage() {
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://notes-edges.com';
+
   return new ImageResponse(
     (
       <div
@@ -79,28 +81,14 @@ export default function OGImage() {
         </svg>
 
         {/* Logo icon */}
-        <div
-          style={{
-            width: '88px',
-            height: '88px',
-            borderRadius: '22px',
-            background: 'linear-gradient(135deg, #7B6EC4 0%, #B85A6E 100%)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginBottom: '28px',
-            boxShadow: '0 8px 32px rgba(123,110,196,0.4)',
-          }}
-        >
-          {/* Share/graph icon */}
-          <svg width="44" height="44" viewBox="0 0 44 44" fill="none">
-            <circle cx="10" cy="22" r="5" fill="rgba(255,255,255,0.9)" />
-            <circle cx="34" cy="10" r="5" fill="rgba(255,255,255,0.9)" />
-            <circle cx="34" cy="34" r="5" fill="rgba(255,255,255,0.9)" />
-            <line x1="14.5" y1="19.5" x2="29.5" y2="12.5" stroke="rgba(255,255,255,0.75)" strokeWidth="2" strokeLinecap="round" />
-            <line x1="14.5" y1="24.5" x2="29.5" y2="31.5" stroke="rgba(255,255,255,0.75)" strokeWidth="2" strokeLinecap="round" />
-          </svg>
-        </div>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={`${baseUrl}/og-image.png`}
+          width={120}
+          height={120}
+          style={{ borderRadius: '28px', marginBottom: '28px', boxShadow: '0 8px 32px rgba(123,110,196,0.35)' }}
+          alt="Notes & Edges logo"
+        />
 
         {/* App name */}
         <div
