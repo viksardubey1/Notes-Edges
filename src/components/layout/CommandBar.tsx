@@ -249,19 +249,19 @@ export function CommandBar({ projectName = 'Untitled Graph', graphId }: CommandB
         {/* Right: Actions + user */}
         <div className="flex items-center gap-0.5 flex-shrink-0">
           {graph && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost" size="icon"
-                  onClick={handleShare}
-                  aria-label="Share graph"
-                  style={{ color: shareCopied ? 'var(--accent-primary)' : 'var(--text-muted)' } as React.CSSProperties}
-                >
-                  {shareCopied ? <Check size={15} /> : <Share2 size={15} />}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>{shareCopied ? 'Link copied!' : 'Share graph'}</TooltipContent>
-            </Tooltip>
+            <button
+              onClick={handleShare}
+              aria-label="Share graph"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] text-[12px] font-medium transition-all"
+              style={{
+                background: shareCopied ? 'var(--accent-glow)' : 'var(--bg-surface-2)',
+                color: shareCopied ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                border: '1px solid var(--border-default)',
+              }}
+            >
+              {shareCopied ? <Check size={12} /> : <Share2 size={12} />}
+              {shareCopied ? 'Link copied to clipboard' : 'Share'}
+            </button>
           )}
 
           {graph && isOwnGraph && (
