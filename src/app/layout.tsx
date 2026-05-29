@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { Geist, Geist_Mono, Fraunces } from 'next/font/google';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { ThemeProvider } from '@/components/providers/ThemeProvider';
+import { PostHogProvider } from '@/components/providers/PostHogProvider';
 import './globals.css';
 
 const geist = Geist({
@@ -74,9 +75,11 @@ export default function RootLayout({
       </head>
       <body suppressHydrationWarning className="h-full overflow-hidden antialiased">
         <TooltipProvider delayDuration={400}>
-          <ThemeProvider>
-            {children}
-          </ThemeProvider>
+          <PostHogProvider>
+            <ThemeProvider>
+              {children}
+            </ThemeProvider>
+          </PostHogProvider>
         </TooltipProvider>
       </body>
     </html>
