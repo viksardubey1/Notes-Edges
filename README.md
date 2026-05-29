@@ -1,36 +1,94 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Notes & Edges
 
-## Getting Started
+**Think in graphs.**
 
-First, run the development server:
+Notes & Edges transforms your notes, readings, and ideas into a living knowledge graph. Upload what you've learned — the app extracts concepts and connections, then renders them as an interactive, explorable map of understanding.
+
+Live at [notes-edges.com](https://notes-edges.com)
+
+---
+
+## What it does
+
+- **Upload notes** — paste text or upload documents; an AI pipeline extracts concepts and relationships
+- **Knowledge graph** — nodes are concepts, edges are the connections between them, rendered as an interactive SVG graph
+- **Explore** — zoom, pan, click nodes to expand their context, search across your graph
+- **Share** — send a link to any graph; viewers can explore it without signing in or make their own copy
+- **Multi-graph** — maintain separate graphs for different subjects or projects
+
+## Tech stack
+
+| Layer | Technology |
+|---|---|
+| Framework | Next.js 15 (App Router) |
+| Language | TypeScript |
+| Styling | Tailwind CSS |
+| Auth & DB | Supabase (Postgres + RLS) |
+| AI | Google Gemini (graph extraction) |
+| Graph rendering | Custom SVG renderer with LOD system |
+| Animation | Framer Motion |
+| State | Zustand |
+| Analytics | PostHog |
+| Deployment | Vercel |
+
+## Project structure
+
+```
+src/
+├── app/                  # Next.js App Router pages
+│   ├── (app)/            # Authenticated routes (home, graph)
+│   ├── (auth)/           # Auth routes (login, signup)
+│   └── api/              # API routes (graph extraction, sharing)
+├── components/
+│   ├── graph/            # Graph canvas, renderers, loaders
+│   ├── layout/           # Command bar, sidebar, nav
+│   ├── panels/           # Upload sheet, node detail panel
+│   └── providers/        # Theme, PostHog, auth providers
+├── lib/                  # Graph logic, Supabase client, AI pipeline
+├── store/                # Zustand stores (graph, UI state)
+└── types/                # Shared TypeScript types
+```
+
+## Running locally
+
+1. Clone the repo and install dependencies:
+
+```bash
+git clone https://github.com/viksardubey1/Notes-Edges.git
+cd Notes-Edges
+npm install
+```
+
+2. Copy `.env.example` to `.env.local` and fill in:
+
+```bash
+cp .env.example .env.local
+```
+
+Required variables:
+```
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
+NEXT_PUBLIC_POSTHOG_KEY=
+GOOGLE_GENERATIVE_AI_API_KEY=
+```
+
+3. Run the dev server:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Deployment
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Deployed manually to Vercel:
 
-## Learn More
+```bash
+vercel --prod
+```
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Environment variables are managed via `vercel env add` and stored encrypted in the Vercel project.
