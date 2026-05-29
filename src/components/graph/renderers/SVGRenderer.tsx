@@ -498,7 +498,7 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions }: SVGRende
                     style={{ transition: 'opacity 280ms ease-out, stroke-width 150ms ease-out' }}
                     pointerEvents="none"
                   />
-                  {(lodLevel.showEdgeLabels || (isHovered && lodLevel.showLabelsOnHover)) && edge.label && (
+                  {lodLevel.showEdgeLabels && edge.label && (
                     <EdgeLabelPill edge={edge} sourceNode={sourceNode} targetNode={targetNode} semType={semType} />
                   )}
                 </g>

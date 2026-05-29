@@ -57,7 +57,7 @@ export function getLODLevel(zoom: number): LODLevel {
         showStrongEdgesOnly: false,
         showLabels: true,
         showLabelsOnHover: true,
-        showEdgeLabels: true,
+        showEdgeLabels: false,
       };
     case 4:
       return {
@@ -66,7 +66,7 @@ export function getLODLevel(zoom: number): LODLevel {
         showStrongEdgesOnly: false,
         showLabels: true,
         showLabelsOnHover: true,
-        showEdgeLabels: true,
+        showEdgeLabels: false,
       };
   }
 }
