@@ -39,11 +39,9 @@ export const metadata: Metadata = {
     description: 'Your knowledge, finally connected.',
     type: 'website',
     url: '/',
-    images: [{ url: '/og-image.png', width: 1200, height: 630, alt: 'Notes & Edges' }],
   },
   twitter: {
     card: 'summary_large_image',
-    images: ['/og-image.png'],
   },
 };
 
