@@ -430,7 +430,7 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions }: SVGRende
 
               let opacity = edgeOpacityFromWeight(edge.weight) * (hasBackdrop ? 0.85 : 0.76);
               if (selectedNodeId !== null) {
-                if (isNeighborEdge) opacity = 0.88;
+                if (isNeighborEdge) opacity = 1;
                 else {
                   const srcDepth = nodeDepthMap.get(edge.sourceId) ?? 3;
                   const tgtDepth = nodeDepthMap.get(edge.targetId) ?? 3;
@@ -451,8 +451,8 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions }: SVGRende
               const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
               const dx = x2 - x1, dy = y2 - y1;
               const len = Math.sqrt(dx * dx + dy * dy);
-              // Long cross-graph edges fade proportionally — keeps local edges crisp
-              if (len > 250) opacity *= Math.max(0.35, 1 - (len - 250) / 600);
+              // Long cross-graph edges fade proportionally — keeps local edges crisp (skip for neighbor edges when selected)
+              if (len > 250 && !isNeighborEdge) opacity *= Math.max(0.35, 1 - (len - 250) / 600);
               // Longer edges get a proportionally larger bow so they arc around
               // the graph instead of cutting through the middle.
               const curveOffset = len > 10 ? Math.min(len * 0.22, 80) : 0;
@@ -490,7 +490,7 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions }: SVGRende
                   <path
                     d={curvePath}
                     stroke={typeStyle.color}
-                    strokeWidth={isSelectedEdge ? typeStyle.width * 2.5 : isNeighborEdge ? typeStyle.width * 1.8 : isHovered ? typeStyle.width * 2 : typeStyle.width}
+                    strokeWidth={isSelectedEdge ? typeStyle.width * 2.5 : isNeighborEdge ? typeStyle.width * 2.5 : isHovered ? typeStyle.width * 2 : typeStyle.width}
                     fill="none"
                     strokeDasharray={active ? undefined : typeStyle.dasharray}
                     strokeLinecap="round" opacity={opacity}
