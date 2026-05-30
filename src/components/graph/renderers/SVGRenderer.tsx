@@ -489,7 +489,7 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions }: SVGRende
                   )}
                   <path
                     d={curvePath}
-                    stroke={isSelectedEdge ? 'rgba(37,30,61,0.82)' : typeStyle.color}
+                    stroke={typeStyle.color}
                     strokeWidth={isSelectedEdge ? typeStyle.width * 2.5 : isNeighborEdge ? typeStyle.width * 1.8 : isHovered ? typeStyle.width * 2 : typeStyle.width}
                     fill="none"
                     strokeDasharray={active ? undefined : typeStyle.dasharray}
@@ -857,8 +857,9 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions }: SVGRende
         </g>
 
         {/* ── Non-selected labels ───────────────────────────────────────────── */}
+        {/* Hovered node is rendered last (outside the group) so it paints on top */}
         <g className="node-labels" style={{ pointerEvents: 'none', userSelect: 'none' }}>
-          {graph.nodes.filter((n) => n.id !== selectedNodeId).map((node) => {
+          {graph.nodes.filter((n) => n.id !== selectedNodeId && n.id !== hoveredNodeId).map((node) => {
             if (!activeNodeIds.has(node.id)) return null;
 
             const isSelected  = selectedNodeId === node.id;
@@ -943,7 +944,92 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions }: SVGRende
           })}
         </g>
 
-        {/* ── Selected node body ────────────────────────────────────────────── */}
+        {/* ── Hovered node label (rendered last among non-selected so it's on top) ── */}
+        <g className="node-labels node-labels--hovered" style={{ pointerEvents: 'none', userSelect: 'none' }}>
+          {graph.nodes.filter((n) => n.id !== selectedNodeId && n.id === hoveredNodeId).map((node) => {
+            if (!activeNodeIds.has(node.id)) return null;
+
+            const isSelected  = selectedNodeId === node.id;
+            const isHovered   = hoveredNodeId  === node.id;
+            const isNeighbor  = neighborNodeIds.has(node.id);
+            const isEdgeEndpt = selectedEdgeNodeIds.has(node.id);
+            const hasSelection = selectedNodeId !== null || selectedEdgeId !== null;
+
+            const ls = (learningStates[node.id] ?? 'unset') as LearningState;
+            const tier: VisualTier = LEARNING_STATE_TO_TIER[ls] ?? 'visited';
+            const tierCfg = TIER_CONFIG[tier];
+            const radius = (node.size ?? 14) * tierCfg.radiusMult;
+            const nodeDepth = selectedNodeId ? (nodeDepthMap.get(node.id) ?? 3) : 0;
+
+            const labelCentralityThreshold =
+              tier === 'unexplored'
+                ? (zoom < 1.0 ? 0.62 : 0.40)
+                : zoom < 0.5 ? 0.42
+                : zoom < 0.8 ? 0.22
+                : zoom < 1.2 ? 0.10 : 0;
+
+            const alwaysShowLabel = isSelected || isHovered || isNeighbor
+              || tier === 'mastered' || tier === 'understood';
+            const showLabel = alwaysShowLabel || (
+              (lodLevel.showLabels || (isHovered && lodLevel.showLabelsOnHover)) &&
+              node.centrality >= labelCentralityThreshold
+            );
+            if (!(showLabel && 12 * zoom >= 8)) return null;
+
+            const distFromCenter = Math.hypot((node.x ?? 0) - graphCx, (node.y ?? 0) - graphCy);
+            const depthFade = !hasSelection
+              ? Math.max(hasBackdrop ? 0.82 : 0.75, 1 - (distFromCenter / graphMaxDist) * (hasBackdrop ? 0.15 : 0.18))
+              : 1;
+            let labelOpacity = depthFade;
+            if (!hasSelection && tier === 'unexplored') labelOpacity = Math.min(labelOpacity, 0.75);
+            if (hasSelection) {
+              if (selectedNodeId !== null) {
+                if (isNeighbor) labelOpacity = 0.85;
+                else if (nodeDepth === 2) labelOpacity = 0.15;
+                else labelOpacity = 0.08;
+              } else {
+                labelOpacity = isEdgeEndpt ? 0.45 : 0.08;
+              }
+            }
+            if (filteredNodeIds !== null) labelOpacity = filteredNodeIds.has(node.id) ? 1 : 0.08;
+
+            const labelText = truncateWords(node.label, 4);
+            const fontSize  = isSelected ? 13 : tier === 'mastered' ? 12 : 11;
+            const labelW    = labelText.length * (fontSize * 0.52) + 14;
+            const labelY    = radius + 5;
+            const labelFill = isSelected ? '#5A4AAA'
+              : tier === 'mastered'   ? '#3A90B8'
+              : tier === 'understood' ? '#3A9870'
+              : tier === 'reviewing'  ? '#B88A30'
+              : isNeighbor ? '#5A5272'
+              : tier === 'unexplored' ? '#857FAA'
+              : '#504A6A';
+            const backdropLabelFill = isSelected ? '#2A1E60' : '#251E3D';
+
+            return (
+              <g
+                key={`label-hovered-${node.id}`}
+                transform={`translate(${node.x ?? 0}, ${node.y ?? 0})`}
+                style={{ opacity: labelOpacity, transition: 'opacity 320ms ease-out' }}
+                filter={hasBackdrop ? 'url(#labelShadow)' : undefined}
+              >
+                <rect
+                  x={-labelW / 2} y={labelY + 1} width={labelW} height={fontSize + 5}
+                  rx={4} fill={hasBackdrop ? 'rgba(255,255,255,0.97)' : 'rgba(245,243,251,0.90)'} opacity={1}
+                />
+                <text dy="1em" y={labelY} textAnchor="middle"
+                  fill={hasBackdrop ? backdropLabelFill : labelFill} fontSize={fontSize}
+                  fontFamily="Geist, system-ui, sans-serif"
+                  fontWeight={isSelected || tier === 'mastered' ? '600' : '500'}
+                  style={{ transition: 'fill 200ms ease-out' }}
+                >
+                  {labelText}
+                </text>
+              </g>
+            );
+          })}
+        </g>
+
         <g className="nodes">
           {graph.nodes.filter((n) => n.id === selectedNodeId).map((node) => {
             if (!activeNodeIds.has(node.id)) return null;
