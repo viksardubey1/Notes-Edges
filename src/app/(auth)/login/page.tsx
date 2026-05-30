@@ -30,8 +30,8 @@ function LoginForm() {
   // Handle errors forwarded from the OAuth callback, and reset success
   useEffect(() => {
     const err = searchParams.get('error');
-    if (err === 'auth_failed') setError('Google sign-in failed. Please try again.');
-    else if (err === 'missing_code') setError('Authentication was cancelled. Please try again.');
+    if (err === 'auth_failed') setError('Sign-in failed. Your link may have expired — please try again.');
+    else if (err === 'missing_code') setError('Sign-in was cancelled. Please try again.');
     if (searchParams.get('reset') === 'success') setSuccess('Password updated. You can now sign in.');
   }, [searchParams]);
 

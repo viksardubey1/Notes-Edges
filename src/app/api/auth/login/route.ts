@@ -56,6 +56,14 @@ export async function POST(req: NextRequest) {
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error || !data.session) {
+    const msg = error?.message?.toLowerCase() ?? '';
+    console.error('[login] Supabase error:', error?.message);
+    if (msg.includes('email not confirmed')) {
+      return NextResponse.json({ error: 'Please confirm your email address before signing in. Check your inbox.' }, { status: 401 });
+    }
+    if (msg.includes('rate limit') || msg.includes('too many')) {
+      return NextResponse.json({ error: 'Too many attempts. Please wait a few minutes and try again.' }, { status: 429 });
+    }
     return NextResponse.json({ error: 'Invalid email or password.' }, { status: 401 });
   }
 

@@ -27,11 +27,11 @@ function SignUpForm() {
   const [error, setError] = useState('');
   const [confirmEmail, setConfirmEmail] = useState('');
 
-  // Handle errors forwarded from the OAuth callback
+  // Handle errors forwarded from the auth callback
   useEffect(() => {
     const err = searchParams.get('error');
-    if (err === 'auth_failed') setError('Google sign-in failed. Please try again.');
-    else if (err === 'missing_code') setError('Authentication was cancelled. Please try again.');
+    if (err === 'auth_failed') setError('Verification failed. Your link may have expired — please try again.');
+    else if (err === 'missing_code') setError('Verification link is invalid. Please try signing up again.');
   }, [searchParams]);
 
   async function handleSubmit(e: React.FormEvent) {

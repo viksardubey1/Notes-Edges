@@ -60,11 +60,28 @@ export async function POST(req: NextRequest) {
     password,
     options: {
       data: { name },
-      emailRedirectTo: `${siteUrl}/auth/callback?next=/home`,
+      emailRedirectTo: `${siteUrl}/auth/callback`,
     },
   });
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+  if (error) {
+    console.error('[signup] Supabase error:', error.message, error.status);
+    // Map Supabase error messages to user-friendly ones
+    const msg = error.message.toLowerCase();
+    if (msg.includes('email') && msg.includes('disabled')) {
+      return NextResponse.json({ error: 'Email sign-up is currently unavailable. Please use Google to continue.' }, { status: 400 });
+    }
+    if (msg.includes('already registered') || msg.includes('already exists') || msg.includes('user already')) {
+      return NextResponse.json({ error: 'An account with this email already exists. Try signing in instead.' }, { status: 400 });
+    }
+    if (msg.includes('password')) {
+      return NextResponse.json({ error: 'Password must be at least 6 characters.' }, { status: 400 });
+    }
+    if (msg.includes('rate limit') || msg.includes('too many')) {
+      return NextResponse.json({ error: 'Too many attempts. Please wait a few minutes and try again.' }, { status: 429 });
+    }
+    return NextResponse.json({ error: error.message }, { status: 400 });
+  }
   if (!data.user) return NextResponse.json({ error: 'Sign-up failed. Please try again.' }, { status: 400 });
 
   const posthog = getPostHogClient();
