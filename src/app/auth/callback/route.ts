@@ -66,6 +66,10 @@ export async function GET(request: NextRequest) {
       console.error('[auth/callback] verifyOtp error:', error.message);
       return NextResponse.redirect(`${origin}/login?error=auth_failed`);
     }
+    // Email confirmed — send to login with a success message so they know to sign in
+    if (type === 'signup' || type === 'email') {
+      return NextResponse.redirect(`${origin}/login?confirmed=true`);
+    }
   }
 
   return NextResponse.redirect(`${origin}${next}`);

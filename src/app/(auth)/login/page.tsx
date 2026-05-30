@@ -27,12 +27,13 @@ function LoginForm() {
 
   const [success, setSuccess] = useState('');
 
-  // Handle errors forwarded from the OAuth callback, and reset success
+  // Handle errors and success states forwarded from the auth callback
   useEffect(() => {
     const err = searchParams.get('error');
     if (err === 'auth_failed') setError('Sign-in failed. Your link may have expired — please try again.');
     else if (err === 'missing_code') setError('Sign-in was cancelled. Please try again.');
     if (searchParams.get('reset') === 'success') setSuccess('Password updated. You can now sign in.');
+    if (searchParams.get('confirmed') === 'true') setSuccess('Email confirmed! Sign in with the email and password you just used to sign up.');
   }, [searchParams]);
 
   async function handleSubmit(e: React.FormEvent) {
