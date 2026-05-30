@@ -54,10 +54,14 @@ export async function POST(req: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
   );
 
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://notes-edges.com';
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
-    options: { data: { name } },
+    options: {
+      data: { name },
+      emailRedirectTo: `${siteUrl}/auth/callback?next=/home`,
+    },
   });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });

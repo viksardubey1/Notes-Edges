@@ -25,6 +25,7 @@ function SignUpForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [confirmEmail, setConfirmEmail] = useState('');
 
   // Handle errors forwarded from the OAuth callback
   useEffect(() => {
@@ -58,6 +59,13 @@ function SignUpForm() {
     posthog.capture('user_signed_up', {
       method: 'email',
     });
+
+    if (result.emailConfirmationRequired) {
+      // Supabase requires email confirmation — show message, don't redirect yet
+      setConfirmEmail(result.session.email);
+      setLoading(false);
+      return;
+    }
 
     router.push('/welcome?step=2');
   }
@@ -129,6 +137,17 @@ function SignUpForm() {
           </button>
         </div>
       </div>
+
+      {confirmEmail && (
+        <div className="px-3 py-3 rounded-[8px] text-[12px] flex flex-col gap-1"
+          style={{ background: 'rgba(78,180,130,0.10)', border: '1px solid rgba(78,180,130,0.30)', color: '#3A9870' }}
+          role="status" aria-live="polite">
+          <span className="font-medium">Check your email</span>
+          <span style={{ color: '#5A7268' }}>
+            We sent a confirmation link to <strong>{confirmEmail}</strong>. Click it to activate your account and start using Notes & Edges.
+          </span>
+        </div>
+      )}
 
       {error && (
         <div className="px-3 py-2.5 rounded-[8px] text-[12px]"

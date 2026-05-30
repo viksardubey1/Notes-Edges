@@ -17,7 +17,7 @@ export interface Session {
 }
 
 export type AuthResult =
-  | { ok: true; session: Session }
+  | { ok: true; session: Session; emailConfirmationRequired?: boolean }
   | { ok: false; error: string };
 
 export type SimpleResult =
@@ -55,13 +55,18 @@ export async function signUp(
   const json = await res.json() as { error?: string; access_token?: string; refresh_token?: string; user?: { id: string; email: string; name: string } };
   if (!res.ok) return { ok: false, error: json.error ?? 'Sign-up failed.' };
 
-  // Hydrate the Supabase browser session if tokens were returned
-  // (email-confirmation flows may not return a session immediately)
-  if (json.access_token && json.refresh_token) {
-    await supabase.auth.setSession({ access_token: json.access_token, refresh_token: json.refresh_token });
+  // Hydrate the Supabase browser session if tokens were returned.
+  // If access_token is null, Supabase requires email confirmation before a session is created.
+  const emailConfirmationRequired = !json.access_token || !json.refresh_token;
+  if (!emailConfirmationRequired) {
+    await supabase.auth.setSession({ access_token: json.access_token!, refresh_token: json.refresh_token! });
   }
 
-  return { ok: true, session: { userId: json.user!.id, email: json.user!.email, name: json.user!.name } };
+  return {
+    ok: true,
+    session: { userId: json.user!.id, email: json.user!.email, name: json.user!.name },
+    emailConfirmationRequired,
+  };
 }
 
 export async function signIn(email: string, password: string): Promise<AuthResult> {
