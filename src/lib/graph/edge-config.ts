@@ -15,32 +15,41 @@ import type { SemanticEdgeType } from '@/types/graph';
 
 // ── Base rendering constants ──────────────────────────────────────────────────
 
-/** Stroke width applied to every edge on the graph canvas, regardless of type. */
-export const EDGE_STROKE_WIDTH = 1.0;
+/** Stroke width for resting edges. Thin to keep edges from dominating the canvas. */
+export const EDGE_STROKE_WIDTH = 0.8;
 
-/** Stroke color applied to every edge on the graph canvas, regardless of type. */
-export const EDGE_STROKE_COLOR = 'var(--color-edge-default)';
+/**
+ * Two-tier color system:
+ *   EDGE_STROKE_COLOR        — resting state; edges recede behind nodes
+ *   EDGE_STROKE_COLOR_ACTIVE — hover/selection neighborhood; edges surface clearly
+ *
+ * Active edges switch *color*, not just opacity — this creates crisp contrast
+ * without making resting edges heavy.
+ */
+export const EDGE_STROKE_COLOR        = 'var(--color-edge-default)';
+export const EDGE_STROKE_COLOR_ACTIVE = 'var(--color-edge-active)';
 
-/** Quadratic bezier curvature: offset = min(len × tension, maxOffset). */
-export const EDGE_CURVE_TENSION    = 0.22;
-export const EDGE_CURVE_MAX_OFFSET = 80; // px
+/** Quadratic bezier curvature: offset = min(len × tension, maxOffset).
+ *  Higher tension = more elegant arcs, less visual cutting through node clusters. */
+export const EDGE_CURVE_TENSION    = 0.26;
+export const EDGE_CURVE_MAX_OFFSET = 90; // px
 
 // ── State width multipliers ───────────────────────────────────────────────────
 // Applied on top of EDGE_STROKE_WIDTH during interaction states.
 
 export const EDGE_WIDTH_MULT = {
-  selected:  2.5,
-  neighbor:  2.0,
-  hovered:   1.75,
-  emergence: 4.0, // one-shot flash animation
+  selected:  2.0,
+  neighbor:  1.75,
+  hovered:   1.5,
+  emergence: 3.0, // one-shot flash animation
 } as const;
 
 // ── Halo (soft glow ring rendered behind the active stroke) ───────────────────
 
 export const EDGE_HALO = {
-  widthMult:       8.0,
-  selectedOpacity: 0.14,
-  hoveredOpacity:  0.09,
+  widthMult:       6.0,
+  selectedOpacity: 0.15,
+  hoveredOpacity:  0.08,
 } as const;
 
 // ── Semantic type config — UI panels and badges ONLY ─────────────────────────

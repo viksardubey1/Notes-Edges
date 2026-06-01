@@ -28,6 +28,7 @@ import { edgeOpacityFromWeight, truncateWords } from '@/lib/utils';
 import {
   EDGE_STROKE_WIDTH,
   EDGE_STROKE_COLOR,
+  EDGE_STROKE_COLOR_ACTIVE,
   EDGE_CURVE_TENSION,
   EDGE_CURVE_MAX_OFFSET,
   EDGE_WIDTH_MULT,
@@ -410,45 +411,62 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions }: SVGRende
               if (!sourceNode || !targetNode) return null;
               if (!activeNodeIds.has(edge.sourceId) || !activeNodeIds.has(edge.targetId)) return null;
               if (lodLevel.showStrongEdgesOnly && edge.weight < 0.7) return null;
-              if (edge.weight < 0.35) return null;
+              // Raise minimum threshold — fewer edges on canvas = less clutter
+              if (edge.weight < 0.45) return null;
 
               const semType = (edge.semanticType ?? 'default') as SemanticEdgeType | 'default';
-              if (semType === 'RELATES_TO' && edge.weight < 0.55) return null;
+              // RELATES_TO edges are the noisiest — only show strong ones
+              if (semType === 'RELATES_TO' && edge.weight < 0.68) return null;
 
               const isSelectedEdge = selectedEdgeId === edge.id;
               const isNeighborEdge = neighborEdgeIds.has(edge.id);
-              const isHovered = hoveredEdgeId === edge.id;
+              const isHovered      = hoveredEdgeId === edge.id;
+              const isActive       = isNeighborEdge || isHovered || isSelectedEdge;
 
-              let opacity = edgeOpacityFromWeight(edge.weight) * (hasBackdrop ? 0.85 : 0.76);
+              // ── Opacity ────────────────────────────────────────────────────
+              // Base: weight-modulated. No extra canvas multiplier — the color
+              // token (--color-edge-default at 13%) is already calibrated for
+              // a resting state that recedes behind nodes.
+              let opacity = edgeOpacityFromWeight(edge.weight);
+
               if (selectedNodeId !== null) {
-                if (isNeighborEdge) opacity = 1;
-                else {
+                if (isNeighborEdge) {
+                  opacity = 1.0; // neighborhood surfaces fully (uses ACTIVE color)
+                } else {
+                  // Non-neighborhood collapses dramatically — clear focus effect
                   const srcDepth = nodeDepthMap.get(edge.sourceId) ?? 3;
                   const tgtDepth = nodeDepthMap.get(edge.targetId) ?? 3;
-                  opacity = Math.min(srcDepth, tgtDepth) === 2 ? 0.08 : 0.03;
+                  opacity = Math.min(srcDepth, tgtDepth) === 2 ? 0.10 : 0.03;
                 }
               }
-              if (selectedEdgeId !== null) opacity = isSelectedEdge ? 1 : 0.05;
+              if (selectedEdgeId !== null) opacity = isSelectedEdge ? 1.0 : 0.03;
               if (filteredNodeIds !== null) {
-                opacity = (filteredNodeIds.has(edge.sourceId) && filteredNodeIds.has(edge.targetId)) ? opacity : 0.04;
+                const bothVisible = filteredNodeIds.has(edge.sourceId) && filteredNodeIds.has(edge.targetId);
+                opacity = bothVisible ? opacity : 0.03;
               }
 
+              // ── Geometry ───────────────────────────────────────────────────
               const x1 = sourceNode.x ?? 0, y1 = sourceNode.y ?? 0;
               const x2 = targetNode.x ?? 0, y2 = targetNode.y ?? 0;
               const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
               const dx = x2 - x1, dy = y2 - y1;
               const len = Math.sqrt(dx * dx + dy * dy);
-              // Long cross-graph edges fade proportionally — keeps local edges crisp (skip for neighbor edges when selected)
-              if (len > 250 && !isNeighborEdge) opacity *= Math.max(0.35, 1 - (len - 250) / 600);
-              // Consistent quadratic bezier curvature for every edge.
+              // Long cross-graph edges fade — keeps local topology crisp.
+              // Only apply to resting edges so neighborhood always reads clearly.
+              if (len > 220 && !isActive) opacity *= Math.max(0.3, 1 - (len - 220) / 500);
+              // Slightly higher tension → more elegant arcs that arc around
+              // cluster centers rather than cutting straight through them.
               const curveOffset = len > 10 ? Math.min(len * EDGE_CURVE_TENSION, EDGE_CURVE_MAX_OFFSET) : 0;
               const sign = edge.sourceId < edge.targetId ? 1 : -1;
               const cpx = len > 10 ? mx + (-dy / len) * curveOffset * sign : mx;
               const cpy = len > 10 ? my + (dx / len) * curveOffset * sign : my;
               const curvePath = `M ${x1} ${y1} Q ${cpx} ${cpy} ${x2} ${y2}`;
 
-              // Interaction-state width — all multipliers from the central config.
-              const activeWidth = isSelectedEdge
+              // ── Stroke ─────────────────────────────────────────────────────
+              // Active edges switch to a crisper color, not just higher opacity.
+              // This gives clear signal without making resting edges heavy.
+              const strokeColor = isActive ? EDGE_STROKE_COLOR_ACTIVE : EDGE_STROKE_COLOR;
+              const strokeWidth = isSelectedEdge
                 ? EDGE_STROKE_WIDTH * EDGE_WIDTH_MULT.selected
                 : isNeighborEdge
                   ? EDGE_STROKE_WIDTH * EDGE_WIDTH_MULT.neighbor
@@ -464,9 +482,9 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions }: SVGRende
                     onClick={(e) => { e.stopPropagation(); handleEdgeClick(edge.id); }}
                     style={{ cursor: 'pointer' }}
                   />
-                  {/* Selection / hover halo */}
+                  {/* Selection / hover halo — uses active color for a warm glow */}
                   {(isSelectedEdge || isHovered) && (
-                    <path d={curvePath} stroke={EDGE_STROKE_COLOR}
+                    <path d={curvePath} stroke={EDGE_STROKE_COLOR_ACTIVE}
                       strokeWidth={EDGE_STROKE_WIDTH * EDGE_HALO.widthMult}
                       fill="none" opacity={isSelectedEdge ? EDGE_HALO.selectedOpacity : EDGE_HALO.hoveredOpacity}
                       strokeLinecap="round" pointerEvents="none"
@@ -476,22 +494,22 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions }: SVGRende
                   {isNeighborEdge && selectedNodeId && (
                     <motion.path
                       key={`emerge-${edge.id}-${selectedNodeId}`}
-                      d={curvePath} stroke={EDGE_STROKE_COLOR}
+                      d={curvePath} stroke={EDGE_STROKE_COLOR_ACTIVE}
                       strokeWidth={EDGE_STROKE_WIDTH * EDGE_WIDTH_MULT.emergence}
                       fill="none" strokeLinecap="round" pointerEvents="none"
-                      initial={{ opacity: 0.35, pathLength: 0 }}
+                      initial={{ opacity: 0.28, pathLength: 0 }}
                       animate={{ opacity: 0, pathLength: 1 }}
-                      transition={{ duration: 0.65, ease: 'easeOut' }}
+                      transition={{ duration: 0.55, ease: 'easeOut' }}
                     />
                   )}
                   {/* Main edge stroke — uniform across all edge types */}
                   <path
                     d={curvePath}
-                    stroke={EDGE_STROKE_COLOR}
-                    strokeWidth={activeWidth}
+                    stroke={strokeColor}
+                    strokeWidth={strokeWidth}
                     fill="none"
                     strokeLinecap="round" opacity={opacity}
-                    style={{ transition: 'opacity 280ms ease-out, stroke-width 150ms ease-out' }}
+                    style={{ transition: 'opacity 300ms ease-out, stroke-width 180ms ease-out, stroke 300ms ease-out' }}
                     pointerEvents="none"
                   />
                   {lodLevel.showEdgeLabels && edge.label && (

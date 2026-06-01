@@ -20,12 +20,19 @@
   /* Graph rendering tokens — for light airy canvas */
   --color-node-fill: rgba(123, 110, 196, 0.07);
   --color-node-ring: rgba(123, 110, 196, 0.22);
-  --color-edge-default: rgba(37, 30, 61, 0.42);
-  --color-edge-strong: rgba(37, 30, 61, 0.65);
-  --color-edge-weak: rgba(37, 30, 61, 0.18);
-  /* Edge stroke — single canonical width used by all edges. Change here to
-     affect every connection in the graph simultaneously. */
-  --edge-stroke-width: 1px;
+
+  /* Edge colors — two-tier system:
+       default  = resting state, edges recede behind nodes
+       active   = hover/selection neighborhood, edges surface clearly
+     Both are lavender-tinted to match the design system accent.
+     Adjust alpha only — never change the hue. */
+  --color-edge-default: rgba(107, 88, 192, 0.13);
+  --color-edge-active:  rgba(107, 88, 192, 0.60);
+  --color-edge-strong:  rgba(107, 88, 192, 0.22);
+  --color-edge-weak:    rgba(107, 88, 192, 0.06);
+
+  /* Edge stroke — single canonical width. Change here to affect all edges. */
+  --edge-stroke-width: 0.8px;
 
   /* Cluster colors — muted but distinguishable on light canvas */
   --color-cluster-a: #C45872;
