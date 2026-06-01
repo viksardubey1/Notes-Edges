@@ -30,9 +30,10 @@ export const EDGE_STROKE_COLOR        = 'var(--color-edge-default)';
 export const EDGE_STROKE_COLOR_ACTIVE = 'var(--color-edge-active)';
 
 /** Quadratic bezier curvature: offset = min(len × tension, maxOffset).
- *  Higher tension = more elegant arcs, less visual cutting through node clusters. */
+ *  Tension is applied adaptively in SVGRenderer — longer edges get more bow
+ *  to arc around the graph rather than cutting through it. */
 export const EDGE_CURVE_TENSION    = 0.26;
-export const EDGE_CURVE_MAX_OFFSET = 90; // px
+export const EDGE_CURVE_MAX_OFFSET = 130; // px — raised to give long edges real arcs
 
 // ── State width multipliers ───────────────────────────────────────────────────
 // Applied on top of EDGE_STROKE_WIDTH during interaction states.

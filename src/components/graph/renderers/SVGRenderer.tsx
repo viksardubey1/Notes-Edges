@@ -24,7 +24,7 @@ import type { GraphData, LODLevel, GraphNode, SemanticEdgeType, LearningState } 
 import { useGraphStore, getNeighborNodeIds, getNeighborEdgeIds } from '@/store/graph.store';
 import { useGraphInteractions } from '@/hooks/useGraphInteractions';
 import { getTopNodesByPercent } from '@/lib/graph/layout';
-import { edgeOpacityFromWeight, truncateWords } from '@/lib/utils';
+import { edgeOpacityFromWeight, truncateWords, hashString } from '@/lib/utils';
 import {
   EDGE_STROKE_WIDTH,
   EDGE_STROKE_COLOR,
@@ -319,6 +319,14 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions }: SVGRende
         <filter id="nodeBackdropShadow" x="-40%" y="-40%" width="180%" height="180%">
           <feDropShadow dx="0" dy="2" stdDeviation="4" floodColor="rgba(0,0,0,0.28)" />
         </filter>
+        {/* Edge glow — white luminous border on outgoing edges of selected node */}
+        <filter id="edgeGlow" x="-300%" y="-300%" width="700%" height="700%">
+          <feGaussianBlur stdDeviation="3" result="blur" />
+          <feMerge>
+            <feMergeNode in="blur" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
 
         {/* Per-cluster glass orb gradients */}
         {clusterColors.map((color) => (
@@ -454,13 +462,32 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions }: SVGRende
               // Long cross-graph edges fade — keeps local topology crisp.
               // Only apply to resting edges so neighborhood always reads clearly.
               if (len > 220 && !isActive) opacity *= Math.max(0.3, 1 - (len - 220) / 500);
-              // Slightly higher tension → more elegant arcs that arc around
-              // cluster centers rather than cutting straight through them.
-              const curveOffset = len > 10 ? Math.min(len * EDGE_CURVE_TENSION, EDGE_CURVE_MAX_OFFSET) : 0;
+
+              // ── Adaptive curvature (crossing reduction) ─────────────────
+              // Short edges get a gentle bow; long edges escalate aggressively
+              // so they arc *around* the graph rather than cutting through it.
+              // This is the primary crossing-reduction mechanism.
+              const adaptiveTension = len < 180
+                ? EDGE_CURVE_TENSION * 0.80
+                : EDGE_CURVE_TENSION + (len - 180) * 0.0006;
+              const curveOffset = len > 10
+                ? Math.min(len * adaptiveTension, EDGE_CURVE_MAX_OFFSET)
+                : 0;
               const sign = edge.sourceId < edge.targetId ? 1 : -1;
               const cpx = len > 10 ? mx + (-dy / len) * curveOffset * sign : mx;
               const cpy = len > 10 ? my + (dx / len) * curveOffset * sign : my;
-              const curvePath = `M ${x1} ${y1} Q ${cpx} ${cpy} ${x2} ${y2}`;
+
+              // ── Per-edge tangential phase nudge ─────────────────────────
+              // Deterministic offset along the edge direction — spreads edges
+              // that share nearly identical arc paths so they don't overlap.
+              const phaseHash = (hashString(edge.sourceId + edge.targetId) % 1000) / 1000;
+              const tangentNudge = (phaseHash - 0.5) * 24; // ±12px
+              const cpxF = len > 10 ? cpx + (dx / len) * tangentNudge : cpx;
+              const cpyF = len > 10 ? cpy + (dy / len) * tangentNudge : cpy;
+              const curvePath = `M ${x1} ${y1} Q ${cpxF} ${cpyF} ${x2} ${y2}`;
+
+              // ── Outgoing edge from selected node ─────────────────────────
+              const isOutgoing = !!selectedNodeId && edge.sourceId === selectedNodeId;
 
               // ── Stroke ─────────────────────────────────────────────────────
               // Active edges switch to a crisper color, not just higher opacity.
@@ -501,6 +528,24 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions }: SVGRende
                       animate={{ opacity: 0, pathLength: 1 }}
                       transition={{ duration: 0.55, ease: 'easeOut' }}
                     />
+                  )}
+                  {/* White luminous border — outgoing edges from selected node only */}
+                  {isOutgoing && (
+                    <>
+                      {/* Outer diffuse glow */}
+                      <path d={curvePath}
+                        stroke="rgba(255,255,255,0.22)"
+                        strokeWidth={strokeWidth * 5}
+                        fill="none" strokeLinecap="round" pointerEvents="none"
+                        filter="url(#edgeGlow)"
+                      />
+                      {/* Crisp white border — sits between glow and main stroke */}
+                      <path d={curvePath}
+                        stroke="rgba(255,255,255,0.75)"
+                        strokeWidth={strokeWidth + 1.4}
+                        fill="none" strokeLinecap="round" pointerEvents="none"
+                      />
+                    </>
                   )}
                   {/* Main edge stroke — uniform across all edge types */}
                   <path
