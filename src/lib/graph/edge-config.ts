@@ -16,7 +16,7 @@ import type { SemanticEdgeType } from '@/types/graph';
 // ── Base rendering constants ──────────────────────────────────────────────────
 
 /** Stroke width for resting edges. Thin to keep edges from dominating the canvas. */
-export const EDGE_STROKE_WIDTH = 0.8;
+export const EDGE_STROKE_WIDTH = 1.0;
 
 /**
  * Two-tier color system:

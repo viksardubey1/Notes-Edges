@@ -26,7 +26,7 @@
        active   = hover/selection neighborhood, edges surface clearly
      Both are lavender-tinted to match the design system accent.
      Adjust alpha only — never change the hue. */
-  --color-edge-default: rgba(107, 88, 192, 0.13);
+  --color-edge-default: rgba(107, 88, 192, 0.22);
   --color-edge-active:  rgba(107, 88, 192, 0.60);
   --color-edge-strong:  rgba(107, 88, 192, 0.22);
   --color-edge-weak:    rgba(107, 88, 192, 0.06);
