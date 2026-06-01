@@ -25,22 +25,16 @@ import { useGraphStore, getNeighborNodeIds, getNeighborEdgeIds } from '@/store/g
 import { useGraphInteractions } from '@/hooks/useGraphInteractions';
 import { getTopNodesByPercent } from '@/lib/graph/layout';
 import { edgeOpacityFromWeight, truncateWords } from '@/lib/utils';
-
-// ── Edge type styles ──────────────────────────────────────────────────────────
-
-interface EdgeStyle { color: string; width: number; dasharray?: string; }
-
-const EDGE_TYPE_STYLES: Record<SemanticEdgeType | 'default', EdgeStyle> = {
-  ENABLES:    { color: 'var(--color-state-understood)', width: 1.5 },
-  IS_A:       { color: 'var(--color-ghost)',            width: 0.8 },
-  CAUSES:     { color: 'var(--color-state-weak)',       width: 2 },
-  CONTRASTS:  { color: 'var(--accent-primary)',         width: 1.2, dasharray: '5 3' },
-  PART_OF:    { color: 'var(--color-ghost)',            width: 1,   dasharray: '2 3' },
-  DEPENDS_ON: { color: 'var(--color-state-reviewing)',  width: 1.2, dasharray: '8 4' },
-  LEADS_TO:   { color: 'var(--accent-primary)',         width: 1.5 },
-  RELATES_TO: { color: 'var(--color-edge-default)',     width: 0.7 },
-  default:    { color: 'var(--color-edge-default)',     width: 1 },
-};
+import {
+  EDGE_STROKE_WIDTH,
+  EDGE_STROKE_COLOR,
+  EDGE_CURVE_TENSION,
+  EDGE_CURVE_MAX_OFFSET,
+  EDGE_WIDTH_MULT,
+  EDGE_HALO,
+  SEMANTIC_TYPE_ABBR,
+  semanticColor,
+} from '@/lib/graph/edge-config';
 
 // ── Visual tier system ────────────────────────────────────────────────────────
 
@@ -361,9 +355,6 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions }: SVGRende
           <stop offset="100%" stopColor="#9585DC"   stopOpacity="0.22" />
         </radialGradient>
 
-        <marker id="arrow-leads-to" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
-          <path d="M0,0 L0,6 L6,3 z" fill="var(--accent-primary)" opacity={0.6} />
-        </marker>
       </defs>
 
       {/* Star field hidden on light theme */}
@@ -442,10 +433,6 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions }: SVGRende
                 opacity = (filteredNodeIds.has(edge.sourceId) && filteredNodeIds.has(edge.targetId)) ? opacity : 0.04;
               }
 
-              const typeStyle = EDGE_TYPE_STYLES[semType] ?? EDGE_TYPE_STYLES.default;
-              const active = isNeighborEdge || isHovered || isSelectedEdge;
-              const isLeadsTo = semType === 'LEADS_TO';
-
               const x1 = sourceNode.x ?? 0, y1 = sourceNode.y ?? 0;
               const x2 = targetNode.x ?? 0, y2 = targetNode.y ?? 0;
               const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
@@ -453,25 +440,35 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions }: SVGRende
               const len = Math.sqrt(dx * dx + dy * dy);
               // Long cross-graph edges fade proportionally — keeps local edges crisp (skip for neighbor edges when selected)
               if (len > 250 && !isNeighborEdge) opacity *= Math.max(0.35, 1 - (len - 250) / 600);
-              // Longer edges get a proportionally larger bow so they arc around
-              // the graph instead of cutting through the middle.
-              const curveOffset = len > 10 ? Math.min(len * 0.22, 80) : 0;
+              // Consistent quadratic bezier curvature for every edge.
+              const curveOffset = len > 10 ? Math.min(len * EDGE_CURVE_TENSION, EDGE_CURVE_MAX_OFFSET) : 0;
               const sign = edge.sourceId < edge.targetId ? 1 : -1;
               const cpx = len > 10 ? mx + (-dy / len) * curveOffset * sign : mx;
               const cpy = len > 10 ? my + (dx / len) * curveOffset * sign : my;
               const curvePath = `M ${x1} ${y1} Q ${cpx} ${cpy} ${x2} ${y2}`;
 
+              // Interaction-state width — all multipliers from the central config.
+              const activeWidth = isSelectedEdge
+                ? EDGE_STROKE_WIDTH * EDGE_WIDTH_MULT.selected
+                : isNeighborEdge
+                  ? EDGE_STROKE_WIDTH * EDGE_WIDTH_MULT.neighbor
+                  : isHovered
+                    ? EDGE_STROKE_WIDTH * EDGE_WIDTH_MULT.hovered
+                    : EDGE_STROKE_WIDTH;
+
               return (
                 <g key={edge.id} className="pointer-events-auto">
+                  {/* Wide transparent hit target for easy mouse interaction */}
                   <path d={curvePath} stroke="transparent" strokeWidth={16} fill="none"
                     onMouseEnter={() => hoverEdge(edge.id)} onMouseLeave={() => hoverEdge(null)}
                     onClick={(e) => { e.stopPropagation(); handleEdgeClick(edge.id); }}
                     style={{ cursor: 'pointer' }}
                   />
+                  {/* Selection / hover halo */}
                   {(isSelectedEdge || isHovered) && (
-                    <path d={curvePath} stroke={typeStyle.color}
-                      strokeWidth={isSelectedEdge ? typeStyle.width * 10 : typeStyle.width * 6}
-                      fill="none" opacity={isSelectedEdge ? 0.14 : 0.09}
+                    <path d={curvePath} stroke={EDGE_STROKE_COLOR}
+                      strokeWidth={EDGE_STROKE_WIDTH * EDGE_HALO.widthMult}
+                      fill="none" opacity={isSelectedEdge ? EDGE_HALO.selectedOpacity : EDGE_HALO.hoveredOpacity}
                       strokeLinecap="round" pointerEvents="none"
                     />
                   )}
@@ -479,22 +476,21 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions }: SVGRende
                   {isNeighborEdge && selectedNodeId && (
                     <motion.path
                       key={`emerge-${edge.id}-${selectedNodeId}`}
-                      d={curvePath} stroke={typeStyle.color}
-                      strokeWidth={typeStyle.width * 5}
+                      d={curvePath} stroke={EDGE_STROKE_COLOR}
+                      strokeWidth={EDGE_STROKE_WIDTH * EDGE_WIDTH_MULT.emergence}
                       fill="none" strokeLinecap="round" pointerEvents="none"
                       initial={{ opacity: 0.35, pathLength: 0 }}
                       animate={{ opacity: 0, pathLength: 1 }}
                       transition={{ duration: 0.65, ease: 'easeOut' }}
                     />
                   )}
+                  {/* Main edge stroke — uniform across all edge types */}
                   <path
                     d={curvePath}
-                    stroke={typeStyle.color}
-                    strokeWidth={isSelectedEdge ? typeStyle.width * 2.5 : isNeighborEdge ? typeStyle.width * 2.5 : isHovered ? typeStyle.width * 2 : typeStyle.width}
+                    stroke={EDGE_STROKE_COLOR}
+                    strokeWidth={activeWidth}
                     fill="none"
-                    strokeDasharray={active ? undefined : typeStyle.dasharray}
                     strokeLinecap="round" opacity={opacity}
-                    markerEnd={isLeadsTo ? 'url(#arrow-leads-to)' : undefined}
                     style={{ transition: 'opacity 280ms ease-out, stroke-width 150ms ease-out' }}
                     pointerEvents="none"
                   />
@@ -1242,11 +1238,8 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions }: SVGRende
 }
 
 // ─── Edge Label Pill ──────────────────────────────────────────────────────────
-
-const SEM_TYPE_LABEL: Partial<Record<SemanticEdgeType, string>> = {
-  ENABLES: 'enables', IS_A: 'is a', CAUSES: 'causes', CONTRASTS: 'vs',
-  PART_OF: 'part of', DEPENDS_ON: 'needs', LEADS_TO: '→', RELATES_TO: '~',
-};
+// Labels use semantic type accent colors (from edge-config) for the text and
+// border — this is UI chrome, not the edge stroke itself.
 
 interface EdgeLabelPillProps {
   edge: { id: string; label: string; sourceId: string; targetId: string };
@@ -1258,15 +1251,17 @@ interface EdgeLabelPillProps {
 function EdgeLabelPill({ edge, sourceNode, targetNode, semType }: EdgeLabelPillProps) {
   const midX = ((sourceNode.x ?? 0) + (targetNode.x ?? 0)) / 2;
   const midY = ((sourceNode.y ?? 0) + (targetNode.y ?? 0)) / 2;
-  const typeStyle = EDGE_TYPE_STYLES[semType] ?? EDGE_TYPE_STYLES.default;
-  const text = (edge.label ? truncateWords(edge.label, 4) : null) ?? SEM_TYPE_LABEL[semType as SemanticEdgeType] ?? '';
+  const labelColor = semanticColor(semType !== 'default' ? semType as SemanticEdgeType : undefined);
+  const text = (edge.label ? truncateWords(edge.label, 4) : null)
+    ?? SEMANTIC_TYPE_ABBR[semType as SemanticEdgeType]
+    ?? '';
   const width = text.length * 6.5 + 16;
   return (
     <g transform={`translate(${midX}, ${midY})`} className="pointer-events-none">
       <rect x={-width / 2} y={-9} width={width} height={18} rx={4}
-        fill="rgba(245, 243, 251, 0.92)" stroke={typeStyle.color + '55'} strokeWidth={0.8} opacity={1}
+        fill="rgba(245, 243, 251, 0.92)" stroke={labelColor + '55'} strokeWidth={0.8} opacity={1}
       />
-      <text textAnchor="middle" dy="0.35em" fill={typeStyle.color} fontSize={9}
+      <text textAnchor="middle" dy="0.35em" fill={labelColor} fontSize={9}
         fontFamily="Geist, system-ui, sans-serif" fontWeight="500" letterSpacing="0.04em"
       >
         {text}

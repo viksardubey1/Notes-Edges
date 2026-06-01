@@ -29,6 +29,7 @@ import { useAuth } from '@/context/AuthContext';
 import { saveGraph } from '@/lib/graphs';
 import type { GraphNode, SemanticEdgeType, LearningState } from '@/types/graph';
 import { buildTraversalOrder } from '@/lib/traversal';
+import { SEMANTIC_TYPE_CONFIG } from '@/lib/graph/edge-config';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -51,17 +52,14 @@ const LEARNING_CONFIG: Record<Exclude<LearningState, 'unset'>, {
 
 const LEARNING_ORDER: Exclude<LearningState, 'unset'>[] = ['weak', 'reviewing', 'understood', 'mastered'];
 
-const SEM_TYPE_LABELS: Partial<Record<SemanticEdgeType, string>> = {
-  ENABLES: 'enables', IS_A: 'is a type of', CAUSES: 'causes',
-  CONTRASTS: 'contrasts', PART_OF: 'part of', DEPENDS_ON: 'needs',
-  LEADS_TO: 'leads to', RELATES_TO: 'relates to',
-};
+// Derived from SEMANTIC_TYPE_CONFIG — the single source of truth in edge-config.ts.
+const SEM_TYPE_LABELS: Partial<Record<SemanticEdgeType, string>> = Object.fromEntries(
+  Object.entries(SEMANTIC_TYPE_CONFIG).map(([k, v]) => [k, v.verb]),
+) as Partial<Record<SemanticEdgeType, string>>;
 
-const SEM_TYPE_COLORS: Partial<Record<SemanticEdgeType, string>> = {
-  ENABLES: '#60C898', IS_A: '#8888AA', CAUSES: '#E06070',
-  CONTRASTS: '#9876EE', PART_OF: '#8888AA', DEPENDS_ON: '#D4A840',
-  LEADS_TO: '#E87090', RELATES_TO: '#6A6A8A',
-};
+const SEM_TYPE_COLORS: Partial<Record<SemanticEdgeType, string>> = Object.fromEntries(
+  Object.entries(SEMANTIC_TYPE_CONFIG).map(([k, v]) => [k, v.color]),
+) as Partial<Record<SemanticEdgeType, string>>;
 
 // ── ConceptOrbit mini-visualization ──────────────────────────────────────────
 

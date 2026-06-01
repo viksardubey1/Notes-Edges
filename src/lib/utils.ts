@@ -101,9 +101,9 @@ export function edgeOpacityFromWeight(weight: number): number {
 
 /**
  * Get edge stroke width from weight.
+ * All edges use the same canonical width regardless of weight — weight
+ * is expressed through opacity, not thickness.
  */
-export function edgeStrokeFromWeight(weight: number): number {
-  if (weight >= 0.7) return 1.5;
-  if (weight >= 0.4) return 1.0;
-  return 0.8;
+export function edgeStrokeFromWeight(_weight: number): number {
+  return 1.0; // matches EDGE_STROKE_WIDTH in edge-config.ts
 }

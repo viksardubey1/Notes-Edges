@@ -19,20 +19,16 @@ import { useUIStore } from '@/store/ui.store';
 import { useGraphInteractions } from '@/hooks/useGraphInteractions';
 import type { GraphNode, SemanticEdgeType, LearningState } from '@/types/graph';
 import { buildTraversalOrder } from '@/lib/traversal';
+import { SEMANTIC_TYPE_CONFIG } from '@/lib/graph/edge-config';
 
-// ── Semantic type config ──────────────────────────────────────────────────────
+// Derived from the single source of truth in edge-config.ts.
+const SEM_TYPE_LABELS: Partial<Record<SemanticEdgeType, string>> = Object.fromEntries(
+  Object.entries(SEMANTIC_TYPE_CONFIG).map(([k, v]) => [k, v.verb]),
+) as Partial<Record<SemanticEdgeType, string>>;
 
-const SEM_TYPE_LABELS: Partial<Record<SemanticEdgeType, string>> = {
-  ENABLES: 'enables', IS_A: 'is a type of', CAUSES: 'causes',
-  CONTRASTS: 'contrasts', PART_OF: 'part of', DEPENDS_ON: 'needs',
-  LEADS_TO: 'leads to', RELATES_TO: 'relates to',
-};
-
-const SEM_TYPE_COLORS: Partial<Record<SemanticEdgeType, string>> = {
-  ENABLES: '#4CAF8A', IS_A: '#9090BB', CAUSES: '#E07B50',
-  CONTRASTS: '#9B72CC', PART_OF: '#8888AA', DEPENDS_ON: '#C4973A',
-  LEADS_TO: '#6B9FFF', RELATES_TO: '#6A6A8A',
-};
+const SEM_TYPE_COLORS: Partial<Record<SemanticEdgeType, string>> = Object.fromEntries(
+  Object.entries(SEMANTIC_TYPE_CONFIG).map(([k, v]) => [k, v.color]),
+) as Partial<Record<SemanticEdgeType, string>>;
 
 // ── Learning state config ─────────────────────────────────────────────────────
 

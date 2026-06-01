@@ -18,54 +18,10 @@ import { ArrowRight, Zap, GitBranch, Link2, X, ArrowUpRight } from 'lucide-react
 import { useGraphStore } from '@/store/graph.store';
 import { useUIStore } from '@/store/ui.store';
 import type { GraphNode, SemanticEdgeType } from '@/types/graph';
+import { SEMANTIC_TYPE_CONFIG } from '@/lib/graph/edge-config';
 
-// ── Semantic type config ──────────────────────────────────────────────────────
-
-const SEM_TYPE_CONFIG: Record<SemanticEdgeType, {
-  label: string; verb: string; color: string; bg: string; border: string;
-  description: string; insight: string;
-}> = {
-  ENABLES:    {
-    label: 'Enables',      verb: 'enables',         color: '#4CAF8A', bg: '#4CAF8A10', border: '#4CAF8A28',
-    description: 'Understanding A makes it possible to understand B.',
-    insight:     'This is a gateway relationship. Once A clicks, B opens up naturally.',
-  },
-  IS_A:       {
-    label: 'Is a type of', verb: 'is a type of',    color: '#9090BB', bg: '#9090BB10', border: '#9090BB28',
-    description: 'A is a specific example or subtype of B.',
-    insight:     'Look at B first — it\'s the broader category. Then A is one instance of that pattern.',
-  },
-  CAUSES:     {
-    label: 'Causes',       verb: 'causes',           color: '#E07B50', bg: '#E07B5010', border: '#E07B5028',
-    description: 'A directly produces or triggers B.',
-    insight:     'Trace the mechanism. When you see A in a problem, ask what it will produce downstream.',
-  },
-  CONTRASTS:  {
-    label: 'Contrasts',    verb: 'contrasts with',   color: '#9B72CC', bg: '#9B72CC10', border: '#9B72CC28',
-    description: 'A and B are in tension — understanding the difference is key.',
-    insight:     'Test yourself: in what specific situation would you choose one over the other?',
-  },
-  PART_OF:    {
-    label: 'Part of',      verb: 'is part of',       color: '#8888AA', bg: '#8888AA10', border: '#8888AA28',
-    description: 'A is a component or sub-concept within B.',
-    insight:     'Find the whole before studying the part. B gives A its purpose and context.',
-  },
-  DEPENDS_ON: {
-    label: 'Depends on',   verb: 'depends on',       color: '#C4973A', bg: '#C4973A10', border: '#C4973A28',
-    description: 'You need to understand B before A makes full sense.',
-    insight:     'This is a prerequisite. If A isn\'t landing, revisit B — the foundation may be shaky.',
-  },
-  LEADS_TO:   {
-    label: 'Leads to',     verb: 'leads to',         color: '#6B9FFF', bg: '#6B9FFF10', border: '#6B9FFF28',
-    description: 'A comes first in a sequence — B follows naturally.',
-    insight:     'Trace the full chain. Where does the path go after B?',
-  },
-  RELATES_TO: {
-    label: 'Relates to',   verb: 'relates to',       color: '#6A7A9A', bg: '#6A7A9A10', border: '#6A7A9A28',
-    description: 'A and B share context or often appear together.',
-    insight:     'Look for the hidden pattern. Why do these two ideas keep showing up together?',
-  },
-};
+// SEM_TYPE_CONFIG is the canonical source — imported from edge-config.ts.
+const SEM_TYPE_CONFIG = SEMANTIC_TYPE_CONFIG;
 
 // ── ConnectionBridge ──────────────────────────────────────────────────────────
 

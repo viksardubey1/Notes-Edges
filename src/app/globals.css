@@ -23,6 +23,9 @@
   --color-edge-default: rgba(37, 30, 61, 0.09);
   --color-edge-strong: rgba(37, 30, 61, 0.22);
   --color-edge-weak: rgba(37, 30, 61, 0.04);
+  /* Edge stroke — single canonical width used by all edges. Change here to
+     affect every connection in the graph simultaneously. */
+  --edge-stroke-width: 1px;
 
   /* Cluster colors — muted but distinguishable on light canvas */
   --color-cluster-a: #C45872;
