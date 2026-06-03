@@ -674,13 +674,10 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions, showSecond
               const isOutgoing = !!selectedNodeId && edge.sourceId === selectedNodeId;
 
               // ── Stroke color ───────────────────────────────────────────────
-              // Resting: cluster-tinted (each edge carries its origin cluster's hue).
-              // Intra-cluster → source cluster color; inter-cluster → source color at
-              // lower opacity so the blend reads as cross-cluster.
-              // Active → vivid accent indigo (ACTIVE).
+              // Always use the cluster-tinted color — opacity (not hue) carries
+              // the visual hierarchy between resting, hover, and selected states.
               const clusterColor = sourceNode.clusterColor ?? EDGE_STROKE_COLOR;
-              const restingColor = isActive ? EDGE_STROKE_COLOR_ACTIVE : clusterColor;
-              const strokeColor  = restingColor;
+              const strokeColor  = clusterColor;
 
               // ── Stroke width ───────────────────────────────────────────────
               // DEFAULT: strong (≥ 0.7 weight) = 1.4px, medium = 1.0px
@@ -715,9 +712,9 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions, showSecond
                       opacity={opacity * 0.18}
                     />
                   )}
-                  {/* Selection / hover halo — uses active color for a warm glow */}
+                  {/* Selection / hover halo — cluster-tinted glow */}
                   {(isSelectedEdge || isHovered) && (
-                    <path d={curvePath} stroke={EDGE_STROKE_COLOR_ACTIVE}
+                    <path d={curvePath} stroke={clusterColor}
                       strokeWidth={EDGE_STROKE_WIDTH * EDGE_HALO.widthMult}
                       fill="none" opacity={isSelectedEdge ? EDGE_HALO.selectedOpacity : EDGE_HALO.hoveredOpacity}
                       strokeLinecap="round" pointerEvents="none"
@@ -727,7 +724,7 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions, showSecond
                   {isNeighborEdge && selectedNodeId && (
                     <motion.path
                       key={`emerge-${edge.id}-${selectedNodeId}`}
-                      d={curvePath} stroke={EDGE_STROKE_COLOR_ACTIVE}
+                      d={curvePath} stroke={clusterColor}
                       strokeWidth={EDGE_STROKE_WIDTH * EDGE_WIDTH_MULT.emergence}
                       fill="none" strokeLinecap="round" pointerEvents="none"
                       initial={{ opacity: 0.28, pathLength: 0 }}

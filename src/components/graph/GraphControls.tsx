@@ -116,24 +116,41 @@ export function GraphControls({ zoom, onZoomIn, onZoomOut, onFitToScreen }: Grap
             <button
               onClick={() => fileInputRef.current?.click()}
               aria-label={backdropUrl ? 'Change backdrop image' : 'Set backdrop image'}
-              className="flex items-center gap-2 px-2.5 py-1.5 transition-colors duration-100 hover:bg-black/5"
-              style={{ color: backdropUrl ? 'var(--accent-primary)' : 'var(--text-muted)' }}
+              className="flex items-center gap-2 mx-1.5 my-1.5 px-2 py-1.5 rounded-[8px] transition-all duration-150"
+              style={{
+                background: backdropUrl
+                  ? 'rgba(123,110,196,0.10)'
+                  : 'linear-gradient(135deg, rgba(123,110,196,0.13) 0%, rgba(93,148,200,0.10) 100%)',
+                border: '1px solid rgba(123,110,196,0.28)',
+                color: 'var(--accent-primary)',
+              }}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.background = 'rgba(123,110,196,0.18)';
+                (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(123,110,196,0.50)';
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.background = backdropUrl
+                  ? 'rgba(123,110,196,0.10)'
+                  : 'linear-gradient(135deg, rgba(123,110,196,0.13) 0%, rgba(93,148,200,0.10) 100%)';
+                (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(123,110,196,0.28)';
+              }}
             >
-              <ImagePlus size={12} />
-              <span className="text-[11px]">Backdrop</span>
+              <ImagePlus size={13} />
+              <span className="text-[11px] font-medium">
+                {backdropUrl ? 'Change' : 'Add backdrop'}
+              </span>
             </button>
 
             {backdropUrl && (
               <>
-                <div className="h-px mx-2" style={{ background: 'var(--border-subtle)' }} />
                 <button
                   onClick={() => setBackdrop(null)}
                   aria-label="Remove backdrop"
-                  className="flex items-center gap-2 px-2.5 py-1.5 transition-colors duration-100 hover:bg-black/5"
-                  style={{ color: 'var(--accent-warm)' }}
+                  className="flex items-center gap-2 mx-1.5 mb-1.5 px-2 py-1 rounded-[6px] transition-colors duration-100 hover:bg-black/5"
+                  style={{ color: 'var(--text-muted)' }}
                 >
-                  <X size={12} />
-                  <span className="text-[11px]">Remove</span>
+                  <X size={11} />
+                  <span className="text-[10px]">Remove</span>
                 </button>
               </>
             )}
