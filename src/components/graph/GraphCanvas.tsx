@@ -19,9 +19,11 @@ import { getLODLevel } from '@/lib/graph/lod';
 import { shouldUseWebGL } from '@/lib/graph/physics';
 import { Button } from '@/components/ui/button';
 import { GraphControls } from './GraphControls';
+import { BackgroundPicker } from './BackgroundPicker';
 import { SVGRenderer } from './renderers/SVGRenderer';
 import { ExplorationGuide } from './ExplorationGuide';
 import { ConceptExpansion } from './ConceptExpansion';
+import { getBackdropOverlay } from '@/lib/backgrounds';
 import { cn } from '@/lib/utils';
 
 interface GraphCanvasProps {
@@ -52,6 +54,9 @@ export function GraphCanvas({ className }: GraphCanvasProps) {
   // ergonomically in the canvas overlay, not floating over the selected node.
   const [showSecondDegree, setShowSecondDegree] = useState(false);
   useEffect(() => { setShowSecondDegree(false); }, [selectedNodeId]);
+
+  // Background picker
+  const [isPickerOpen, setIsPickerOpen] = useState(false);
 
   const {
     handleNodeClick,
@@ -179,9 +184,10 @@ export function GraphCanvas({ className }: GraphCanvasProps) {
       )}
       style={{
         background: backdropUrl
-          ? '#000000'
+          ? (backdropUrl.startsWith('#') ? backdropUrl : '#111111')
           : 'radial-gradient(ellipse 90% 75% at 48% 42%, rgba(255,155,140,0.18) 0%, rgba(255,200,190,0.10) 45%, transparent 65%), radial-gradient(ellipse 60% 55% at 75% 75%, rgba(255,180,170,0.08) 0%, transparent 55%), #FEF8F7',
         cursor: isDragging ? 'grabbing' : 'grab',
+        transition: 'background 250ms ease',
       }}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
@@ -208,17 +214,32 @@ export function GraphCanvas({ className }: GraphCanvasProps) {
         <rect width="100%" height="100%" fill="url(#dotgrid)" />
       </svg>
 
-      {/* Backdrop image — user-selected, sits below everything */}
-      {backdropUrl && (
-        <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 0 }}>
+      {/* Backdrop — image or solid color, sits below everything */}
+      {backdropUrl && !backdropUrl.startsWith('#') && (
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{ zIndex: 0, transition: 'opacity 250ms ease' }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={backdropUrl}
             alt=""
             className="w-full h-full object-cover"
-            style={{ opacity: 1 }}
             aria-hidden="true"
           />
         </div>
+      )}
+      {/* Readability overlay — softens backdrop so nodes/labels stay legible */}
+      {backdropUrl && (
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            zIndex: 1,
+            background: getBackdropOverlay(backdropUrl) ?? undefined,
+            transition: 'background 250ms ease',
+          }}
+          aria-hidden="true"
+        />
       )}
 
       {/* Polar reference grid — hidden when backdrop image is active */}
@@ -570,8 +591,15 @@ export function GraphCanvas({ className }: GraphCanvasProps) {
           onZoomIn={handleZoomIn}
           onZoomOut={handleZoomOut}
           onFitToScreen={() => fitToContent(dimensions)}
+          onOpenPicker={() => setIsPickerOpen(true)}
         />
       </div>
+
+      {/* Background Picker Modal */}
+      <BackgroundPicker
+        isOpen={isPickerOpen}
+        onClose={() => setIsPickerOpen(false)}
+      />
     </div>
   );
 }
