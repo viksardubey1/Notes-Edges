@@ -48,6 +48,11 @@ export function GraphCanvas({ className }: GraphCanvasProps) {
   const setPan = useGraphStore((s) => s.setPan);
   const hasSelection = !!(selectedNodeId || selectedEdgeId);
 
+  // Second-degree edge expansion — lives here so the button can be placed
+  // ergonomically in the canvas overlay, not floating over the selected node.
+  const [showSecondDegree, setShowSecondDegree] = useState(false);
+  useEffect(() => { setShowSecondDegree(false); }, [selectedNodeId]);
+
   const {
     handleNodeClick,
     handleCanvasClick,
@@ -308,6 +313,7 @@ export function GraphCanvas({ className }: GraphCanvasProps) {
                 pan={pan}
                 lodLevel={lodLevel}
                 dimensions={dimensions}
+                showSecondDegree={showSecondDegree}
               />
             )}
             {useWebGL && (
@@ -508,6 +514,54 @@ export function GraphCanvas({ className }: GraphCanvasProps) {
           </p>
         </div>
       )}
+
+      {/* Expand neighborhood — fixed bottom-left, ergonomic and consistent */}
+      <AnimatePresence>
+        {selectedNodeId && !showSecondDegree && (
+          <motion.div
+            key="expand-neighborhood"
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 6 }}
+            transition={{ duration: 0.18, ease: 'easeOut' }}
+            className="absolute bottom-4 left-4 z-10"
+          >
+            <button
+              onClick={(e) => { e.stopPropagation(); setShowSecondDegree(true); }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                background: 'rgba(255,255,255,0.92)',
+                border: '1px solid rgba(107,88,192,0.20)',
+                borderRadius: '10px',
+                padding: '6px 12px',
+                fontSize: '12px',
+                fontFamily: 'Geist, system-ui, sans-serif',
+                fontWeight: '500',
+                color: 'var(--accent-primary)',
+                cursor: 'pointer',
+                backdropFilter: 'blur(12px)',
+                boxShadow: '0 2px 12px rgba(107,88,192,0.12)',
+                letterSpacing: '0.01em',
+              }}
+            >
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ opacity: 0.7 }}>
+                <circle cx="6" cy="6" r="2" fill="currentColor" />
+                <circle cx="2" cy="2" r="1.5" fill="currentColor" opacity="0.6" />
+                <circle cx="10" cy="2" r="1.5" fill="currentColor" opacity="0.6" />
+                <circle cx="2" cy="10" r="1.5" fill="currentColor" opacity="0.6" />
+                <circle cx="10" cy="10" r="1.5" fill="currentColor" opacity="0.6" />
+                <line x1="6" y1="6" x2="2" y2="2" stroke="currentColor" strokeWidth="0.8" opacity="0.4" />
+                <line x1="6" y1="6" x2="10" y2="2" stroke="currentColor" strokeWidth="0.8" opacity="0.4" />
+                <line x1="6" y1="6" x2="2" y2="10" stroke="currentColor" strokeWidth="0.8" opacity="0.4" />
+                <line x1="6" y1="6" x2="10" y2="10" stroke="currentColor" strokeWidth="0.8" opacity="0.4" />
+              </svg>
+              Expand neighborhood
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Zoom Controls */}
       <div className="absolute bottom-4 right-4 z-10">

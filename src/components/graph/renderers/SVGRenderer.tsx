@@ -72,9 +72,10 @@ interface SVGRendererProps {
   pan: { x: number; y: number };
   lodLevel: LODLevel;
   dimensions: { width: number; height: number };
+  showSecondDegree: boolean;
 }
 
-export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions }: SVGRendererProps) {
+export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions, showSecondDegree }: SVGRendererProps) {
   const {
     selectedNodeId, selectedEdgeId, hoveredNodeId, hoveredEdgeId,
     filteredNodeIds, isClusterModeActive, learningStates,
@@ -145,10 +146,6 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions }: SVGRende
       }
     }
   }, [selectedNodeId]);
-
-  // Second-degree edge expansion — resets on each new selection
-  const [showSecondDegree, setShowSecondDegree] = useState(false);
-  useEffect(() => { setShowSecondDegree(false); }, [selectedNodeId]);
 
   // ── Progressive disclosure: top-3 edges per node (default state) ─────────────
   // Shows only the 3 strongest edges per node so the default view reads cleanly.
@@ -440,7 +437,6 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions }: SVGRende
   const groupTransform = `translate(${canvasCx + pan.x}px, ${canvasCy + pan.y}px) scale(${zoom})`;
 
   return (
-  <>
     <svg className="absolute inset-0 w-full h-full pointer-events-none" aria-hidden="true">
       <defs>
         <filter id={filterId} x="-60%" y="-60%" width="220%" height="220%">
@@ -618,12 +614,13 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions }: SVGRende
               }
 
               // ── Opacity ────────────────────────────────────────────────────
-              // Three distinct states: default (cluster-based) → hover → selected.
+              // Three distinct states: default (cluster-tinted) → hover → selected.
+              // Default opacity is higher than spec minimums for visual richness.
               let opacity: number;
 
               if (filteredNodeIds !== null) {
                 const bothVisible = filteredNodeIds.has(edge.sourceId) && filteredNodeIds.has(edge.targetId);
-                opacity = bothVisible ? (isIntraCluster ? 0.24 : 0.10) : 0.03;
+                opacity = bothVisible ? (isIntraCluster ? 0.38 : 0.18) : 0.03;
               } else if (selectedEdgeId !== null) {
                 opacity = isSelectedEdge ? 1.0 : 0.03;
               } else if (selectedNodeId !== null) {
@@ -631,16 +628,16 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions }: SVGRende
                 if (isSelectedNodeEdge) {
                   opacity = 0.90; // selected node's direct edges — prominent
                 } else if (isNeighborInterEdge) {
-                  opacity = 0.55; // neighbor-to-neighbor — secondary
+                  opacity = 0.58; // neighbor-to-neighbor — secondary
                 } else {
-                  opacity = showSecondDegree ? 0.25 : 0.04; // depth-2 when expanded
+                  opacity = showSecondDegree ? 0.28 : 0.04; // depth-2 when expanded
                 }
               } else if (hoveredNodeId !== null) {
                 // HOVER STATE
-                opacity = isHoverNodeEdge ? 0.80 : 0.06;
+                opacity = isHoverNodeEdge ? 0.85 : 0.07;
               } else {
-                // DEFAULT STATE — cluster-based opacity
-                opacity = isIntraCluster ? 0.24 : 0.10;
+                // DEFAULT STATE — cluster-tinted, richer than generic gray
+                opacity = isIntraCluster ? 0.38 : 0.18;
               }
 
               // ── Geometry ───────────────────────────────────────────────────
@@ -679,7 +676,13 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions }: SVGRende
               const isOutgoing = !!selectedNodeId && edge.sourceId === selectedNodeId;
 
               // ── Stroke color ───────────────────────────────────────────────
-              const strokeColor = isActive ? EDGE_STROKE_COLOR_ACTIVE : EDGE_STROKE_COLOR;
+              // Resting: cluster-tinted (each edge carries its origin cluster's hue).
+              // Intra-cluster → source cluster color; inter-cluster → source color at
+              // lower opacity so the blend reads as cross-cluster.
+              // Active → vivid accent indigo (ACTIVE).
+              const clusterColor = sourceNode.clusterColor ?? EDGE_STROKE_COLOR;
+              const restingColor = isActive ? EDGE_STROKE_COLOR_ACTIVE : clusterColor;
+              const strokeColor  = restingColor;
 
               // ── Stroke width ───────────────────────────────────────────────
               // DEFAULT: strong (≥ 0.7 weight) = 1.4px, medium = 1.0px
@@ -704,6 +707,16 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions }: SVGRende
                     onClick={(e) => { e.stopPropagation(); handleEdgeClick(edge.id); }}
                     style={{ cursor: 'pointer' }}
                   />
+                  {/* Ambient cluster glow — soft halo behind every resting edge.
+                      Gives edges depth and warmth; fades away during active states. */}
+                  {!isActive && (
+                    <path d={curvePath}
+                      stroke={clusterColor}
+                      strokeWidth={strokeWidth * 5}
+                      fill="none" strokeLinecap="round" pointerEvents="none"
+                      opacity={opacity * 0.18}
+                    />
+                  )}
                   {/* Selection / hover halo — uses active color for a warm glow */}
                   {(isSelectedEdge || isHovered) && (
                     <path d={curvePath} stroke={EDGE_STROKE_COLOR_ACTIVE}
@@ -1489,52 +1502,6 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions }: SVGRende
         </g>
       </g>
     </svg>
-
-    {/* ── Expand neighborhood button ─────────────────────────────────────────── */}
-    {/* Appears when a node is selected. Reveals second-degree edges on demand.  */}
-    {selectedNodeId && (() => {
-      const selNode = graph.nodes.find((n) => n.id === selectedNodeId);
-      if (!selNode || selNode.x == null || selNode.y == null) return null;
-      const screenX = dimensions.width / 2 + pan.x + selNode.x * zoom;
-      const screenY = dimensions.height / 2 + pan.y + selNode.y * zoom + (selNode.size ?? 14) * zoom + 28;
-      return (
-        <AnimatePresence>
-          {!showSecondDegree && (
-            <motion.button
-              key="expand-neighborhood"
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 4 }}
-              transition={{ duration: 0.18 }}
-              onClick={(e) => { e.stopPropagation(); setShowSecondDegree(true); }}
-              style={{
-                position: 'absolute',
-                left: screenX,
-                top: screenY,
-                transform: 'translateX(-50%)',
-                zIndex: 20,
-                pointerEvents: 'auto',
-                background: 'rgba(255,255,255,0.92)',
-                border: '1px solid rgba(107,88,192,0.22)',
-                borderRadius: '8px',
-                padding: '4px 10px',
-                fontSize: '11px',
-                fontFamily: 'Geist, system-ui, sans-serif',
-                fontWeight: '500',
-                color: 'var(--accent-primary)',
-                cursor: 'pointer',
-                backdropFilter: 'blur(8px)',
-                boxShadow: '0 2px 8px rgba(107,88,192,0.10)',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              Expand neighborhood
-            </motion.button>
-          )}
-        </AnimatePresence>
-      );
-    })()}
-  </>
   );
 }
 
