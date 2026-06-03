@@ -187,7 +187,7 @@ export function GraphCanvas({ className }: GraphCanvasProps) {
           ? (backdropUrl.startsWith('#') ? backdropUrl : '#111111')
           : 'radial-gradient(ellipse 90% 75% at 48% 42%, rgba(255,155,140,0.18) 0%, rgba(255,200,190,0.10) 45%, transparent 65%), radial-gradient(ellipse 60% 55% at 75% 75%, rgba(255,180,170,0.08) 0%, transparent 55%), #FEF8F7',
         cursor: isDragging ? 'grabbing' : 'grab',
-        transition: 'background 250ms ease',
+        transition: 'background 320ms cubic-bezier(0.25, 0.46, 0.45, 0.94)',
       }}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
@@ -216,9 +216,13 @@ export function GraphCanvas({ className }: GraphCanvasProps) {
 
       {/* Backdrop — image or solid color, sits below everything */}
       {backdropUrl && !backdropUrl.startsWith('#') && (
-        <div
+        <motion.div
+          key={backdropUrl}
           className="absolute inset-0 pointer-events-none"
-          style={{ zIndex: 0, transition: 'opacity 250ms ease' }}
+          style={{ zIndex: 0 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.32, ease: 'easeOut' }}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -227,7 +231,7 @@ export function GraphCanvas({ className }: GraphCanvasProps) {
             className="w-full h-full object-cover"
             aria-hidden="true"
           />
-        </div>
+        </motion.div>
       )}
       {/* Readability overlay — softens backdrop so nodes/labels stay legible */}
       {backdropUrl && (
@@ -236,7 +240,7 @@ export function GraphCanvas({ className }: GraphCanvasProps) {
           style={{
             zIndex: 1,
             background: getBackdropOverlay(backdropUrl) ?? undefined,
-            transition: 'background 250ms ease',
+            transition: 'background 320ms cubic-bezier(0.25, 0.46, 0.45, 0.94)',
           }}
           aria-hidden="true"
         />

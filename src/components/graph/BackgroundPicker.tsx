@@ -181,8 +181,8 @@ export function BackgroundPicker({ isOpen, onClose }: BackgroundPickerProps) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.18 }}
-            className="fixed inset-0 z-[200] bg-black/30 backdrop-blur-[3px]"
+            transition={{ duration: 0.22 }}
+            className="fixed inset-0 z-[200] bg-black/25 backdrop-blur-[4px]"
             onClick={handleCancel}
             aria-hidden="true"
           />
@@ -190,10 +190,10 @@ export function BackgroundPicker({ isOpen, onClose }: BackgroundPickerProps) {
           {/* Modal */}
           <motion.div
             key="bg-picker-modal"
-            initial={{ opacity: 0, scale: 0.97, y: 8 }}
+            initial={{ opacity: 0, scale: 0.96, y: 12 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.97, y: 8 }}
-            transition={{ duration: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }}
+            exit={{ opacity: 0, scale: 0.96, y: 12 }}
+            transition={{ duration: 0.26, ease: [0.22, 1, 0.36, 1] }}
             className="fixed inset-0 z-[210] flex items-center justify-center pointer-events-none p-4"
           >
             <div
@@ -203,6 +203,7 @@ export function BackgroundPicker({ isOpen, onClose }: BackgroundPickerProps) {
                 boxShadow: '0 24px 80px rgba(0,0,0,0.18), 0 0 0 1px rgba(0,0,0,0.06)',
               }}
               onClick={(e) => e.stopPropagation()}
+              onWheel={(e) => e.stopPropagation()}
             >
               {/* ── Header ─────────────────────────────────────────────────── */}
               <div className="flex items-center justify-between px-6 pt-5 pb-4 flex-shrink-0"

@@ -11,6 +11,8 @@ import { Minus, Plus, Maximize2, ImagePlus, X } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useGraphStore } from '@/store/graph.store';
 
+// Note: Tooltip still used for zoom-in/out/fit buttons above
+
 interface GraphControlsProps {
   zoom: number;
   onZoomIn: () => void;
@@ -91,38 +93,31 @@ export function GraphControls({ zoom, onZoomIn, onZoomOut, onFitToScreen, onOpen
           <div className="h-px mx-2" style={{ background: 'var(--border-subtle)' }} />
 
           {/* Background picker button */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={onOpenPicker}
-                aria-label="Choose background"
-                className="flex items-center gap-2 mx-1.5 my-1.5 px-2 py-1.5 rounded-[8px] transition-all duration-150"
-                style={{
-                  background: backdropUrl
-                    ? 'rgba(123,110,196,0.12)'
-                    : 'linear-gradient(135deg, rgba(123,110,196,0.13) 0%, rgba(93,148,200,0.10) 100%)',
-                  border: '1px solid rgba(123,110,196,0.30)',
-                  color: 'var(--accent-primary)',
-                }}
-                onMouseEnter={(e) => {
-                  (e.currentTarget as HTMLButtonElement).style.background = 'rgba(123,110,196,0.20)';
-                  (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(123,110,196,0.55)';
-                }}
-                onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLButtonElement).style.background = backdropUrl
-                    ? 'rgba(123,110,196,0.12)'
-                    : 'linear-gradient(135deg, rgba(123,110,196,0.13) 0%, rgba(93,148,200,0.10) 100%)';
-                  (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(123,110,196,0.30)';
-                }}
-              >
-                <ImagePlus size={13} />
-                <span className="text-[11px] font-medium">
-                  {backdropUrl ? 'Background' : 'Background'}
-                </span>
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="left">Choose background theme</TooltipContent>
-          </Tooltip>
+          <button
+            onClick={onOpenPicker}
+            aria-label="Choose background"
+            className="flex items-center gap-2 mx-1.5 my-1.5 px-2 py-1.5 rounded-[8px] transition-all duration-150"
+            style={{
+              background: backdropUrl
+                ? 'rgba(123,110,196,0.12)'
+                : 'linear-gradient(135deg, rgba(123,110,196,0.13) 0%, rgba(93,148,200,0.10) 100%)',
+              border: '1px solid rgba(123,110,196,0.30)',
+              color: 'var(--accent-primary)',
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.background = 'rgba(123,110,196,0.20)';
+              (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(123,110,196,0.55)';
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.background = backdropUrl
+                ? 'rgba(123,110,196,0.12)'
+                : 'linear-gradient(135deg, rgba(123,110,196,0.13) 0%, rgba(93,148,200,0.10) 100%)';
+              (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(123,110,196,0.30)';
+            }}
+          >
+            <ImagePlus size={13} />
+            <span className="text-[11px] font-medium">Background</span>
+          </button>
 
           {backdropUrl && (
             <button
