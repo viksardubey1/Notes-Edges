@@ -670,8 +670,8 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions, showSecond
               const cpyF = len > 10 ? cpy + (dy / len) * tangentNudge : cpy;
               const curvePath = `M ${x1} ${y1} Q ${cpxF} ${cpyF} ${x2} ${y2}`;
 
-              // ── Outgoing edge from selected node ─────────────────────────
-              const isOutgoing = !!selectedNodeId && edge.sourceId === selectedNodeId;
+              // ── Edge connected to selected node (both directions) ────────
+              const isOutgoing = isSelectedNodeEdge && !!selectedNodeId;
 
               // ── Stroke color ───────────────────────────────────────────────
               // Always use the cluster-tinted color — opacity (not hue) carries
@@ -732,20 +732,20 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions, showSecond
                       transition={{ duration: 0.55, ease: 'easeOut' }}
                     />
                   )}
-                  {/* White luminous border — outgoing edges from selected node only */}
+                  {/* Luminous border — all edges connected to the selected node */}
                   {isOutgoing && (
                     <>
                       {/* Outer diffuse glow */}
                       <path d={curvePath}
-                        stroke="rgba(255,255,255,0.22)"
+                        stroke="rgba(255,255,255,0.14)"
                         strokeWidth={strokeWidth * 5}
                         fill="none" strokeLinecap="round" pointerEvents="none"
                         filter="url(#edgeGlow)"
                       />
                       {/* Crisp white border — sits between glow and main stroke */}
                       <path d={curvePath}
-                        stroke="rgba(255,255,255,0.75)"
-                        strokeWidth={strokeWidth + 1.4}
+                        stroke="rgba(255,255,255,0.52)"
+                        strokeWidth={strokeWidth + 1.0}
                         fill="none" strokeLinecap="round" pointerEvents="none"
                       />
                     </>
