@@ -472,6 +472,19 @@ export async function POST(req: NextRequest) {
     if (msg.includes('No concepts extracted')) {
       return NextResponse.json({ error: 'No concepts found — try longer or more detailed text.' }, { status: 422 });
     }
+    if (
+      msg.includes('INVALID_ARGUMENT') ||
+      msg.includes('unsupported') ||
+      msg.includes('Unable to process') ||
+      msg.includes('image') ||
+      msg.includes('cannot be processed') ||
+      msg.includes('no text')
+    ) {
+      return NextResponse.json(
+        { error: 'This file couldn\'t be processed. PDFs must contain readable text — image-only or scanned documents without OCR text cannot be extracted. Try copying the text and pasting it directly instead.' },
+        { status: 422 },
+      );
+    }
 
     return NextResponse.json({ error: 'Extraction failed. Please try again.' }, { status: 500 });
   }

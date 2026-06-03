@@ -125,9 +125,13 @@ export function UploadSheet() {
     e.preventDefault();
     setIsDragging(false);
     const file = e.dataTransfer.files[0];
-    if (file?.type === 'application/pdf') {
+    if (!file) return;
+    if (file.type === 'application/pdf') {
       setDroppedFile(file);
+      setSubmitError(null);
       setActiveTab('pdf');
+    } else {
+      setSubmitError(`Unsupported file type: ${file.name.split('.').pop()?.toUpperCase() ?? 'unknown'}. Only PDF files are supported — paste text instead for other formats.`);
     }
   }, []);
 
@@ -135,7 +139,6 @@ export function UploadSheet() {
     if (!canSubmit || isSubmitting) return;
     setIsSubmitting(true);
     setSubmitError(null);
-    closeUploadSheet();
     setGenerating(true);
 
     try {
@@ -185,6 +188,7 @@ export function UploadSheet() {
 
       setText('');
       setDroppedFile(null);
+      closeUploadSheet();
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       setSubmitError(msg);
@@ -412,7 +416,7 @@ export function UploadSheet() {
                         className="hidden"
                         onChange={(e) => {
                           const f = e.target.files?.[0];
-                          if (f) setDroppedFile(f);
+                          if (f) { setDroppedFile(f); setSubmitError(null); }
                         }}
                       />
                     </div>

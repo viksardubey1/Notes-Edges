@@ -133,17 +133,15 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions, showSecond
     return frontier;
   }, [selectedNodeId, neighborNodeIds, visitedNodeIds, learningStates]);
 
-  // Camera transition on node selection
+  // Camera transition on node selection AND deselection
   const [cameraTransition, setCameraTransition] = useState(false);
   const prevSelectedId = useRef<string | null>(null);
   useEffect(() => {
     if (selectedNodeId !== prevSelectedId.current) {
       prevSelectedId.current = selectedNodeId;
-      if (selectedNodeId) {
-        setCameraTransition(true);
-        const t = setTimeout(() => setCameraTransition(false), 500);
-        return () => clearTimeout(t);
-      }
+      setCameraTransition(true);
+      const t = setTimeout(() => setCameraTransition(false), 500);
+      return () => clearTimeout(t);
     }
   }, [selectedNodeId]);
 
