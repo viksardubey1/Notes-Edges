@@ -22,12 +22,11 @@
   --color-node-ring: rgba(123, 110, 196, 0.22);
 
   /* Edge colors — two-tier system:
-       default  = resting state, edges recede behind nodes
-       active   = hover/selection neighborhood, edges surface clearly
-     Both are lavender-tinted to match the design system accent.
-     Adjust alpha only — never change the hue. */
-  --color-edge-default: rgba(52, 32, 96, 0.44);
-  --color-edge-active:  rgba(107, 88, 192, 0.60);
+       default  = resting state; neutral gray-purple, opacity controlled via SVG attribute (20-30%)
+       active   = hover/selection neighborhood; vivid indigo surfaces clearly
+     Never use these for UI chrome — graph canvas only. */
+  --color-edge-default: rgba(168, 158, 200, 1.0);
+  --color-edge-active:  rgba(107, 88, 192, 0.88);
   --color-edge-strong:  rgba(107, 88, 192, 0.22);
   --color-edge-weak:    rgba(107, 88, 192, 0.06);
 

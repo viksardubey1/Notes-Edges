@@ -91,15 +91,14 @@ export function nodeRadiusFromCentrality(
 }
 
 /**
- * Get edge opacity from weight.
- * The base color (--color-edge-default) is already calibrated to be subtle,
- * so this function applies only fine-grained variation — not dramatic steps.
- * Weight is expressed primarily through opacity, not stroke width.
+ * Get edge opacity from weight — default (resting) state only.
+ * Target: 20-30% opacity so edges show overall structure without competing with nodes.
+ * --color-edge-default is a solid neutral gray-purple; this opacity IS the visual weight.
  */
 export function edgeOpacityFromWeight(weight: number): number {
-  if (weight >= 0.7) return 1.0;
-  if (weight >= 0.4) return 0.78;
-  return 0.52;
+  if (weight >= 0.7) return 0.28;
+  if (weight >= 0.4) return 0.22;
+  return 0.18;
 }
 
 /**

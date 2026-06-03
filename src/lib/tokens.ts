@@ -180,9 +180,9 @@ export const semantic = {
 
 export const lod = {
   minimal: 0.3,   // < 0.3x: top 20% nodes, no edges, no labels
-  reduced: 0.7,   // 0.3–0.7x: top 50% nodes, strong edges only, labels on hover
-  full: 1.5,      // 0.7–1.5x: all nodes/edges, labels visible
-  detailed: 1.5,  // > 1.5x: edge labels visible without hover
+  reduced: 0.8,   // 0.3–0.8x: top 50% nodes, strong edges only, labels on hover only
+  full: 1.3,      // 0.8–1.3x: all nodes/edges, important labels visible
+  detailed: 1.3,  // > 1.3x: more labels allowed, edge labels
 } as const;
 
 // ─── Graph Physics Constants ──────────────────────────────────────────────────

@@ -88,6 +88,16 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions }: SVGRende
   const neighborNodeIds  = getNeighborNodeIds(graph, selectedNodeId);
   const neighborEdgeIds  = getNeighborEdgeIds(graph, selectedNodeId);
 
+  // Hover-node neighbors — only meaningful when no node/edge is selected
+  const hoveredNodeNeighborEdgeIds = useMemo(
+    () => (hoveredNodeId && !selectedNodeId) ? getNeighborEdgeIds(graph, hoveredNodeId) : new Set<string>(),
+    [graph, hoveredNodeId, selectedNodeId],
+  );
+  const hoveredNodeNeighborNodeIds = useMemo(
+    () => (hoveredNodeId && !selectedNodeId) ? getNeighborNodeIds(graph, hoveredNodeId) : new Set<string>(),
+    [graph, hoveredNodeId, selectedNodeId],
+  );
+
   // Nodes connected to selected edge
   const selectedEdgeNodeIds = useMemo(() => {
     if (!selectedEdgeId) return new Set<string>();
@@ -135,6 +145,60 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions }: SVGRende
       }
     }
   }, [selectedNodeId]);
+
+  // Second-degree edge expansion — resets on each new selection
+  const [showSecondDegree, setShowSecondDegree] = useState(false);
+  useEffect(() => { setShowSecondDegree(false); }, [selectedNodeId]);
+
+  // ── Progressive disclosure: top-3 edges per node (default state) ─────────────
+  // Shows only the 3 strongest edges per node so the default view reads cleanly.
+  // Hover and selection states reveal more edges contextually.
+  const topEdgeIds = useMemo(() => {
+    const nodeEdgeMap = new Map<string, Array<{ id: string; weight: number }>>();
+    for (const edge of graph.edges) {
+      if (!nodeEdgeMap.has(edge.sourceId)) nodeEdgeMap.set(edge.sourceId, []);
+      if (!nodeEdgeMap.has(edge.targetId)) nodeEdgeMap.set(edge.targetId, []);
+      nodeEdgeMap.get(edge.sourceId)!.push({ id: edge.id, weight: edge.weight });
+      nodeEdgeMap.get(edge.targetId)!.push({ id: edge.id, weight: edge.weight });
+    }
+    const result = new Set<string>();
+    for (const edges of nodeEdgeMap.values()) {
+      const sorted = [...edges].sort((a, b) => b.weight - a.weight);
+      for (const e of sorted.slice(0, 3)) result.add(e.id);
+    }
+    return result;
+  }, [graph.edges]);
+
+  // ── Neighbor-to-neighbor edges (selected state secondary neighborhood) ────────
+  // Edges between direct neighbors that don't touch the selected node itself.
+  // Rendered at reduced opacity (55%) so the selected-node edges stay dominant.
+  const neighborInterEdgeIds = useMemo(() => {
+    if (!selectedNodeId) return new Set<string>();
+    const result = new Set<string>();
+    for (const edge of graph.edges) {
+      if (
+        neighborNodeIds.has(edge.sourceId) &&
+        neighborNodeIds.has(edge.targetId) &&
+        !neighborEdgeIds.has(edge.id)
+      ) result.add(edge.id);
+    }
+    return result;
+  }, [selectedNodeId, neighborNodeIds, neighborEdgeIds, graph.edges]);
+
+  // ── Persistent label nodes: root + top-8 + active learning path ──────────────
+  // These nodes always show labels in default state regardless of zoom.
+  // All other node labels are hidden until hover, zoom, or selection.
+  const topLabelNodeIds = useMemo(() => {
+    const sorted = [...graph.nodes].sort((a, b) => b.centrality - a.centrality);
+    const result = new Set<string>();
+    // Root + top 8 by centrality
+    for (let i = 0; i < Math.min(8, sorted.length); i++) result.add(sorted[i].id);
+    // Active learning path = nodes currently being reviewed
+    for (const node of graph.nodes) {
+      if ((learningStates[node.id] as LearningState) === 'reviewing') result.add(node.id);
+    }
+    return result;
+  }, [graph.nodes, learningStates]);
 
   // "Up next" suggestion — history-aware, no loops
   const { navigationHistory } = useGraphStore();
@@ -227,6 +291,96 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions }: SVGRende
 
   const activeNodeIds = visibleNodeIds;
 
+  // ── Collision-safe background labels ─────────────────────────────────────────
+  // Greedy placement: priority-sorted nodes claim label space; lower-priority
+  // nodes are hidden if their label bounding box overlaps an already-placed one.
+  // Selected/hovered/neighbor labels bypass this (they always render).
+  // 16px label-to-label and 12px label-to-node padding enforced.
+  const collisionSafeLabelIds = useMemo(() => {
+    const PAD = 16;
+
+    const getRadius = (node: GraphNode): number => {
+      const ls = (learningStates[node.id] ?? 'unset') as LearningState;
+      const tier: VisualTier = LEARNING_STATE_TO_TIER[ls] ?? 'visited';
+      return (node.size ?? 14) * TIER_CONFIG[tier].radiusMult;
+    };
+
+    const getLabelBox = (
+      node: GraphNode,
+    ): { x: number; y: number; w: number; h: number } => {
+      const ls = (learningStates[node.id] ?? 'unset') as LearningState;
+      const tier: VisualTier = LEARNING_STATE_TO_TIER[ls] ?? 'visited';
+      const fontSize = node.id === selectedNodeId ? 13 : tier === 'mastered' ? 12 : 11;
+      const labelText = truncateWords(node.label, 4);
+      const labelW = labelText.length * (fontSize * 0.52) + 14;
+      const labelH = fontSize + 5;
+      const radius = getRadius(node);
+      return {
+        x: (node.x ?? 0) - labelW / 2,
+        y: (node.y ?? 0) + radius + 5,
+        w: labelW,
+        h: labelH,
+      };
+    };
+
+    const overlaps = (
+      box: { x: number; y: number; w: number; h: number },
+      occupied: Array<{ x: number; y: number; w: number; h: number }>,
+    ): boolean => {
+      for (const b of occupied) {
+        if (
+          box.x < b.x + b.w + PAD &&
+          box.x + box.w > b.x - PAD &&
+          box.y < b.y + b.h + PAD &&
+          box.y + box.h > b.y - PAD
+        ) return true;
+      }
+      return false;
+    };
+
+    // Pre-occupy space for always-visible labels (selected / hovered / neighbors)
+    const occupied: Array<{ x: number; y: number; w: number; h: number }> = [];
+    const reserve = (id: string) => {
+      const n = graph.nodes.find((nd) => nd.id === id);
+      if (n) occupied.push(getLabelBox(n));
+    };
+    if (selectedNodeId) reserve(selectedNodeId);
+    if (hoveredNodeId) reserve(hoveredNodeId);
+    for (const id of neighborNodeIds) reserve(id);
+
+    // Sort background candidates by priority: topLabelNodeIds > mastered > understood > centrality
+    const candidates = graph.nodes
+      .filter((n) =>
+        activeNodeIds.has(n.id) &&
+        n.id !== selectedNodeId &&
+        n.id !== hoveredNodeId &&
+        !neighborNodeIds.has(n.id),
+      )
+      .map((n) => {
+        const ls = (learningStates[n.id] ?? 'unset') as LearningState;
+        const tier: VisualTier = LEARNING_STATE_TO_TIER[ls] ?? 'visited';
+        const bonus = topLabelNodeIds.has(n.id) ? 2
+          : tier === 'mastered' ? 1
+          : tier === 'understood' ? 0.5
+          : 0;
+        return { node: n, priority: n.centrality + bonus };
+      })
+      .sort((a, b) => b.priority - a.priority);
+
+    const result = new Set<string>();
+    for (const { node } of candidates) {
+      const box = getLabelBox(node);
+      if (!overlaps(box, occupied)) {
+        occupied.push(box);
+        result.add(node.id);
+      }
+    }
+    return result;
+  }, [
+    graph.nodes, activeNodeIds, selectedNodeId, hoveredNodeId,
+    neighborNodeIds, topLabelNodeIds, learningStates,
+  ]);
+
   // BFS reveal delays
   const nodeRevealDelay = useMemo(() => {
     if (!graph.nodes.length) return new Map<string, number>();
@@ -286,6 +440,7 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions }: SVGRende
   const groupTransform = `translate(${canvasCx + pan.x}px, ${canvasCy + pan.y}px) scale(${zoom})`;
 
   return (
+  <>
     <svg className="absolute inset-0 w-full h-full pointer-events-none" aria-hidden="true">
       <defs>
         <filter id={filterId} x="-60%" y="-60%" width="220%" height="220%">
@@ -419,38 +574,73 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions }: SVGRende
               if (!sourceNode || !targetNode) return null;
               if (!activeNodeIds.has(edge.sourceId) || !activeNodeIds.has(edge.targetId)) return null;
               if (lodLevel.showStrongEdgesOnly && edge.weight < 0.7) return null;
-              // Raise minimum threshold — fewer edges on canvas = less clutter
+              // Minimum weight threshold — weak edges add noise without information
               if (edge.weight < 0.45) return null;
 
               const semType = (edge.semanticType ?? 'default') as SemanticEdgeType | 'default';
               // RELATES_TO edges are the noisiest — only show strong ones
               if (semType === 'RELATES_TO' && edge.weight < 0.68) return null;
 
-              const isSelectedEdge = selectedEdgeId === edge.id;
-              const isNeighborEdge = neighborEdgeIds.has(edge.id);
-              const isHovered      = hoveredEdgeId === edge.id;
-              const isActive       = isNeighborEdge || isHovered || isSelectedEdge;
+              const isSelectedEdge      = selectedEdgeId === edge.id;
+              const isSelectedNodeEdge  = neighborEdgeIds.has(edge.id);     // touches selected node
+              const isNeighborInterEdge = neighborInterEdgeIds.has(edge.id); // between neighbors
+              const isNeighborEdge      = isSelectedNodeEdge || isNeighborInterEdge;
+              const isHovered           = hoveredEdgeId === edge.id;
+              const isHoverNodeEdge     = hoveredNodeNeighborEdgeIds.has(edge.id);
+              const isActive            = isNeighborEdge || isHovered || isSelectedEdge || isHoverNodeEdge;
 
-              // ── Opacity ────────────────────────────────────────────────────
-              // Base: weight-modulated. No extra canvas multiplier — the color
-              // token (--color-edge-default at 13%) is already calibrated for
-              // a resting state that recedes behind nodes.
-              let opacity = edgeOpacityFromWeight(edge.weight);
+              // ── Intra/inter cluster classification ────────────────────────
+              const isIntraCluster = !!(
+                sourceNode.clusterId &&
+                targetNode.clusterId &&
+                sourceNode.clusterId === targetNode.clusterId
+              );
 
-              if (selectedNodeId !== null) {
-                if (isNeighborEdge) {
-                  opacity = 1.0; // neighborhood surfaces fully (uses ACTIVE color)
-                } else {
-                  // Non-neighborhood collapses dramatically — clear focus effect
-                  const srcDepth = nodeDepthMap.get(edge.sourceId) ?? 3;
-                  const tgtDepth = nodeDepthMap.get(edge.targetId) ?? 3;
-                  opacity = Math.min(srcDepth, tgtDepth) === 2 ? 0.10 : 0.03;
+              // ── Visibility filter ─────────────────────────────────────────
+              // DEFAULT: show only top-3 per node — clean overview
+              if (!selectedNodeId && !hoveredNodeId && !selectedEdgeId && filteredNodeIds === null) {
+                if (!topEdgeIds.has(edge.id)) return null;
+              }
+              // HOVER: show topEdgeIds + hover-node edges (others render at 6%)
+              if (hoveredNodeId !== null && selectedNodeId === null && selectedEdgeId === null && filteredNodeIds === null) {
+                if (!topEdgeIds.has(edge.id) && !isHoverNodeEdge) return null;
+              }
+              // SELECTED: show selected-node edges, inter-neighbor edges,
+              //   and depth-2 edges only when expand button was pressed
+              if (selectedNodeId !== null && !selectedEdgeId) {
+                const srcDepth = nodeDepthMap.get(edge.sourceId) ?? 3;
+                const tgtDepth = nodeDepthMap.get(edge.targetId) ?? 3;
+                const minDepth = Math.min(srcDepth, tgtDepth);
+                if (!isSelectedNodeEdge && !isNeighborInterEdge) {
+                  if (minDepth >= 2 && !showSecondDegree) return null;
+                  if (minDepth >= 3) return null;
                 }
               }
-              if (selectedEdgeId !== null) opacity = isSelectedEdge ? 1.0 : 0.03;
+
+              // ── Opacity ────────────────────────────────────────────────────
+              // Three distinct states: default (cluster-based) → hover → selected.
+              let opacity: number;
+
               if (filteredNodeIds !== null) {
                 const bothVisible = filteredNodeIds.has(edge.sourceId) && filteredNodeIds.has(edge.targetId);
-                opacity = bothVisible ? opacity : 0.03;
+                opacity = bothVisible ? (isIntraCluster ? 0.24 : 0.10) : 0.03;
+              } else if (selectedEdgeId !== null) {
+                opacity = isSelectedEdge ? 1.0 : 0.03;
+              } else if (selectedNodeId !== null) {
+                // SELECTED STATE
+                if (isSelectedNodeEdge) {
+                  opacity = 0.90; // selected node's direct edges — prominent
+                } else if (isNeighborInterEdge) {
+                  opacity = 0.55; // neighbor-to-neighbor — secondary
+                } else {
+                  opacity = showSecondDegree ? 0.25 : 0.04; // depth-2 when expanded
+                }
+              } else if (hoveredNodeId !== null) {
+                // HOVER STATE
+                opacity = isHoverNodeEdge ? 0.80 : 0.06;
+              } else {
+                // DEFAULT STATE — cluster-based opacity
+                opacity = isIntraCluster ? 0.24 : 0.10;
               }
 
               // ── Geometry ───────────────────────────────────────────────────
@@ -463,13 +653,12 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions }: SVGRende
               // Only apply to resting edges so neighborhood always reads clearly.
               if (len > 220 && !isActive) opacity *= Math.max(0.3, 1 - (len - 220) / 500);
 
-              // ── Adaptive curvature (crossing reduction) ─────────────────
-              // Short edges get a gentle bow; long edges escalate aggressively
-              // so they arc *around* the graph rather than cutting through it.
-              // This is the primary crossing-reduction mechanism.
+              // ── Adaptive curvature ─────────────────────────────────────────
+              // Reduced by 50% from previous values — prefer short direct curves.
+              // Tension stays constant; no escalation on long edges (avoids sweeping arcs).
               const adaptiveTension = len < 180
                 ? EDGE_CURVE_TENSION * 0.80
-                : EDGE_CURVE_TENSION + (len - 180) * 0.0006;
+                : EDGE_CURVE_TENSION;
               const curveOffset = len > 10
                 ? Math.min(len * adaptiveTension, EDGE_CURVE_MAX_OFFSET)
                 : 0;
@@ -489,17 +678,23 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions }: SVGRende
               // ── Outgoing edge from selected node ─────────────────────────
               const isOutgoing = !!selectedNodeId && edge.sourceId === selectedNodeId;
 
-              // ── Stroke ─────────────────────────────────────────────────────
-              // Active edges switch to a crisper color, not just higher opacity.
-              // This gives clear signal without making resting edges heavy.
+              // ── Stroke color ───────────────────────────────────────────────
               const strokeColor = isActive ? EDGE_STROKE_COLOR_ACTIVE : EDGE_STROKE_COLOR;
+
+              // ── Stroke width ───────────────────────────────────────────────
+              // DEFAULT: strong (≥ 0.7 weight) = 1.4px, medium = 1.0px
+              // SELECTED: selected-node edges = 2px, neighbor inter-edges = 1.4px
               const strokeWidth = isSelectedEdge
-                ? EDGE_STROKE_WIDTH * EDGE_WIDTH_MULT.selected
-                : isNeighborEdge
-                  ? EDGE_STROKE_WIDTH * EDGE_WIDTH_MULT.neighbor
-                  : isHovered
-                    ? EDGE_STROKE_WIDTH * EDGE_WIDTH_MULT.hovered
-                    : EDGE_STROKE_WIDTH;
+                ? EDGE_STROKE_WIDTH * EDGE_WIDTH_MULT.selected          // 2.0px
+                : isSelectedNodeEdge && selectedNodeId
+                  ? 2.0                                                  // selected node edges: 2px
+                  : isNeighborInterEdge
+                    ? EDGE_STROKE_WIDTH * EDGE_WIDTH_MULT.neighbor      // 1.4px
+                    : isHovered
+                      ? EDGE_STROKE_WIDTH * EDGE_WIDTH_MULT.hovered     // 1.5px
+                      : edge.weight >= 0.7
+                        ? 1.4                                            // strong default edge
+                        : EDGE_STROKE_WIDTH;                            // medium: 1.0px
 
               return (
                 <g key={edge.id} className="pointer-events-auto">
@@ -571,13 +766,14 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions }: SVGRende
           {graph.nodes.filter((n) => n.id !== selectedNodeId).map((node) => {
             if (!activeNodeIds.has(node.id)) return null;
 
-            const isSelected    = selectedNodeId === node.id;
-            const isHovered     = hoveredNodeId  === node.id;
-            const isNeighbor    = neighborNodeIds.has(node.id);
-            const isEdgeEndpt   = selectedEdgeNodeIds.has(node.id);
-            const isFrontier    = frontierNodeIds.has(node.id);
-            const isNextSuggest = node.id === nextSuggestionNodeId;
-            const hasSelection  = selectedNodeId !== null || selectedEdgeId !== null;
+            const isSelected      = selectedNodeId === node.id;
+            const isHovered       = hoveredNodeId  === node.id;
+            const isNeighbor      = neighborNodeIds.has(node.id);
+            const isEdgeEndpt     = selectedEdgeNodeIds.has(node.id);
+            const isFrontier      = frontierNodeIds.has(node.id);
+            const isNextSuggest   = node.id === nextSuggestionNodeId;
+            const hasSelection    = selectedNodeId !== null || selectedEdgeId !== null;
+            const isHoverNeighbor = !hasSelection && hoveredNodeId !== null && hoveredNodeNeighborNodeIds.has(node.id);
 
             // ── Visual tier ──
             const ls = (learningStates[node.id] ?? 'unset') as LearningState;
@@ -600,11 +796,15 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions }: SVGRende
             let nodeOpacity = depthFade;
             // In base state, unexplored nodes are additionally dimmer
             if (!hasSelection && tier === 'unexplored') nodeOpacity = Math.min(nodeOpacity, 0.75);
+            // HOVER STATE: non-neighbor nodes fade to 35% for focus
+            if (!hasSelection && hoveredNodeId !== null && filteredNodeIds === null) {
+              if (isHoverNeighbor || node.id === hoveredNodeId) nodeOpacity = 1.0;
+              else nodeOpacity = Math.min(nodeOpacity, 0.35);
+            }
             if (hasSelection) {
               if (selectedNodeId !== null) {
                 if (isSelected || isNeighbor) nodeOpacity = 1;
-                else if (nodeDepth === 2) nodeOpacity = 0.68;
-                else nodeOpacity = 0.30;
+                else nodeOpacity = 0.25; // all unrelated nodes fade to 25%
               } else {
                 nodeOpacity = isEdgeEndpt ? 1 : 0.12;
               }
@@ -663,20 +863,19 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions }: SVGRende
             const isImportant = node.centrality >= 0.4 && node.centrality < 0.65;
             const glowColor   = node.clusterColor ?? 'var(--accent-primary)';
 
-            const labelCentralityThreshold =
-              tier === 'unexplored'
-                ? (zoom < 1.0 ? 0.62 : 0.40)   // unexplored: show labels for more central nodes
-                : zoom < 0.5 ? 0.42
-                : zoom < 0.8 ? 0.22
-                : zoom < 1.2 ? 0.10 : 0;
+            // Centrality threshold for LOD-gated labels (zoom 0.8–1.3 = tier 3)
+            const labelCentralityThreshold = zoom < 1.3 ? 0.30 : 0.10;
 
-            // Mastered/understood always show labels (known territory)
+            // Always show: selected, hovered, neighbors, root+top-8, mastered/understood
+            // All others need LOD permission + collision safety
             const alwaysShowLabel = isSelected || isHovered || isNeighbor
+              || topLabelNodeIds.has(node.id)
               || tier === 'mastered' || tier === 'understood';
-            const showLabel = alwaysShowLabel || (
-              (lodLevel.showLabels || (isHovered && lodLevel.showLabelsOnHover)) &&
-              node.centrality >= labelCentralityThreshold
-            );
+            const showLabel = alwaysShowLabel
+              ? true
+              : (lodLevel.showLabels || (isHovered && lodLevel.showLabelsOnHover))
+                && node.centrality >= labelCentralityThreshold
+                && collisionSafeLabelIds.has(node.id);
             const renderLabel = showLabel && 12 * zoom >= 8;
 
             const learningRingColor = ls === 'unset' ? null
@@ -779,6 +978,16 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions }: SVGRende
                 {isNeighbor && !isSelected && (
                   <circle r={radius + 6} fill={node.clusterColor ?? 'var(--accent-primary)'}
                     opacity={0.05} filter="url(#nodeGlow)" className="pointer-events-none"
+                  />
+                )}
+
+                {/* ── Hover-neighbor ring — lights up neighbors when hovering another node ── */}
+                {isHoverNeighbor && !isHovered && (
+                  <circle r={radius + 5} fill="none"
+                    stroke={node.clusterColor ?? 'var(--accent-primary)'}
+                    strokeWidth={1.2} opacity={0.45}
+                    className="pointer-events-none"
+                    style={{ transition: 'opacity 200ms ease-out' }}
                   />
                 )}
 
@@ -933,19 +1142,19 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions }: SVGRende
             const radius = (node.size ?? 14) * tierCfg.radiusMult;
             const nodeDepth = selectedNodeId ? (nodeDepthMap.get(node.id) ?? 3) : 0;
 
-            const labelCentralityThreshold =
-              tier === 'unexplored'
-                ? (zoom < 1.0 ? 0.62 : 0.40)
-                : zoom < 0.5 ? 0.42
-                : zoom < 0.8 ? 0.22
-                : zoom < 1.2 ? 0.10 : 0;
-
+            // Progressive disclosure label rules:
+            // - Always: selected, hovered, neighbors, root+top-8, mastered/understood
+            // - Zoom 0.8-1.3: centrality >= 0.30 + collision safe
+            // - Zoom > 1.3: centrality >= 0.10 + collision safe
+            const labelCentralityThreshold = zoom < 1.3 ? 0.30 : 0.10;
             const alwaysShowLabel = isSelected || isHovered || isNeighbor
+              || topLabelNodeIds.has(node.id)
               || tier === 'mastered' || tier === 'understood';
-            const showLabel = alwaysShowLabel || (
-              (lodLevel.showLabels || (isHovered && lodLevel.showLabelsOnHover)) &&
-              node.centrality >= labelCentralityThreshold
-            );
+            const showLabel = alwaysShowLabel
+              ? true
+              : (lodLevel.showLabels || (isHovered && lodLevel.showLabelsOnHover))
+                && node.centrality >= labelCentralityThreshold
+                && collisionSafeLabelIds.has(node.id);
             if (!(showLabel && 12 * zoom >= 8)) return null;
 
             // Mirror node opacity so labels fade with their node
@@ -958,7 +1167,6 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions }: SVGRende
             if (hasSelection) {
               if (selectedNodeId !== null) {
                 if (isNeighbor) labelOpacity = 0.85;
-                else if (nodeDepth === 2) labelOpacity = 0.15;
                 else labelOpacity = 0.08;
               } else {
                 labelOpacity = isEdgeEndpt ? 0.45 : 0.08;
@@ -1008,8 +1216,7 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions }: SVGRende
           {graph.nodes.filter((n) => n.id !== selectedNodeId && n.id === hoveredNodeId).map((node) => {
             if (!activeNodeIds.has(node.id)) return null;
 
-            const isSelected  = selectedNodeId === node.id;
-            const isHovered   = hoveredNodeId  === node.id;
+            const isSelected  = false; // filter ensures this is never selected
             const isNeighbor  = neighborNodeIds.has(node.id);
             const isEdgeEndpt = selectedEdgeNodeIds.has(node.id);
             const hasSelection = selectedNodeId !== null || selectedEdgeId !== null;
@@ -1018,22 +1225,9 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions }: SVGRende
             const tier: VisualTier = LEARNING_STATE_TO_TIER[ls] ?? 'visited';
             const tierCfg = TIER_CONFIG[tier];
             const radius = (node.size ?? 14) * tierCfg.radiusMult;
-            const nodeDepth = selectedNodeId ? (nodeDepthMap.get(node.id) ?? 3) : 0;
 
-            const labelCentralityThreshold =
-              tier === 'unexplored'
-                ? (zoom < 1.0 ? 0.62 : 0.40)
-                : zoom < 0.5 ? 0.42
-                : zoom < 0.8 ? 0.22
-                : zoom < 1.2 ? 0.10 : 0;
-
-            const alwaysShowLabel = isSelected || isHovered || isNeighbor
-              || tier === 'mastered' || tier === 'understood';
-            const showLabel = alwaysShowLabel || (
-              (lodLevel.showLabels || (isHovered && lodLevel.showLabelsOnHover)) &&
-              node.centrality >= labelCentralityThreshold
-            );
-            if (!(showLabel && 12 * zoom >= 8)) return null;
+            // Hovered node label — always shown (it's the hovered node itself)
+            if (!(12 * zoom >= 8)) return null;
 
             const distFromCenter = Math.hypot((node.x ?? 0) - graphCx, (node.y ?? 0) - graphCy);
             const depthFade = !hasSelection
@@ -1043,9 +1237,7 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions }: SVGRende
             if (!hasSelection && tier === 'unexplored') labelOpacity = Math.min(labelOpacity, 0.75);
             if (hasSelection) {
               if (selectedNodeId !== null) {
-                if (isNeighbor) labelOpacity = 0.85;
-                else if (nodeDepth === 2) labelOpacity = 0.15;
-                else labelOpacity = 0.08;
+                labelOpacity = isNeighbor ? 0.85 : 0.08;
               } else {
                 labelOpacity = isEdgeEndpt ? 0.45 : 0.08;
               }
@@ -1297,6 +1489,52 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions }: SVGRende
         </g>
       </g>
     </svg>
+
+    {/* ── Expand neighborhood button ─────────────────────────────────────────── */}
+    {/* Appears when a node is selected. Reveals second-degree edges on demand.  */}
+    {selectedNodeId && (() => {
+      const selNode = graph.nodes.find((n) => n.id === selectedNodeId);
+      if (!selNode || selNode.x == null || selNode.y == null) return null;
+      const screenX = dimensions.width / 2 + pan.x + selNode.x * zoom;
+      const screenY = dimensions.height / 2 + pan.y + selNode.y * zoom + (selNode.size ?? 14) * zoom + 28;
+      return (
+        <AnimatePresence>
+          {!showSecondDegree && (
+            <motion.button
+              key="expand-neighborhood"
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 4 }}
+              transition={{ duration: 0.18 }}
+              onClick={(e) => { e.stopPropagation(); setShowSecondDegree(true); }}
+              style={{
+                position: 'absolute',
+                left: screenX,
+                top: screenY,
+                transform: 'translateX(-50%)',
+                zIndex: 20,
+                pointerEvents: 'auto',
+                background: 'rgba(255,255,255,0.92)',
+                border: '1px solid rgba(107,88,192,0.22)',
+                borderRadius: '8px',
+                padding: '4px 10px',
+                fontSize: '11px',
+                fontFamily: 'Geist, system-ui, sans-serif',
+                fontWeight: '500',
+                color: 'var(--accent-primary)',
+                cursor: 'pointer',
+                backdropFilter: 'blur(8px)',
+                boxShadow: '0 2px 8px rgba(107,88,192,0.10)',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              Expand neighborhood
+            </motion.button>
+          )}
+        </AnimatePresence>
+      );
+    })()}
+  </>
   );
 }
 

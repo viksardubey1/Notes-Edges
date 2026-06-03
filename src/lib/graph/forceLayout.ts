@@ -22,7 +22,7 @@ const INITIAL_TEMP   = 35;
 const COOLING        = 0.983;    // temp decays to ≈0.5 in ~255 iters
 const MIN_TEMP       = 0.5;
 
-const K_REPULSION    = 22_000;   // Coulomb constant
+const K_REPULSION    = 27_500;   // Coulomb constant — +25% for dense-area repulsion
 const LINK_PADDING   = 28;       // extra gap beyond combined comfort radii on edges
 const CLUSTER_G      = 0.010;    // cluster gravity strength
 const CENTER_G       = 0.003;    // center gravity strength
