@@ -486,6 +486,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    return NextResponse.json({ error: `Extraction failed: ${msg}` }, { status: 500 });
+    return NextResponse.json({ error: 'Extraction failed. Please try again.' }, { status: 500 });
   }
 }
