@@ -11,7 +11,7 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Upload, FileText, X, Loader2, AlertCircle, PlusCircle, RefreshCw } from 'lucide-react';
+import { Upload, FileText, X, Loader2, AlertCircle, PlusCircle, RefreshCw, Info } from 'lucide-react';
 import { useUIStore } from '@/store/ui.store';
 import { useGraphStore } from '@/store/graph.store';
 import { useAuth } from '@/context/AuthContext';
@@ -406,6 +406,16 @@ export function UploadSheet() {
                           <div className="text-center">
                             <p className="text-[14px]" style={{ color: 'var(--text-primary)' }}>Drop a PDF here</p>
                             <p className="text-[12px] mt-1" style={{ color: 'var(--text-secondary)' }}>or click to browse · up to 50MB</p>
+                          </div>
+                          <div
+                            className="flex items-start gap-1.5 px-3 py-2 rounded-[8px] text-[11px] max-w-[320px] text-center"
+                            style={{ background: 'var(--bg-surface-3)', color: 'var(--text-muted)', border: '1px solid var(--border-subtle)' }}
+                          >
+                            <Info size={11} className="flex-shrink-0 mt-px" />
+                            <span>
+                              Best with <strong style={{ color: 'var(--text-secondary)' }}>text-heavy PDFs</strong> — lecture notes, papers, articles.
+                              Support for image-heavy and handwritten PDFs is in development.
+                            </span>
                           </div>
                         </>
                       )}
