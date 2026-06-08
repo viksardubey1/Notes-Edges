@@ -364,14 +364,14 @@ export function UploadSheet() {
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.15 }}
-                    className="h-full pb-2"
+                    className="h-full flex flex-col gap-2 pb-2"
                   >
                     <div
                       onDragOver={handleDragOver}
                       onDragLeave={handleDragLeave}
                       onDrop={handleDrop}
                       onClick={() => fileInputRef.current?.click()}
-                      className="h-full flex flex-col items-center justify-center gap-4 rounded-[10px] border-2 border-dashed cursor-pointer transition-colors"
+                      className="flex-1 flex flex-col items-center justify-center gap-4 rounded-[10px] border-2 border-dashed cursor-pointer transition-colors"
                       style={{
                         borderColor: isDragging ? 'var(--accent-primary)' : droppedFile ? '#38A870' : 'var(--border-default)',
                         background: isDragging ? 'var(--accent-glow)' : 'var(--bg-surface-2)',
@@ -407,16 +407,6 @@ export function UploadSheet() {
                             <p className="text-[14px]" style={{ color: 'var(--text-primary)' }}>Drop a PDF here</p>
                             <p className="text-[12px] mt-1" style={{ color: 'var(--text-secondary)' }}>or click to browse · up to 50MB</p>
                           </div>
-                          <div
-                            className="flex items-start gap-1.5 px-3 py-2 rounded-[8px] text-[11px] max-w-[320px] text-center"
-                            style={{ background: 'var(--bg-surface-3)', color: 'var(--text-muted)', border: '1px solid var(--border-subtle)' }}
-                          >
-                            <Info size={11} className="flex-shrink-0 mt-px" />
-                            <span>
-                              Best with <strong style={{ color: 'var(--text-secondary)' }}>text-heavy PDFs</strong> — lecture notes, papers, articles.
-                              Support for image-heavy and handwritten PDFs is in development.
-                            </span>
-                          </div>
                         </>
                       )}
                       <input
@@ -429,6 +419,15 @@ export function UploadSheet() {
                           if (f) { setDroppedFile(f); setSubmitError(null); }
                         }}
                       />
+                    </div>
+                    <div
+                      className="flex items-start gap-1.5 px-3 py-2 rounded-[8px] text-[11px] flex-shrink-0"
+                      style={{ background: 'var(--bg-surface-2)', color: 'var(--text-secondary)', border: '1px solid var(--border-default)' }}
+                    >
+                      <Info size={11} className="flex-shrink-0 mt-px" />
+                      <span>
+                        Currently works best with <strong style={{ color: 'var(--text-primary)' }}>text-heavy PDFs</strong> — lecture notes, papers, articles. Support for image-heavy and handwritten PDFs is in development.
+                      </span>
                     </div>
                   </motion.div>
                 )}
