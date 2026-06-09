@@ -23,6 +23,7 @@ import { BackgroundPicker } from './BackgroundPicker';
 import { SVGRenderer } from './renderers/SVGRenderer';
 import { ExplorationGuide } from './ExplorationGuide';
 import { ConceptExpansion } from './ConceptExpansion';
+import { GraphTips } from './GraphTips';
 import { getBackdropOverlay } from '@/lib/backgrounds';
 import { cn } from '@/lib/utils';
 
@@ -400,6 +401,9 @@ export function GraphCanvas({ className }: GraphCanvasProps) {
 
       {/* ConceptExpansion — spatial right-side knowledge panel */}
       <ConceptExpansion />
+
+      {/* Graph Tips — ephemeral onboarding overlay */}
+      <GraphTips graphId={graph?.id} isLayoutReady={isLayoutReady} />
 
       {/* Loading overlay — shown while generating OR while layout is settling */}
       <AnimatePresence>

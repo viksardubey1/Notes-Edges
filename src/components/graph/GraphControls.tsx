@@ -8,6 +8,7 @@
 'use client';
 
 import { Minus, Plus, Maximize2, ImagePlus, X } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useGraphStore } from '@/store/graph.store';
 
@@ -93,31 +94,49 @@ export function GraphControls({ zoom, onZoomIn, onZoomOut, onFitToScreen, onOpen
           <div className="h-px mx-2" style={{ background: 'var(--border-subtle)' }} />
 
           {/* Background picker button */}
-          <button
+          <motion.div
+            animate={{
+              boxShadow: [
+                '0 0 0 0px rgba(107,88,192,0)',
+                '0 0 0 4px rgba(107,88,192,0.18)',
+                '0 0 0 0px rgba(107,88,192,0)',
+              ],
+            }}
+            transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
+            className="mx-1.5 my-1.5 rounded-[8px]"
+          >
+          <motion.button
             onClick={onOpenPicker}
             aria-label="Choose background"
-            className="flex items-center gap-2 mx-1.5 my-1.5 px-2 py-1.5 rounded-[8px] transition-all duration-150"
+            className="flex items-center gap-2 w-full px-2 py-1.5 rounded-[8px]"
             style={{
               background: backdropUrl
                 ? 'rgba(123,110,196,0.12)'
                 : 'linear-gradient(135deg, rgba(123,110,196,0.13) 0%, rgba(93,148,200,0.10) 100%)',
-              border: '1px solid rgba(123,110,196,0.30)',
+              borderWidth: '1px',
+              borderStyle: 'solid',
               color: 'var(--accent-primary)',
             }}
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.background = 'rgba(123,110,196,0.20)';
-              (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(123,110,196,0.55)';
+            animate={{
+              borderColor: [
+                'rgba(107,88,192,0.30)',
+                'rgba(107,88,192,0.70)',
+                'rgba(107,88,192,0.30)',
+              ],
             }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.background = backdropUrl
-                ? 'rgba(123,110,196,0.12)'
-                : 'linear-gradient(135deg, rgba(123,110,196,0.13) 0%, rgba(93,148,200,0.10) 100%)';
-              (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(123,110,196,0.30)';
-            }}
+            transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
+            whileHover={{ scale: 1.03, backgroundColor: 'rgba(123,110,196,0.20)' }}
+            whileTap={{ scale: 0.97 }}
           >
-            <ImagePlus size={13} />
-            <span className="text-[11px] font-medium">Background</span>
-          </button>
+            <motion.div
+              animate={{ rotate: [0, -8, 8, 0] }}
+              transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut', delay: 0.5 }}
+            >
+              <ImagePlus size={13} />
+            </motion.div>
+            <span className="text-[11px] font-semibold">Background</span>
+          </motion.button>
+          </motion.div>
 
           {backdropUrl && (
             <button
