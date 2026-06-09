@@ -1,15 +1,16 @@
 /**
  * ExplorationGuide — Notes & Edges
  *
- * Floating "Start here" overlay that appears on first graph load.
- * - Points to the highest-centrality (core) concept
- * - Shows the first 3 exploration hops as a path
- * - Disappears on first node click or after 12 seconds
+ * "Start here" tooltip that physically anchors to the main concept node.
+ * - Picks best placement side (above / below / left / right) based on space
+ * - Draws an SVG bezier connector from card edge → node surface
+ * - Renders pulsing glow rings at the node
+ * - Connector dot, path-length draw-in, and card scale-in on open
  */
 
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Compass, MousePointerClick } from 'lucide-react';
 import { useGraphStore } from '@/store/graph.store';
@@ -23,15 +24,36 @@ interface ExplorationGuideProps {
   onNodeClick: (nodeId: string) => void;
 }
 
+const GAP = 20;       // px between node surface and card edge
+const PAD = 20;       // min distance from canvas boundary
+
+type Side = 'above' | 'below' | 'left' | 'right';
+
+function pickSide(
+  sx: number, sy: number, nr: number,
+  cw: number, ch: number,
+  dw: number, dh: number,
+): Side {
+  if (sy - nr - GAP >= ch + PAD)           return 'above';
+  if (dh - sy - nr - GAP >= ch + PAD)      return 'below';
+  if (sx - nr - GAP >= cw + PAD)           return 'left';
+  return 'right';
+}
+
+function clamp(v: number, lo: number, hi: number) {
+  return Math.max(lo, Math.min(hi, v));
+}
+
 export function ExplorationGuide({ graph, zoom, pan, dimensions, onNodeClick }: ExplorationGuideProps) {
   const { selectedNodeId } = useGraphStore();
   const [visible, setVisible] = useState(false);
   const [graphKey, setGraphKey] = useState<string | null>(null);
+  const cardRef = useRef<HTMLButtonElement>(null);
+  const [cardSize, setCardSize] = useState({ w: 220, h: 112 });
 
-  // Show when a new graph loads, hide after 12s or first selection
+  // Show on new graph, hide after 12 s or on selection
   useEffect(() => {
-    if (!graph?.id) return;
-    if (graph.id === graphKey) return;
+    if (!graph?.id || graph.id === graphKey) return;
     setGraphKey(graph.id);
     setVisible(true);
     const t = setTimeout(() => setVisible(false), 12_000);
@@ -42,18 +64,28 @@ export function ExplorationGuide({ graph, zoom, pan, dimensions, onNodeClick }: 
     if (selectedNodeId) setVisible(false);
   }, [selectedNodeId]);
 
-  // Find the main concept node
+  // Measure real card dimensions after mount
+  useLayoutEffect(() => {
+    if (!visible || !cardRef.current) return;
+    const ro = new ResizeObserver((entries) => {
+      const e = entries[0];
+      if (e) setCardSize({ w: e.contentRect.width, h: e.contentRect.height });
+    });
+    ro.observe(cardRef.current);
+    return () => ro.disconnect();
+  }, [visible]);
+
+  // Main concept node
   const mainNode = useMemo(() => {
     const mainId = graph.intelligenceSummary?.mainConcept;
     if (mainId) return graph.nodes.find((n) => n.id === mainId) ?? null;
-    // Fall back to highest centrality
     return graph.nodes.reduce(
       (best, n) => (n.centrality > (best?.centrality ?? -1) ? n : best),
       null as typeof graph.nodes[0] | null,
     );
   }, [graph.nodes, graph.intelligenceSummary?.mainConcept]);
 
-  // Exploration path: BFS 3 hops from main node
+  // Exploration path: BFS 3 hops
   const explorationPath = useMemo(() => {
     if (!mainNode) return [];
     const path: string[] = [];
@@ -79,61 +111,196 @@ export function ExplorationGuide({ graph, zoom, pan, dimensions, onNodeClick }: 
     return path;
   }, [mainNode, graph.nodes, graph.edges]);
 
-  if (!mainNode || !visible) return null;
+  if (!mainNode || dimensions.width === 0 || !visible) return null;
 
-  // Project node position to screen coordinates
+  // ── Screen coordinates ────────────────────────────────────────────────────
   const cx = dimensions.width / 2;
   const cy = dimensions.height / 2;
-  const screenX = (mainNode.x ?? 0) * zoom + cx + pan.x;
-  const screenY = (mainNode.y ?? 0) * zoom + cy + pan.y;
-  const nodeRadius = (mainNode.size ?? 12) * zoom;
+  const sx = (mainNode.x ?? 0) * zoom + cx + pan.x;
+  const sy = (mainNode.y ?? 0) * zoom + cy + pan.y;
+  const nr = (mainNode.size ?? 12) * zoom;
 
-  // Position tooltip above the node
-  const tooltipX = Math.min(Math.max(screenX, 120), dimensions.width - 120);
-  const tooltipY = screenY - nodeRadius - 16;
+  if (sx < -100 || sx > dimensions.width + 100) return null;
+  if (sy < -100 || sy > dimensions.height + 100) return null;
 
-  // Don't render if node is off-screen
-  if (screenX < -100 || screenX > dimensions.width + 100) return null;
-  if (screenY < -100 || screenY > dimensions.height + 100) return null;
+  // ── Placement ─────────────────────────────────────────────────────────────
+  const { w: cw, h: ch } = cardSize;
+  const side = pickSide(sx, sy, nr, cw, ch, dimensions.width, dimensions.height);
+
+  // Card position (CSS left / top) and transform
+  let cardCSSLeft: number;
+  let cardCSSTop: number;
+  let cardTransform: string;
+
+  // Connector endpoints
+  let connCardX: number;
+  let connCardY: number;
+  let connNodeX: number;
+  let connNodeY: number;
+
+  switch (side) {
+    case 'above': {
+      cardCSSLeft = clamp(sx, cw / 2 + PAD, dimensions.width - cw / 2 - PAD);
+      cardCSSTop  = sy - nr - GAP - ch;
+      cardTransform = 'translateX(-50%)';
+      connCardX = cardCSSLeft;
+      connCardY = cardCSSTop + ch;
+      connNodeX = sx;
+      connNodeY = sy - nr;
+      break;
+    }
+    case 'below': {
+      cardCSSLeft = clamp(sx, cw / 2 + PAD, dimensions.width - cw / 2 - PAD);
+      cardCSSTop  = sy + nr + GAP;
+      cardTransform = 'translateX(-50%)';
+      connCardX = cardCSSLeft;
+      connCardY = cardCSSTop;
+      connNodeX = sx;
+      connNodeY = sy + nr;
+      break;
+    }
+    case 'left': {
+      cardCSSLeft = sx - nr - GAP - cw;
+      cardCSSTop  = clamp(sy, ch / 2 + PAD, dimensions.height - ch / 2 - PAD);
+      cardTransform = 'translateY(-50%)';
+      connCardX = cardCSSLeft + cw;
+      connCardY = cardCSSTop;
+      connNodeX = sx - nr;
+      connNodeY = sy;
+      break;
+    }
+    default: { // right
+      cardCSSLeft = sx + nr + GAP;
+      cardCSSTop  = clamp(sy, ch / 2 + PAD, dimensions.height - ch / 2 - PAD);
+      cardTransform = 'translateY(-50%)';
+      connCardX = cardCSSLeft;
+      connCardY = cardCSSTop;
+      connNodeX = sx + nr;
+      connNodeY = sy;
+      break;
+    }
+  }
+
+  // ── Bezier control points ─────────────────────────────────────────────────
+  const dist = Math.sqrt((connNodeX - connCardX) ** 2 + (connNodeY - connCardY) ** 2);
+  const bend = Math.min(dist * 0.38, 55);
+
+  let cp1x: number, cp1y: number, cp2x: number, cp2y: number;
+  switch (side) {
+    case 'above':
+      cp1x = connCardX; cp1y = connCardY + bend;
+      cp2x = connNodeX; cp2y = connNodeY - bend;
+      break;
+    case 'below':
+      cp1x = connCardX; cp1y = connCardY - bend;
+      cp2x = connNodeX; cp2y = connNodeY + bend;
+      break;
+    case 'left':
+      cp1x = connCardX + bend; cp1y = connCardY;
+      cp2x = connNodeX - bend; cp2y = connNodeY;
+      break;
+    default: // right
+      cp1x = connCardX - bend; cp1y = connCardY;
+      cp2x = connNodeX + bend; cp2y = connNodeY;
+  }
+
+  const pathD = `M ${connCardX} ${connCardY} C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${connNodeX} ${connNodeY}`;
 
   return (
     <AnimatePresence>
-      {visible && (
+      {/* SVG layer: glow rings + connector */}
+      <motion.svg
+        key="guide-svg"
+        className="absolute inset-0 pointer-events-none"
+        style={{ zIndex: 19, overflow: 'visible' }}
+        width={dimensions.width}
+        height={dimensions.height}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.4, ease: 'easeOut' }}
+      >
+        {/* Outer glow pulse */}
+        <motion.circle
+          cx={sx} cy={sy} r={nr + 10}
+          fill="none"
+          stroke="rgba(107,88,192,0.14)"
+          strokeWidth={1}
+          animate={{ r: [nr + 10, nr + 18, nr + 10], opacity: [0.4, 0.7, 0.4] }}
+          transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut', delay: 0.2 }}
+        />
+        {/* Inner glow ring */}
+        <motion.circle
+          cx={sx} cy={sy} r={nr + 5}
+          fill="none"
+          stroke="rgba(107,88,192,0.42)"
+          strokeWidth={1.5}
+          animate={{ r: [nr + 5, nr + 9, nr + 5], opacity: [0.6, 1, 0.6] }}
+          transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
+        />
+
+        {/* Bezier connector */}
+        <motion.path
+          d={pathD}
+          fill="none"
+          stroke="rgba(107,88,192,0.32)"
+          strokeWidth={1.5}
+          strokeLinecap="round"
+          strokeDasharray="4 4"
+          initial={{ pathLength: 0, opacity: 0 }}
+          animate={{ pathLength: 1, opacity: 1 }}
+          transition={{ duration: 0.55, ease: 'easeOut', delay: 0.2 }}
+        />
+
+        {/* Anchor dot at node surface */}
+        <motion.circle
+          cx={connNodeX} cy={connNodeY} r={3.5}
+          fill="rgba(107,88,192,0.55)"
+          initial={{ scale: 0, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ duration: 0.28, ease: 'easeOut', delay: 0.55 }}
+          style={{ transformOrigin: `${connNodeX}px ${connNodeY}px` }}
+        />
+
+        {/* Anchor dot at card edge */}
+        <motion.circle
+          cx={connCardX} cy={connCardY} r={2.5}
+          fill="rgba(107,88,192,0.40)"
+          initial={{ scale: 0, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ duration: 0.28, ease: 'easeOut', delay: 0.45 }}
+          style={{ transformOrigin: `${connCardX}px ${connCardY}px` }}
+        />
+      </motion.svg>
+
+      {/* Card */}
+      <motion.div
+        key="guide-card"
+        className="absolute z-20"
+        style={{ left: cardCSSLeft, top: cardCSSTop, transform: cardTransform }}
+        initial={{ opacity: 0, scale: 0.93 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        transition={{ duration: 0.35, ease: [0.34, 1.56, 0.64, 1] }}
+      >
+        {/* Pulsing outer glow ring */}
         <motion.div
-          initial={{ opacity: 0, y: 6, scale: 0.96 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: -4, scale: 0.97 }}
-          transition={{ duration: 0.35, ease: [0.34, 1.56, 0.64, 1] }}
-          className="absolute z-20"
-          style={{
-            left: tooltipX,
-            top: tooltipY,
-            transform: 'translate(-50%, -100%)',
+          animate={{
+            boxShadow: [
+              '0 4px 20px rgba(37,30,61,0.08), 0 0 0 0px rgba(107,88,192,0)',
+              '0 6px 28px rgba(107,88,192,0.22), 0 0 0 4px rgba(107,88,192,0.10)',
+              '0 4px 20px rgba(37,30,61,0.08), 0 0 0 0px rgba(107,88,192,0)',
+            ],
           }}
+          transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
+          className="rounded-[12px]"
         >
-          {/* Float wrapper */}
-          <motion.div
-            animate={{ y: [0, -4, 0] }}
-            transition={{ duration: 2.8, repeat: Infinity, ease: 'easeInOut', delay: 0.4 }}
-          >
-            {/* Pulsing glow ring */}
-            <motion.div
-              animate={{
-                boxShadow: [
-                  '0 4px 24px rgba(37,30,61,0.10), 0 0 0 0px rgba(107,88,192,0)',
-                  '0 6px 32px rgba(107,88,192,0.30), 0 0 0 4px rgba(107,88,192,0.12)',
-                  '0 4px 24px rgba(37,30,61,0.10), 0 0 0 0px rgba(107,88,192,0)',
-                ],
-              }}
-              transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-              className="rounded-[12px]"
-            >
-          {/* Tooltip card — clickable */}
           <motion.button
+            ref={cardRef}
             onClick={(e) => { e.stopPropagation(); onNodeClick(mainNode.id); setVisible(false); }}
-            className="flex flex-col gap-2 px-3.5 py-3 rounded-[12px] text-left w-full group"
+            className="flex flex-col gap-2 px-3.5 py-3 rounded-[12px] text-left"
             style={{
-              background: 'rgba(255, 255, 255, 0.94)',
+              background: 'rgba(255,255,255,0.96)',
               backdropFilter: 'blur(20px)',
               WebkitBackdropFilter: 'blur(20px)',
               minWidth: 180,
@@ -144,12 +311,12 @@ export function ExplorationGuide({ graph, zoom, pan, dimensions, onNodeClick }: 
             }}
             animate={{
               borderColor: [
-                'rgba(107,88,192,0.28)',
-                'rgba(107,88,192,0.70)',
-                'rgba(107,88,192,0.28)',
+                'rgba(107,88,192,0.25)',
+                'rgba(107,88,192,0.65)',
+                'rgba(107,88,192,0.25)',
               ],
             }}
-            transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+            transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.97 }}
           >
@@ -157,19 +324,22 @@ export function ExplorationGuide({ graph, zoom, pan, dimensions, onNodeClick }: 
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-1.5">
                 <motion.div
-                  animate={{ opacity: [0.6, 1, 0.6], rotate: [0, 15, -15, 0] }}
-                  transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
+                  animate={{ opacity: [0.6, 1, 0.6], rotate: [0, 14, -14, 0] }}
+                  transition={{ duration: 2.6, repeat: Infinity, ease: 'easeInOut' }}
                 >
                   <Compass size={12} style={{ color: 'var(--accent-primary)' }} />
                 </motion.div>
-                <span className="text-[11px] uppercase tracking-[0.10em] font-bold" style={{ color: 'var(--accent-primary)' }}>
+                <span
+                  className="text-[11px] uppercase tracking-[0.10em] font-bold"
+                  style={{ color: 'var(--accent-primary)' }}
+                >
                   Start here
                 </span>
               </div>
               <motion.span
                 className="flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full"
-                animate={{ opacity: [0.7, 1, 0.7] }}
-                transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
+                animate={{ opacity: [0.65, 1, 0.65] }}
+                transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
                 style={{ background: 'rgba(107,88,192,0.10)', color: 'var(--accent-primary)' }}
               >
                 <MousePointerClick size={10} />
@@ -177,19 +347,29 @@ export function ExplorationGuide({ graph, zoom, pan, dimensions, onNodeClick }: 
               </motion.span>
             </div>
 
-            {/* Core concept */}
-            <p className="text-[13px] font-semibold leading-tight" style={{ color: 'var(--text-primary)' }}>
+            {/* Core concept label */}
+            <p
+              className="text-[13px] font-semibold leading-tight"
+              style={{ color: 'var(--text-primary)' }}
+            >
               {mainNode.label}
             </p>
 
             {/* Exploration path */}
             {explorationPath.length > 0 && (
               <div className="flex flex-col gap-0.5">
-                <p className="text-[9px] uppercase tracking-[0.06em]" style={{ color: 'var(--text-muted)' }}>Then explore</p>
+                <p
+                  className="text-[9px] uppercase tracking-[0.06em]"
+                  style={{ color: 'var(--text-muted)' }}
+                >
+                  Then explore
+                </p>
                 <div className="flex items-center gap-1 flex-wrap">
                   {explorationPath.map((label, i) => (
                     <span key={label} className="flex items-center gap-1">
-                      {i > 0 && <span className="text-[9px]" style={{ color: 'var(--text-muted)' }}>→</span>}
+                      {i > 0 && (
+                        <span className="text-[9px]" style={{ color: 'var(--text-muted)' }}>→</span>
+                      )}
                       <span
                         className="text-[10px] px-1.5 py-0.5 rounded-[4px]"
                         style={{ background: 'var(--bg-surface-2)', color: 'var(--text-secondary)' }}
@@ -202,34 +382,8 @@ export function ExplorationGuide({ graph, zoom, pan, dimensions, onNodeClick }: 
               </div>
             )}
           </motion.button>
-            </motion.div>
-
-          {/* Arrow pointer */}
-          <div
-            className="absolute left-1/2 -translate-x-1/2"
-            style={{
-              bottom: -6,
-              width: 0,
-              height: 0,
-              borderLeft: '6px solid transparent',
-              borderRight: '6px solid transparent',
-              borderTop: '6px solid rgba(107,88,192,0.35)',
-            }}
-          />
-          <div
-            className="absolute left-1/2 -translate-x-1/2"
-            style={{
-              bottom: -5,
-              width: 0,
-              height: 0,
-              borderLeft: '5px solid transparent',
-              borderRight: '5px solid transparent',
-              borderTop: '5px solid rgba(255,255,255,0.94)',
-            }}
-          />
-          </motion.div>
         </motion.div>
-      )}
+      </motion.div>
     </AnimatePresence>
   );
 }
