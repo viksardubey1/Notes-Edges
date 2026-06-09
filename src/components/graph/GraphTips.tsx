@@ -61,12 +61,12 @@ export function GraphTips({ graphId, isLayoutReady }: GraphTipsProps) {
       {visible && (
         <motion.div
           key="graph-tips"
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.95 }}
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -6 }}
           transition={{ duration: 0.35, ease: [0.34, 1.56, 0.64, 1] }}
-          className="absolute top-1/2 left-1/2 z-30 pointer-events-none"
-          style={{ transform: 'translate(-50%, -50%)' }}
+          className="absolute top-3 left-1/2 z-30 pointer-events-none"
+          style={{ transform: 'translateX(-50%)' }}
         >
           <div
             className="flex items-center gap-1 px-2 py-1.5 rounded-[12px]"

@@ -35,7 +35,7 @@ export function GraphControls({ zoom, onZoomIn, onZoomOut, onFitToScreen, onOpen
         border: '1px solid var(--border-default)',
         backdropFilter: 'blur(12px)',
         boxShadow: 'var(--card-shadow)',
-        width: 96,
+        width: 112,
       }}
     >
       {/* Zoom row: − [pct] + */}
