@@ -550,9 +550,15 @@ export function ConceptExpansion() {
                 <div className="flex items-center justify-between">
                   <p
                     className="text-[8px] font-semibold tracking-[0.14em] uppercase flex items-center gap-1.5"
-                    style={{ color: accentRaw, opacity: 0.55 }}
+                    style={{ color: accentRaw, opacity: 0.9 }}
                   >
-                    <ArrowRight size={8} />
+                    <motion.span
+                      animate={{ x: [0, 3, 0] }}
+                      transition={{ duration: 1.2, repeat: Infinity, ease: 'easeInOut' }}
+                      style={{ display: 'flex' }}
+                    >
+                      <ArrowRight size={8} />
+                    </motion.span>
                     Next Up
                   </p>
                   {traversalOrder.length > 1 && (
@@ -564,19 +570,39 @@ export function ConceptExpansion() {
                 {(() => {
                   const tc = nextNode.clusterColor ?? accentRaw;
                   return (
+                    <motion.div
+                      animate={{
+                        boxShadow: [
+                          `0 0 0 0px ${tc}00`,
+                          `0 0 0 4px ${tc}22`,
+                          `0 0 0 0px ${tc}00`,
+                        ],
+                      }}
+                      transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+                      className="rounded-[10px]"
+                    >
                     <motion.button
                       onClick={() => navigateToNode(nextNode.id)}
                       className="w-full rounded-[10px] overflow-hidden text-left"
                       style={{
-                        background: `linear-gradient(145deg, ${tc}12 0%, ${tc}06 100%)`,
-                        border: `1px solid ${tc}25`,
+                        background: `linear-gradient(145deg, ${tc}18 0%, ${tc}08 100%)`,
+                        borderWidth: '1px',
+                        borderStyle: 'solid',
                       }}
+                      animate={{
+                        borderColor: [`${tc}40`, `${tc}90`, `${tc}40`],
+                        boxShadow: [
+                          `0 2px 12px ${tc}10`,
+                          `0 2px 20px ${tc}35`,
+                          `0 2px 12px ${tc}10`,
+                        ],
+                      }}
+                      transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
                       whileHover={{ scale: 1.015 }}
                       whileTap={{ scale: 0.985 }}
-                      transition={{ duration: 0.13 }}
                     >
                       <div className="px-3.5 py-3 flex items-center gap-3">
-                        <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: tc, boxShadow: `0 0 6px ${tc}` }} />
+                        <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: tc, boxShadow: `0 0 8px ${tc}` }} />
                         <div className="flex-1 min-w-0">
                           <p className="font-semibold leading-tight truncate" style={{ fontSize: 13, color: 'var(--text-primary)' }}>
                             {nextNode.label}
@@ -587,9 +613,15 @@ export function ConceptExpansion() {
                             </p>
                           )}
                         </div>
-                        <ArrowRight size={13} style={{ color: tc, opacity: 0.50, flexShrink: 0 }} />
+                        <motion.div
+                          animate={{ x: [0, 4, 0] }}
+                          transition={{ duration: 1.2, repeat: Infinity, ease: 'easeInOut' }}
+                        >
+                          <ArrowRight size={13} style={{ color: tc, opacity: 0.85, flexShrink: 0 }} />
+                        </motion.div>
                       </div>
                     </motion.button>
+                    </motion.div>
                   );
                 })()}
               </div>

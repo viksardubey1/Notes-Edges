@@ -111,46 +111,70 @@ export function ExplorationGuide({ graph, zoom, pan, dimensions, onNodeClick }: 
             transform: 'translate(-50%, -100%)',
           }}
         >
+          {/* Float wrapper */}
+          <motion.div
+            animate={{ y: [0, -4, 0] }}
+            transition={{ duration: 2.8, repeat: Infinity, ease: 'easeInOut', delay: 0.4 }}
+          >
+            {/* Pulsing glow ring */}
+            <motion.div
+              animate={{
+                boxShadow: [
+                  '0 4px 24px rgba(37,30,61,0.10), 0 0 0 0px rgba(107,88,192,0)',
+                  '0 6px 32px rgba(107,88,192,0.30), 0 0 0 4px rgba(107,88,192,0.12)',
+                  '0 4px 24px rgba(37,30,61,0.10), 0 0 0 0px rgba(107,88,192,0)',
+                ],
+              }}
+              transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+              className="rounded-[12px]"
+            >
           {/* Tooltip card — clickable */}
-          <button
+          <motion.button
             onClick={(e) => { e.stopPropagation(); onNodeClick(mainNode.id); setVisible(false); }}
             className="flex flex-col gap-2 px-3.5 py-3 rounded-[12px] text-left w-full group"
             style={{
               background: 'rgba(255, 255, 255, 0.94)',
-              border: '1px solid rgba(123, 110, 196, 0.22)',
-              boxShadow: '0 4px 24px rgba(37,30,61,0.10), 0 1px 4px rgba(37,30,61,0.06)',
               backdropFilter: 'blur(20px)',
               WebkitBackdropFilter: 'blur(20px)',
               minWidth: 180,
               maxWidth: 240,
               cursor: 'pointer',
+              borderWidth: '1.5px',
+              borderStyle: 'solid',
             }}
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(123,110,196,0.50)';
-              (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 6px 28px rgba(123,110,196,0.18), 0 1px 4px rgba(37,30,61,0.06)';
+            animate={{
+              borderColor: [
+                'rgba(107,88,192,0.28)',
+                'rgba(107,88,192,0.70)',
+                'rgba(107,88,192,0.28)',
+              ],
             }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(123,110,196,0.22)';
-              (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 4px 24px rgba(37,30,61,0.10), 0 1px 4px rgba(37,30,61,0.06)';
-            }}
+            transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.97 }}
           >
             {/* Header */}
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-1.5">
                 <motion.div
-                  animate={{ opacity: [0.6, 1, 0.6] }}
-                  transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+                  animate={{ opacity: [0.6, 1, 0.6], rotate: [0, 15, -15, 0] }}
+                  transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
                 >
-                  <Compass size={11} style={{ color: 'var(--accent-primary)' }} />
+                  <Compass size={12} style={{ color: 'var(--accent-primary)' }} />
                 </motion.div>
-                <span className="text-[10px] uppercase tracking-[0.08em] font-medium" style={{ color: 'var(--accent-primary)' }}>
+                <span className="text-[11px] uppercase tracking-[0.10em] font-bold" style={{ color: 'var(--accent-primary)' }}>
                   Start here
                 </span>
               </div>
-              <span className="flex items-center gap-1 text-[10px]" style={{ color: 'var(--text-muted)' }}>
+              <motion.span
+                className="flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full"
+                animate={{ opacity: [0.7, 1, 0.7] }}
+                transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
+                style={{ background: 'rgba(107,88,192,0.10)', color: 'var(--accent-primary)' }}
+              >
                 <MousePointerClick size={10} />
                 click to open
-              </span>
+              </motion.span>
             </div>
 
             {/* Core concept */}
@@ -177,7 +201,8 @@ export function ExplorationGuide({ graph, zoom, pan, dimensions, onNodeClick }: 
                 </div>
               </div>
             )}
-          </button>
+          </motion.button>
+            </motion.div>
 
           {/* Arrow pointer */}
           <div
@@ -188,7 +213,7 @@ export function ExplorationGuide({ graph, zoom, pan, dimensions, onNodeClick }: 
               height: 0,
               borderLeft: '6px solid transparent',
               borderRight: '6px solid transparent',
-              borderTop: '6px solid rgba(123,110,196,0.16)',
+              borderTop: '6px solid rgba(107,88,192,0.35)',
             }}
           />
           <div
@@ -202,6 +227,7 @@ export function ExplorationGuide({ graph, zoom, pan, dimensions, onNodeClick }: 
               borderTop: '5px solid rgba(255,255,255,0.94)',
             }}
           />
+          </motion.div>
         </motion.div>
       )}
     </AnimatePresence>

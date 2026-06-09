@@ -543,8 +543,14 @@ export function NodeDetailPanel() {
               <div className="px-6 mb-6 flex-shrink-0">
                 <div className="flex items-center justify-between mb-3">
                   <p className="text-[9px] font-semibold tracking-[0.14em] uppercase flex items-center gap-1.5"
-                    style={{ color: accentRaw, opacity: 0.55 }}>
-                    <ArrowRight size={9} />
+                    style={{ color: accentRaw, opacity: 0.9 }}>
+                    <motion.span
+                      animate={{ x: [0, 3, 0] }}
+                      transition={{ duration: 1.2, repeat: Infinity, ease: 'easeInOut' }}
+                      style={{ display: 'flex' }}
+                    >
+                      <ArrowRight size={9} />
+                    </motion.span>
                     Next Up
                   </p>
                   {traversalOrder.length > 1 && (
@@ -553,17 +559,40 @@ export function NodeDetailPanel() {
                     </span>
                   )}
                 </div>
+                <motion.div
+                  animate={{
+                    boxShadow: [
+                      `0 0 0 0px ${(nextInOrder.clusterColor ?? accentRaw)}00`,
+                      `0 0 0 4px ${(nextInOrder.clusterColor ?? accentRaw)}22`,
+                      `0 0 0 0px ${(nextInOrder.clusterColor ?? accentRaw)}00`,
+                    ],
+                  }}
+                  transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+                  className="rounded-[18px]"
+                >
                 <motion.button
                   onClick={() => navigateToNode(nextInOrder.id)}
                   className="w-full rounded-[18px] overflow-hidden text-left"
                   style={{
-                    background: `linear-gradient(145deg, ${(nextInOrder.clusterColor ?? accentRaw)}12 0%, ${(nextInOrder.clusterColor ?? accentRaw)}06 60%, rgba(152,118,238,0.04) 100%)`,
-                    border: `1px solid ${(nextInOrder.clusterColor ?? accentRaw)}30`,
-                    boxShadow: `0 4px 24px ${(nextInOrder.clusterColor ?? accentRaw)}12, inset 0 1px 0 rgba(255,255,255,0.04)`,
+                    background: `linear-gradient(145deg, ${(nextInOrder.clusterColor ?? accentRaw)}18 0%, ${(nextInOrder.clusterColor ?? accentRaw)}08 60%, rgba(152,118,238,0.06) 100%)`,
+                    borderWidth: '1px',
+                    borderStyle: 'solid',
                   }}
+                  animate={{
+                    borderColor: [
+                      `${(nextInOrder.clusterColor ?? accentRaw)}40`,
+                      `${(nextInOrder.clusterColor ?? accentRaw)}90`,
+                      `${(nextInOrder.clusterColor ?? accentRaw)}40`,
+                    ],
+                    boxShadow: [
+                      `0 4px 24px ${(nextInOrder.clusterColor ?? accentRaw)}12, inset 0 1px 0 rgba(255,255,255,0.04)`,
+                      `0 4px 32px ${(nextInOrder.clusterColor ?? accentRaw)}40, inset 0 1px 0 rgba(255,255,255,0.04)`,
+                      `0 4px 24px ${(nextInOrder.clusterColor ?? accentRaw)}12, inset 0 1px 0 rgba(255,255,255,0.04)`,
+                    ],
+                  }}
+                  transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
                   whileHover={{ scale: 1.015 }}
                   whileTap={{ scale: 0.985 }}
-                  transition={{ duration: 0.15 }}
                 >
                   <div className="px-5 py-4">
                     <div className="flex items-start justify-between gap-3">
@@ -600,13 +629,19 @@ export function NodeDetailPanel() {
                       <div className="flex-shrink-0 flex flex-col items-center gap-2 pt-0.5">
                         <div className="w-4 h-4 rounded-full flex-shrink-0"
                           style={{ background: nextInOrder.clusterColor ?? accentRaw, boxShadow: `0 0 14px ${(nextInOrder.clusterColor ?? accentRaw)}90` }} />
-                        <ArrowRight size={14} style={{ color: nextInOrder.clusterColor ?? accentRaw, opacity: 0.7 }} />
+                        <motion.div
+                          animate={{ x: [0, 4, 0] }}
+                          transition={{ duration: 1.2, repeat: Infinity, ease: 'easeInOut' }}
+                        >
+                          <ArrowRight size={14} style={{ color: nextInOrder.clusterColor ?? accentRaw, opacity: 0.9 }} />
+                        </motion.div>
                       </div>
                     </div>
                   </div>
                   <div className="h-[1.5px]"
-                    style={{ background: `linear-gradient(90deg, ${(nextInOrder.clusterColor ?? accentRaw)}50 0%, ${(nextInOrder.clusterColor ?? accentRaw)}00 100%)` }} />
+                    style={{ background: `linear-gradient(90deg, ${(nextInOrder.clusterColor ?? accentRaw)}70 0%, ${(nextInOrder.clusterColor ?? accentRaw)}00 100%)` }} />
                 </motion.button>
+                </motion.div>
               </div>
             )}
 
