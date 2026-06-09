@@ -61,11 +61,11 @@ export function GraphTips({ graphId, isLayoutReady }: GraphTipsProps) {
       {visible && (
         <motion.div
           key="graph-tips"
-          initial={{ opacity: 0, y: 12 }}
+          initial={{ opacity: 0, y: -12 }}
           animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: 8 }}
+          exit={{ opacity: 0, y: -8 }}
           transition={{ duration: 0.4, ease: [0.34, 1.56, 0.64, 1] }}
-          className="absolute bottom-12 left-1/2 z-30 pointer-events-none"
+          className="absolute top-4 left-1/2 z-30 pointer-events-none"
           style={{ transform: 'translateX(-50%)' }}
         >
           <div
@@ -109,7 +109,7 @@ export function GraphTips({ graphId, isLayoutReady }: GraphTipsProps) {
 
             {/* Auto-dismiss progress bar */}
             <motion.div
-              className="absolute bottom-0 left-0 h-[2px] rounded-b-[16px]"
+              className="absolute top-0 left-0 h-[2px] rounded-t-[16px]"
               style={{ background: 'linear-gradient(90deg, rgba(107,88,192,0.50), rgba(107,88,192,0.15))' }}
               initial={{ width: '100%' }}
               animate={{ width: '0%' }}
