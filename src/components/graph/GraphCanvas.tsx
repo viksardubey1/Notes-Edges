@@ -535,14 +535,6 @@ export function GraphCanvas({ className }: GraphCanvasProps) {
         )}
       </AnimatePresence>
 
-      {/* Canvas hint */}
-      {graph && !isDragging && (
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 pointer-events-none">
-          <p className="text-[11px] select-none" style={{ color: 'rgba(123,110,196,0.45)' }}>
-            Drag to pan · Scroll to zoom · Click any concept or connection to explore
-          </p>
-        </div>
-      )}
 
       {/* Expand neighborhood — fixed bottom-left, ergonomic and consistent */}
       <AnimatePresence>
