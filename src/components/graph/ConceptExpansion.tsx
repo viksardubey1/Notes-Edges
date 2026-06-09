@@ -416,15 +416,6 @@ export function ConceptExpansion() {
                   {node.label}
                 </h2>
 
-                {/* Summary teaser */}
-                {node.metadata?.summary && (
-                  <p
-                    className="font-light leading-relaxed line-clamp-2"
-                    style={{ fontSize: 12.5, color: 'var(--text-muted)' }}
-                  >
-                    {node.metadata.summary}
-                  </p>
-                )}
               </div>
 
               {/* RIGHT: ConstellationMap — compact, tucked to the side */}
