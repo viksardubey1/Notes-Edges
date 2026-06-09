@@ -1,23 +1,16 @@
 /**
  * GraphTips — Notes & Edges
  *
- * Ephemeral onboarding overlay that appears each time a graph finishes loading.
- * Dismisses automatically after 8 seconds or on the user's first interaction.
- * Shows as a compact pill-row at the bottom-centre of the canvas.
+ * Lightweight interaction guide that appears at the top-centre of the graph
+ * canvas on first load. Fades out automatically, reappears on hover, and can
+ * be permanently dismissed (stored in localStorage).
  */
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-  MousePointer2,
-  GitBranch,
-  ArrowLeftRight,
-  Hand,
-  ScanSearch,
-  ImagePlus,
-} from 'lucide-react';
+import { X, MousePointer2, GitBranch, ArrowLeftRight, Hand, ScanSearch } from 'lucide-react';
 import { useGraphStore } from '@/store/graph.store';
 
 interface GraphTipsProps {
@@ -25,96 +18,125 @@ interface GraphTipsProps {
   isLayoutReady: boolean;
 }
 
+const LS_KEY = 'ne_graph_tips_dismissed';
+
 const TIPS = [
-  { icon: MousePointer2, label: 'Click nodes to explore' },
-  { icon: GitBranch,     label: 'Click edges to inspect' },
-  { icon: ArrowLeftRight, label: '← → to traverse' },
+  { icon: MousePointer2, label: 'Click nodes' },
+  { icon: GitBranch,     label: 'Click edges' },
+  { icon: ArrowLeftRight, label: '← → traverse' },
   { icon: Hand,          label: 'Drag to pan' },
   { icon: ScanSearch,    label: 'Scroll to zoom' },
-  { icon: ImagePlus,     label: 'Try a background' },
 ] as const;
 
-const DISMISS_MS = 8_000;
+const AUTO_HIDE_MS = 12_000;
 
 export function GraphTips({ graphId, isLayoutReady }: GraphTipsProps) {
   const { selectedNodeId, selectedEdgeId } = useGraphStore();
   const [visible, setVisible] = useState(false);
+  const [hovered, setHovered] = useState(false);
   const [seenGraphId, setSeenGraphId] = useState<string | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Show tips whenever a new graph becomes ready
+  const startTimer = useCallback(() => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => setVisible(false), AUTO_HIDE_MS);
+  }, []);
+
+  const stopTimer = useCallback(() => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+  }, []);
+
+  // Show on new graph load, skip if permanently dismissed
   useEffect(() => {
     if (!graphId || !isLayoutReady) return;
     if (graphId === seenGraphId) return;
+    if (typeof window !== 'undefined' && localStorage.getItem(LS_KEY) === '1') return;
     setSeenGraphId(graphId);
     setVisible(true);
-    const t = setTimeout(() => setVisible(false), DISMISS_MS);
-    return () => clearTimeout(t);
-  }, [graphId, isLayoutReady, seenGraphId]);
+    startTimer();
+  }, [graphId, isLayoutReady, seenGraphId, startTimer]);
 
-  // Dismiss on any selection
+  // Pause timer on hover, restart on leave
+  useEffect(() => {
+    if (!visible) return;
+    if (hovered) stopTimer();
+    else startTimer();
+  }, [hovered, visible, startTimer, stopTimer]);
+
+  // Hide on any graph selection
   useEffect(() => {
     if (selectedNodeId || selectedEdgeId) setVisible(false);
   }, [selectedNodeId, selectedEdgeId]);
+
+  // Cleanup on unmount
+  useEffect(() => () => stopTimer(), [stopTimer]);
+
+  const handleDismiss = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    setVisible(false);
+    if (typeof window !== 'undefined') localStorage.setItem(LS_KEY, '1');
+  }, []);
 
   return (
     <AnimatePresence>
       {visible && (
         <motion.div
           key="graph-tips"
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: 6 }}
-          transition={{ duration: 0.35, ease: [0.34, 1.56, 0.64, 1] }}
-          className="absolute bottom-4 left-1/2 z-30 pointer-events-none"
-          style={{ transform: 'translateX(-50%)' }}
+          initial={{ opacity: 0, y: -6 }}
+          animate={{ opacity: hovered ? 1 : 0.72, y: 0 }}
+          exit={{ opacity: 0, y: -4 }}
+          transition={{ duration: 0.3, ease: 'easeOut' }}
+          className="absolute z-30"
+          style={{
+            top: 20,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            pointerEvents: 'auto',
+          }}
+          onMouseEnter={() => setHovered(true)}
+          onMouseLeave={() => setHovered(false)}
         >
           <div
-            className="flex items-center gap-1 px-2 py-1.5 rounded-[12px]"
+            className="flex items-center gap-0.5 pl-2.5 pr-1 py-1 rounded-full"
             style={{
-              background: 'rgba(255,255,255,0.88)',
-              border: '1px solid rgba(123,110,196,0.16)',
-              boxShadow: '0 2px 16px rgba(37,30,61,0.08), 0 1px 3px rgba(37,30,61,0.05)',
-              backdropFilter: 'blur(16px)',
-              WebkitBackdropFilter: 'blur(16px)',
+              background: 'rgba(255,255,255,0.75)',
+              border: '1px solid rgba(123,110,196,0.12)',
+              boxShadow: '0 1px 8px rgba(37,30,61,0.06)',
+              backdropFilter: 'blur(12px)',
+              WebkitBackdropFilter: 'blur(12px)',
             }}
           >
             {TIPS.map(({ icon: Icon, label }, i) => (
-              <motion.div
-                key={label}
-                initial={{ opacity: 0, y: 4 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.06 * i + 0.10, duration: 0.28, ease: 'easeOut' }}
-                className="flex items-center gap-1"
-              >
+              <div key={label} className="flex items-center gap-0.5">
                 {i > 0 && (
                   <span
-                    className="w-px h-2.5 flex-shrink-0"
+                    className="w-px h-2 mx-1 flex-shrink-0"
                     style={{ background: 'rgba(123,110,196,0.15)' }}
                   />
                 )}
-                <div
-                  className="flex items-center gap-1 px-1.5 py-0.5 rounded-[6px]"
-                  style={{ background: 'rgba(107,88,192,0.05)' }}
-                >
-                  <Icon size={9} style={{ color: 'var(--accent-primary)', opacity: 0.70, flexShrink: 0 }} />
+                <div className="flex items-center gap-1 px-1.5 py-0.5">
+                  <Icon size={9} style={{ color: 'var(--accent-primary)', opacity: 0.55, flexShrink: 0 }} />
                   <span
                     className="text-[9px] font-medium whitespace-nowrap"
-                    style={{ color: 'var(--text-secondary)' }}
+                    style={{ color: 'var(--text-muted)' }}
                   >
                     {label}
                   </span>
                 </div>
-              </motion.div>
+              </div>
             ))}
 
-            {/* Auto-dismiss progress bar */}
-            <motion.div
-              className="absolute bottom-0 left-0 h-[2px] rounded-b-[16px]"
-              style={{ background: 'linear-gradient(90deg, rgba(107,88,192,0.50), rgba(107,88,192,0.15))' }}
-              initial={{ width: '100%' }}
-              animate={{ width: '0%' }}
-              transition={{ duration: DISMISS_MS / 1000, ease: 'linear' }}
-            />
+            {/* Dismiss */}
+            <button
+              onClick={handleDismiss}
+              className="ml-0.5 flex items-center justify-center w-4 h-4 rounded-full transition-colors"
+              style={{ color: 'var(--text-muted)', opacity: 0.5 }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = '1'; (e.currentTarget as HTMLButtonElement).style.background = 'rgba(107,88,192,0.10)'; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = '0.5'; (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; }}
+              aria-label="Dismiss tips"
+            >
+              <X size={8} />
+            </button>
           </div>
         </motion.div>
       )}
