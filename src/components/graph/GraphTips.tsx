@@ -61,19 +61,19 @@ export function GraphTips({ graphId, isLayoutReady }: GraphTipsProps) {
       {visible && (
         <motion.div
           key="graph-tips"
-          initial={{ opacity: 0, y: -12 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -8 }}
-          transition={{ duration: 0.4, ease: [0.34, 1.56, 0.64, 1] }}
-          className="absolute top-4 left-1/2 z-30 pointer-events-none"
-          style={{ transform: 'translateX(-50%)' }}
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.95 }}
+          transition={{ duration: 0.35, ease: [0.34, 1.56, 0.64, 1] }}
+          className="absolute top-1/2 left-1/2 z-30 pointer-events-none"
+          style={{ transform: 'translate(-50%, -50%)' }}
         >
           <div
-            className="flex items-center gap-1.5 px-3 py-2 rounded-[16px]"
+            className="flex items-center gap-1 px-2 py-1.5 rounded-[12px]"
             style={{
-              background: 'rgba(255,255,255,0.90)',
-              border: '1px solid rgba(123,110,196,0.18)',
-              boxShadow: '0 4px 24px rgba(37,30,61,0.10), 0 1px 4px rgba(37,30,61,0.06)',
+              background: 'rgba(255,255,255,0.88)',
+              border: '1px solid rgba(123,110,196,0.16)',
+              boxShadow: '0 2px 16px rgba(37,30,61,0.08), 0 1px 3px rgba(37,30,61,0.05)',
               backdropFilter: 'blur(16px)',
               WebkitBackdropFilter: 'blur(16px)',
             }}
@@ -81,24 +81,24 @@ export function GraphTips({ graphId, isLayoutReady }: GraphTipsProps) {
             {TIPS.map(({ icon: Icon, label }, i) => (
               <motion.div
                 key={label}
-                initial={{ opacity: 0, y: 6 }}
+                initial={{ opacity: 0, y: 4 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.08 * i + 0.15, duration: 0.32, ease: 'easeOut' }}
-                className="flex items-center gap-1.5"
+                transition={{ delay: 0.06 * i + 0.10, duration: 0.28, ease: 'easeOut' }}
+                className="flex items-center gap-1"
               >
                 {i > 0 && (
                   <span
-                    className="w-px h-3 flex-shrink-0"
-                    style={{ background: 'rgba(123,110,196,0.18)' }}
+                    className="w-px h-2.5 flex-shrink-0"
+                    style={{ background: 'rgba(123,110,196,0.15)' }}
                   />
                 )}
                 <div
-                  className="flex items-center gap-1 px-2 py-1 rounded-[8px]"
-                  style={{ background: 'rgba(107,88,192,0.06)' }}
+                  className="flex items-center gap-1 px-1.5 py-0.5 rounded-[6px]"
+                  style={{ background: 'rgba(107,88,192,0.05)' }}
                 >
-                  <Icon size={11} style={{ color: 'var(--accent-primary)', opacity: 0.75, flexShrink: 0 }} />
+                  <Icon size={9} style={{ color: 'var(--accent-primary)', opacity: 0.70, flexShrink: 0 }} />
                   <span
-                    className="text-[10px] font-medium whitespace-nowrap"
+                    className="text-[9px] font-medium whitespace-nowrap"
                     style={{ color: 'var(--text-secondary)' }}
                   >
                     {label}

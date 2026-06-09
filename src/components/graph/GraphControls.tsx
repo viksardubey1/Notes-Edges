@@ -108,7 +108,7 @@ export function GraphControls({ zoom, onZoomIn, onZoomOut, onFitToScreen, onOpen
           <motion.button
             onClick={onOpenPicker}
             aria-label="Choose background"
-            className="flex items-center gap-2 w-full px-2 py-1.5 rounded-[8px]"
+            className="flex items-center gap-1.5 w-full px-2 py-1.5 rounded-[8px] overflow-hidden"
             style={{
               background: backdropUrl
                 ? 'rgba(123,110,196,0.12)'
@@ -134,7 +134,7 @@ export function GraphControls({ zoom, onZoomIn, onZoomOut, onFitToScreen, onOpen
             >
               <ImagePlus size={13} />
             </motion.div>
-            <span className="text-[11px] font-semibold">Background</span>
+            <span className="text-[10px] font-semibold truncate">Background</span>
           </motion.button>
           </motion.div>
 
