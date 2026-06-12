@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { Loader2 } from 'lucide-react';
 import { signInWithGoogle } from '@/lib/auth';
 
 interface GoogleButtonProps {
@@ -47,11 +46,11 @@ export function GoogleButton({ label = 'Continue with Google' }: GoogleButtonPro
       }}
     >
       {loading ? (
-        <Loader2 size={15} className="animate-spin" style={{ color: 'var(--text-muted)' }} />
+        <div className="w-[17px] h-[17px] rounded-[4px] bg-[#EEEAF8] animate-[shimmer-opacity_1.8s_infinite]" />
       ) : (
         <GoogleLogo />
       )}
-      <span>{loading ? 'Redirecting…' : label}</span>
+      <span className={loading ? 'animate-[shimmer-opacity_1.8s_infinite]' : ''}>{loading ? 'Redirecting…' : label}</span>
     </button>
   );
 }

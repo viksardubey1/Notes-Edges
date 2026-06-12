@@ -123,6 +123,11 @@ body {
   100% { transform: translateX(100%); }
 }
 
+@keyframes shimmer-opacity {
+  0%, 100% { opacity: 0.35; }
+  50%      { opacity: 0.75; }
+}
+
 /* ─── Ambient Float ───────────────────────────────────────────────────────── */
 
 @keyframes ambient-float {

@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Eye, EyeOff } from 'lucide-react';
 import { signUp } from '@/lib/auth';
 import { GoogleButton } from '@/components/auth/GoogleButton';
 import posthog from 'posthog-js';
@@ -162,7 +162,7 @@ function SignUpForm() {
         style={{ background: 'var(--accent-primary)', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.8 : 1 }}
         onMouseEnter={(e) => { if (!loading) (e.currentTarget as HTMLButtonElement).style.background = 'var(--accent-bright)'; }}
         onMouseLeave={(e) => { if (!loading) (e.currentTarget as HTMLButtonElement).style.background = 'var(--accent-primary)'; }}>
-        {loading ? <><Loader2 size={14} className="animate-spin" /> Creating account…</> : 'Create account with email'}
+        {loading ? <span className="animate-[shimmer-opacity_1.8s_infinite]">Creating account…</span> : 'Create account with email'}
       </button>
 
       <p className="text-[12px] text-center" style={{ color: 'var(--text-muted)' }}>

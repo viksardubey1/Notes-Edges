@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Eye, EyeOff } from 'lucide-react';
 import { signIn } from '@/lib/auth';
 import { GoogleButton } from '@/components/auth/GoogleButton';
 import posthog from 'posthog-js';
@@ -146,7 +146,7 @@ function LoginForm() {
         onMouseEnter={(e) => { if (!loading) (e.currentTarget as HTMLButtonElement).style.background = 'var(--accent-bright)'; }}
         onMouseLeave={(e) => { if (!loading) (e.currentTarget as HTMLButtonElement).style.background = 'var(--accent-primary)'; }}
       >
-        {loading ? <><Loader2 size={14} className="animate-spin" /> Signing in…</> : 'Sign in with email'}
+        {loading ? <span className="animate-[shimmer-opacity_1.8s_infinite]">Signing in…</span> : 'Sign in with email'}
       </button>
 
       <p className="text-[12px] text-center" style={{ color: 'var(--text-muted)' }}>

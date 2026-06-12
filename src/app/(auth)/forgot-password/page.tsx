@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Loader2, ArrowLeft } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { forgotPassword } from '@/lib/auth';
 
 export default function ForgotPasswordPage() {
@@ -81,7 +81,7 @@ export default function ForgotPasswordPage() {
         onMouseEnter={(e) => { if (!loading) (e.currentTarget as HTMLButtonElement).style.background = 'var(--accent-bright)'; }}
         onMouseLeave={(e) => { if (!loading) (e.currentTarget as HTMLButtonElement).style.background = 'var(--accent-primary)'; }}
       >
-        {loading ? <><Loader2 size={14} className="animate-spin" /> Sending…</> : 'Send reset link'}
+        {loading ? <span className="animate-[shimmer-opacity_1.8s_infinite]">Sending…</span> : 'Send reset link'}
       </button>
 
       <p className="text-[12px] text-center" style={{ color: 'var(--text-muted)' }}>

@@ -405,7 +405,7 @@ export function GraphCanvas({ className }: GraphCanvasProps) {
       {/* Graph Tips — ephemeral onboarding overlay */}
       <GraphTips graphId={graph?.id} isLayoutReady={isLayoutReady} />
 
-      {/* Loading overlay — shown while generating OR while layout is settling */}
+      {/* Loading overlay — skeleton graph while generating or layout settling */}
       <AnimatePresence>
         {(isGenerating || (graph && !isLayoutReady)) && (
           <motion.div
@@ -414,67 +414,53 @@ export function GraphCanvas({ className }: GraphCanvasProps) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.7, ease: 'easeInOut' }}
-            className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none"
-            style={{
-              background: 'radial-gradient(ellipse 90% 75% at 48% 42%, rgba(255,155,140,0.18) 0%, rgba(255,200,190,0.10) 45%, transparent 65%), radial-gradient(ellipse 60% 55% at 75% 75%, rgba(255,180,170,0.08) 0%, transparent 55%), #FEF8F7',
-              zIndex: 40,
-            }}
+            className="absolute inset-0 pointer-events-none"
+            style={{ background: 'var(--bg-base)', zIndex: 40 }}
           >
-            {/* Orbital rings — calm, light-mode palette */}
-            <div className="relative flex items-center justify-center w-28 h-28">
-              {/* Outer ring — slow clockwise */}
-              <motion.div
-                className="absolute inset-0 rounded-full"
-                style={{
-                  border: '1.5px solid rgba(123,110,196,0.10)',
-                  borderTopColor: 'rgba(123,110,196,0.60)',
-                  borderRightColor: 'rgba(123,110,196,0.22)',
-                }}
-                animate={{ rotate: 360 }}
-                transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
-              />
-              {/* Middle ring — counter-clockwise */}
-              <motion.div
-                className="absolute w-[72px] h-[72px] rounded-full"
-                style={{
-                  border: '1px solid rgba(63,168,130,0.08)',
-                  borderBottomColor: 'rgba(63,168,130,0.45)',
-                  borderLeftColor: 'rgba(63,168,130,0.18)',
-                }}
-                animate={{ rotate: -360 }}
-                transition={{ duration: 6.5, repeat: Infinity, ease: 'linear' }}
-              />
-              {/* Inner ring — clockwise */}
-              <motion.div
-                className="absolute w-10 h-10 rounded-full"
-                style={{
-                  border: '1px solid rgba(184,90,110,0.08)',
-                  borderTopColor: 'rgba(184,90,110,0.35)',
-                }}
-                animate={{ rotate: 360 }}
-                transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
-              />
-              {/* Center orb */}
-              <motion.div
-                className="w-2.5 h-2.5 rounded-full"
-                style={{
-                  background: 'var(--accent-primary)',
-                  boxShadow: '0 0 12px rgba(123,110,196,0.50)',
-                }}
-                animate={{ scale: [1, 1.4, 1], opacity: [0.6, 1, 0.6] }}
-                transition={{ duration: 2.8, repeat: Infinity, ease: 'easeInOut' }}
-              />
-            </div>
+            {/* Skeleton graph — placeholder nodes + edges */}
+            <svg className="absolute inset-0 w-full h-full" aria-hidden="true">
+              {/* Skeleton edges */}
+              {[
+                [180, 220, 380, 180], [380, 180, 520, 320], [180, 220, 300, 400],
+                [300, 400, 520, 320], [520, 320, 680, 240], [380, 180, 600, 140],
+                [300, 400, 500, 460], [680, 240, 740, 400],
+              ].map(([x1, y1, x2, y2], i) => (
+                <line key={`e${i}`} x1={`${(x1 / 900) * 100}%`} y1={`${(y1 / 600) * 100}%`}
+                  x2={`${(x2 / 900) * 100}%`} y2={`${(y2 / 600) * 100}%`}
+                  stroke="#E5E1F4" strokeWidth={1.5} className="animate-[shimmer-opacity_1.8s_infinite]"
+                  style={{ animationDelay: `${i * 0.15}s` }}
+                />
+              ))}
+              {/* Skeleton nodes */}
+              {[
+                [180, 220, 18], [380, 180, 24], [520, 320, 20], [300, 400, 16],
+                [680, 240, 14], [600, 140, 12], [500, 460, 13], [740, 400, 11],
+                [140, 370, 10], [420, 80, 11],
+              ].map(([cx, cy, r], i) => (
+                <circle key={`n${i}`} cx={`${(cx / 900) * 100}%`} cy={`${(cy / 600) * 100}%`}
+                  r={r} fill="#EEEAF8" className="animate-[shimmer-opacity_1.8s_infinite]"
+                  style={{ animationDelay: `${i * 0.12}s` }}
+                />
+              ))}
+              {/* Skeleton labels */}
+              {[
+                [380, 215, 60], [520, 350, 48], [180, 248, 44], [680, 266, 36],
+              ].map(([x, y, w], i) => (
+                <rect key={`l${i}`} x={`${((x - w / 2) / 900) * 100}%`} y={`${(y / 600) * 100}%`}
+                  width={w} height={8} rx={4} fill="#E5E1F4" opacity={0.6}
+                  className="animate-[shimmer-opacity_1.8s_infinite]"
+                  style={{ animationDelay: `${i * 0.2}s` }}
+                />
+              ))}
+            </svg>
 
             {/* Status text */}
-            <motion.p
-              className="mt-8 text-[13px] font-light tracking-wide"
-              style={{ color: 'var(--text-muted)' }}
-              animate={{ opacity: [0.4, 0.80, 0.4] }}
-              transition={{ duration: 2.8, repeat: Infinity, ease: 'easeInOut' }}
-            >
-              {isGenerating ? 'Mapping your ideas…' : 'Arranging your graph…'}
-            </motion.p>
+            <div className="absolute inset-x-0 bottom-16 flex justify-center">
+              <p className="text-[13px] font-light tracking-wide animate-[shimmer-opacity_1.8s_infinite]"
+                style={{ color: 'var(--text-muted)' }}>
+                {isGenerating ? 'Mapping your ideas…' : 'Arranging your graph…'}
+              </p>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

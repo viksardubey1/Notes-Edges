@@ -6,7 +6,6 @@
  * Design language:
  * - Generous breathing room — 24px gutters, 20-28px section gaps
  * - Cluster color as visual narrative thread throughout
- * - ConceptOrbit mini-visualization in header
  * - Relationship cards (not chips) for connected ideas
  * - Large editorial typography for the concept title
  * - Mastery as an organic state, not a settings grid
@@ -60,52 +59,6 @@ const SEM_TYPE_LABELS: Partial<Record<SemanticEdgeType, string>> = Object.fromEn
 const SEM_TYPE_COLORS: Partial<Record<SemanticEdgeType, string>> = Object.fromEntries(
   Object.entries(SEMANTIC_TYPE_CONFIG).map(([k, v]) => [k, v.color]),
 ) as Partial<Record<SemanticEdgeType, string>>;
-
-// ── ConceptOrbit mini-visualization ──────────────────────────────────────────
-
-function ConceptOrbit({ node, connections }: { node: GraphNode; connections: Connection[] }) {
-  const size = 56;
-  const cx = size / 2, cy = size / 2;
-  const centerR = 6;
-  const orbitR = 22;
-  const visible = connections.slice(0, 6);
-  const angleStep = (2 * Math.PI) / Math.max(1, visible.length);
-  const color = node.clusterColor ?? '#9876EE';
-
-  return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden="true">
-      <circle cx={cx} cy={cy} r={centerR + 12} fill={color} opacity={0.06} style={{ filter: 'blur(6px)' }} />
-      <circle cx={cx} cy={cy} r={orbitR} fill="none"
-        stroke={color} strokeWidth={0.5} opacity={0.20} strokeDasharray="2 2.5" />
-      {visible.map((conn, i) => {
-        const a = i * angleStep - Math.PI / 2;
-        const tx = cx + Math.cos(a) * orbitR;
-        const ty = cy + Math.sin(a) * orbitR;
-        return (
-          <line key={conn.edge.id} x1={cx} y1={cy} x2={tx} y2={ty}
-            stroke={conn.other?.clusterColor ?? color}
-            strokeWidth={0.6} opacity={0.25}
-          />
-        );
-      })}
-      {visible.map((conn, i) => {
-        const a = i * angleStep - Math.PI / 2;
-        const tx = cx + Math.cos(a) * orbitR;
-        const ty = cy + Math.sin(a) * orbitR;
-        const c = conn.other?.clusterColor ?? color;
-        return (
-          <g key={conn.edge.id}>
-            <circle cx={tx} cy={ty} r={3.5} fill={c} opacity={0.12} />
-            <circle cx={tx} cy={ty} r={2} fill={c} opacity={0.65} />
-          </g>
-        );
-      })}
-      <circle cx={cx} cy={cy} r={centerR + 3} fill={color} opacity={0.10} />
-      <circle cx={cx} cy={cy} r={centerR} fill={color} opacity={0.28} />
-      <circle cx={cx} cy={cy} r={centerR - 2} fill={color} opacity={0.55} />
-    </svg>
-  );
-}
 
 // ── Relationship card ──────────────────────────────────────────────────────────
 
@@ -360,13 +313,13 @@ export function NodeDetailPanel() {
             />
 
             {/* ── Header ────────────────────────────────────────────────── */}
-            <div className="px-6 pt-4 pb-1 flex-shrink-0">
-              {/* Back nav + close row */}
-              <div className="flex items-center justify-between mb-3">
-                {prevNode ? (
+            <div className="px-5 pt-3 pb-1 flex-shrink-0">
+              {/* Back nav (only when there's history) */}
+              {prevNode && (
+                <div className="mb-1.5">
                   <button
                     onClick={navigateBack}
-                    className="flex items-center gap-1.5 text-[11px] font-medium transition-all rounded-[7px] px-2 py-1 -ml-2"
+                    className="flex items-center gap-1 text-[10px] font-medium transition-all rounded-[6px] px-1.5 py-0.5 -ml-1.5"
                     style={{ color: 'var(--text-muted)' }}
                     onMouseEnter={(e) => {
                       (e.currentTarget as HTMLButtonElement).style.color = 'var(--accent-primary)';
@@ -377,13 +330,50 @@ export function NodeDetailPanel() {
                       (e.currentTarget as HTMLButtonElement).style.background = 'transparent';
                     }}
                   >
-                    <ArrowLeft size={11} />
-                    <span className="truncate max-w-[130px]">{prevNode.label}</span>
+                    <ArrowLeft size={10} />
+                    <span className="truncate max-w-[120px]">{prevNode.label}</span>
                   </button>
-                ) : <div />}
+                </div>
+              )}
+
+              {/* Title row — cluster badge + name + close */}
+              <div className="flex items-start gap-2">
+                <div className="flex-1 min-w-0">
+                  {node.clusterName && (
+                    <span className="inline-flex items-center gap-1 text-[9px] font-semibold tracking-[0.06em] uppercase mb-0.5"
+                      style={{ color: accentRaw, opacity: 0.75 }}>
+                      <span className="w-1.5 h-1.5 rounded-full" style={{ background: accentRaw }} />
+                      {node.clusterName}
+                    </span>
+                  )}
+                  <div className="group flex items-start gap-1.5">
+                    {editingField === 'label' ? (
+                      <input
+                        ref={editInputRef}
+                        value={draftValue}
+                        onChange={(e) => setDraftValue(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') commitEdit(); if (e.key === 'Escape') cancelEdit(); }}
+                        onBlur={commitEdit}
+                        className="flex-1 bg-transparent font-medium text-[17px] leading-snug outline-none border-b pb-0.5"
+                        style={{ color: 'var(--text-primary)', borderColor: accentRaw, caretColor: accentRaw }}
+                      />
+                    ) : (
+                      <>
+                        <h2 className="font-medium text-[17px] leading-snug tracking-tight flex-1"
+                          style={{ color: 'var(--text-primary)' }}>
+                          {node.label}
+                        </h2>
+                        <div className="mt-0.5 flex-shrink-0">
+                          <EditBtn onClick={() => startEdit('label', node.label)} />
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+                {/* Close button */}
                 <button
                   onClick={() => { selectNode(null); closeNodeDetail(); }}
-                  className="w-7 h-7 flex items-center justify-center rounded-[10px] transition-all"
+                  className="w-6 h-6 flex items-center justify-center rounded-[8px] transition-all flex-shrink-0 mt-0.5"
                   style={{ color: 'var(--text-muted)', background: 'var(--bg-surface-2)' }}
                   onMouseEnter={(e) => {
                     (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-surface-3)';
@@ -394,111 +384,63 @@ export function NodeDetailPanel() {
                     (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)';
                   }}
                 >
-                  <X size={13} />
+                  <X size={12} />
                 </button>
               </div>
 
-              {/* Concept title + orbital mini-viz */}
-              <div className="flex items-start gap-4">
-                <div className="flex-1 min-w-0">
-                  {/* Cluster badge */}
-                  {node.clusterName && (
-                    <div className="mb-1">
-                      <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold tracking-[0.06em] uppercase"
-                        style={{ color: accentRaw, opacity: 0.75 }}>
-                        <span className="w-1.5 h-1.5 rounded-full" style={{ background: accentRaw }} />
-                        {node.clusterName}
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Concept name — editorial, large */}
-                  <div className="group flex items-start gap-2">
-                    {editingField === 'label' ? (
-                      <input
-                        ref={editInputRef}
-                        value={draftValue}
-                        onChange={(e) => setDraftValue(e.target.value)}
-                        onKeyDown={(e) => { if (e.key === 'Enter') commitEdit(); if (e.key === 'Escape') cancelEdit(); }}
-                        onBlur={commitEdit}
-                        className="flex-1 bg-transparent font-light text-[20px] leading-tight outline-none border-b pb-0.5"
-                        style={{ color: 'var(--text-primary)', borderColor: accentRaw, caretColor: accentRaw }}
-                      />
-                    ) : (
-                      <>
-                        <h2 className="font-light text-[20px] leading-tight tracking-tight flex-1"
-                          style={{ color: 'var(--text-primary)' }}>
-                          {node.label}
-                        </h2>
-                        <div className="mt-1.5 flex-shrink-0">
-                          <EditBtn onClick={() => startEdit('label', node.label)} />
-                        </div>
-                      </>
-                    )}
-                  </div>
-
-                  {/* Stats row */}
-                  <div className="flex flex-wrap items-center gap-2 mt-1">
-                    <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
-                      {connectedEdges.length} connection{connectedEdges.length !== 1 ? 's' : ''}
-                    </span>
-                    {node.metadata?.depthLevel && node.metadata.depthLevel !== 'surface' && (
-                      <span className="text-[10px] px-2 py-0.5 rounded-full font-medium"
-                        style={{ background: `${accentRaw}14`, color: accentRaw, border: `1px solid ${accentRaw}28` }}>
-                        {node.metadata.depthLevel === 'mastered' ? 'Deep' : node.metadata.depthLevel === 'explained' ? 'Explained' : 'Surface'}
-                      </span>
-                    )}
-                    {node.centrality > 0 && (() => {
-                      const allNodes = graph?.nodes ?? [];
-                      const rank = allNodes.filter(n => n.centrality > node.centrality).length + 1;
-                      const pct = Math.round((1 - (rank - 1) / Math.max(allNodes.length - 1, 1)) * 100);
-                      return pct >= 70 ? (
-                        <span className="text-[10px] px-2 py-0.5 rounded-full font-medium"
-                          style={{ background: 'rgba(212,168,64,0.12)', color: '#D4A840', border: '1px solid rgba(212,168,64,0.22)' }}>
-                          Core concept
-                        </span>
-                      ) : null;
-                    })()}
-                  </div>
-
-                  {/* Inline learning state — compact row */}
-                  <div className="flex items-center gap-1.5 mt-2">
-                    {LEARNING_ORDER.map((state) => {
-                      const cfg = LEARNING_CONFIG[state];
-                      const active = currentLearning === state;
-                      return (
-                        <button
-                          key={state}
-                          onClick={() => setLearningState(node.id, active ? 'unset' : state)}
-                          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-[10px] text-[10px] font-medium transition-all"
-                          style={{
-                            background: active ? cfg.bg : 'var(--bg-surface-2)',
-                            border: active ? `1px solid ${cfg.border}` : '1px solid transparent',
-                            color: active ? cfg.color : 'var(--text-muted)',
-                            boxShadow: active ? `0 0 10px ${cfg.glow}` : 'none',
-                          }}
-                        >
-                          <span className="w-1.5 h-1.5 rounded-full"
-                            style={{ background: active ? cfg.color : 'var(--text-muted)', opacity: active ? 1 : 0.35 }} />
-                          {cfg.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* ConceptOrbit mini-visualization */}
-                {connectedEdges.length > 0 && (
-                  <div className="flex-shrink-0 -mt-1">
-                    <ConceptOrbit node={node} connections={connectedEdges} />
-                  </div>
+              {/* Stats + learning state — single compact row */}
+              <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
+                  {connectedEdges.length} connection{connectedEdges.length !== 1 ? 's' : ''}
+                </span>
+                {node.metadata?.depthLevel && node.metadata.depthLevel !== 'surface' && (
+                  <span className="text-[9px] px-1.5 py-0.5 rounded-full font-medium"
+                    style={{ background: `${accentRaw}14`, color: accentRaw, border: `1px solid ${accentRaw}28` }}>
+                    {node.metadata.depthLevel === 'mastered' ? 'Deep' : node.metadata.depthLevel === 'explained' ? 'Explained' : 'Surface'}
+                  </span>
                 )}
+                {node.centrality > 0 && (() => {
+                  const allNodes = graph?.nodes ?? [];
+                  const rank = allNodes.filter(n => n.centrality > node.centrality).length + 1;
+                  const pct = Math.round((1 - (rank - 1) / Math.max(allNodes.length - 1, 1)) * 100);
+                  return pct >= 70 ? (
+                    <span className="text-[9px] px-1.5 py-0.5 rounded-full font-medium"
+                      style={{ background: 'rgba(212,168,64,0.12)', color: '#D4A840', border: '1px solid rgba(212,168,64,0.22)' }}>
+                      Core concept
+                    </span>
+                  ) : null;
+                })()}
               </div>
 
-              {/* ── Source quote — pulled up for immediate context ──────── */}
+              {/* Learning state buttons */}
+              <div className="flex items-center gap-1 mt-1.5">
+                {LEARNING_ORDER.map((state) => {
+                  const cfg = LEARNING_CONFIG[state];
+                  const active = currentLearning === state;
+                  return (
+                    <button
+                      key={state}
+                      onClick={() => setLearningState(node.id, active ? 'unset' : state)}
+                      className="flex items-center gap-1 px-2 py-1 rounded-[8px] text-[9px] font-medium transition-all"
+                      style={{
+                        background: active ? cfg.bg : 'var(--bg-surface-2)',
+                        border: active ? `1px solid ${cfg.border}` : '1px solid transparent',
+                        color: active ? cfg.color : 'var(--text-muted)',
+                        boxShadow: active ? `0 0 8px ${cfg.glow}` : 'none',
+                      }}
+                    >
+                      <span className="w-1 h-1 rounded-full"
+                        style={{ background: active ? cfg.color : 'var(--text-muted)', opacity: active ? 1 : 0.35 }} />
+                      {cfg.label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Source quote */}
               {node.metadata?.sourceQuote && (
                 <blockquote
-                  className="mt-2 mb-1 px-4 py-3 rounded-[14px] text-[12px] leading-[1.75] italic"
+                  className="mt-2 px-3 py-2 rounded-[10px] text-[11px] leading-[1.7] italic"
                   style={{
                     background: 'var(--bg-surface-2)',
                     borderLeft: `2px solid ${accentRaw}40`,
@@ -511,9 +453,9 @@ export function NodeDetailPanel() {
             </div>
 
             {/* ── AI Summary ────────────────────────────────────────────── */}
-            <div className="mx-6 mb-4 flex-shrink-0">
+            <div className="mx-5 mb-3 flex-shrink-0">
               <div
-                className="px-4 py-3 rounded-[16px] group"
+                className="px-3.5 py-2.5 rounded-[12px] group"
                 style={{
                   background: `${accentRaw}0A`,
                   borderLeft: `2px solid ${accentRaw}50`,
@@ -566,7 +508,7 @@ export function NodeDetailPanel() {
 
             {/* ── Next in Sequence — always shown when graph has >1 node ── */}
             {nextInOrder && (
-              <div className="px-6 mb-4 flex-shrink-0">
+              <div className="px-5 mb-3 flex-shrink-0">
                 <div className="flex items-center justify-between mb-3">
                   <p className="text-[9px] font-semibold tracking-[0.14em] uppercase flex items-center gap-1.5"
                     style={{ color: accentRaw, opacity: 0.9 }}>
@@ -673,7 +615,7 @@ export function NodeDetailPanel() {
 
             {/* ── Connection Threads — relationship cards ────────────────── */}
             {connectedEdges.length > 0 && (
-              <div className="px-6 mb-4 flex-shrink-0">
+              <div className="px-5 mb-3 flex-shrink-0">
                 <div className="flex items-center justify-between mb-3">
                   <p className="text-[9px] font-semibold tracking-[0.14em] uppercase"
                     style={{ color: 'var(--text-muted)', opacity: 0.5 }}>
@@ -737,7 +679,7 @@ export function NodeDetailPanel() {
 
             {/* ── Deeper Context ─────────────────────────────────────────── */}
             {hasDeeper && (
-              <div className="px-6 mb-4 flex-shrink-0">
+              <div className="px-5 mb-3 flex-shrink-0">
                 <button
                   onClick={() => setDeeperExpanded((v) => !v)}
                   className="w-full flex items-center justify-between mb-3 transition-opacity hover:opacity-80"
@@ -876,7 +818,7 @@ export function NodeDetailPanel() {
             )}
 
             {/* ── Actions ───────────────────────────────────────────────── */}
-            <div className="px-6 pb-8 mt-auto flex-shrink-0 flex flex-col gap-2.5">
+            <div className="px-5 pb-6 mt-auto flex-shrink-0 flex flex-col gap-2">
               {/* Primary CTA */}
               <motion.button
                 onClick={() => setMode('neighborhood')}

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Eye, EyeOff } from 'lucide-react';
 import { resetPassword } from '@/lib/auth';
 
 export default function ResetPasswordPage() {
@@ -89,7 +89,7 @@ export default function ResetPasswordPage() {
         onMouseEnter={(e) => { if (!loading) (e.currentTarget as HTMLButtonElement).style.background = 'var(--accent-bright)'; }}
         onMouseLeave={(e) => { if (!loading) (e.currentTarget as HTMLButtonElement).style.background = 'var(--accent-primary)'; }}
       >
-        {loading ? <><Loader2 size={14} className="animate-spin" /> Updating…</> : 'Set new password'}
+        {loading ? <span className="animate-[shimmer-opacity_1.8s_infinite]">Updating…</span> : 'Set new password'}
       </button>
     </form>
   );

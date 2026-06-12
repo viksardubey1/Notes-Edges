@@ -14,7 +14,7 @@
 import { useState, useCallback, useRef, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ArrowRight, Upload, FileText, Loader2, X, AlertCircle } from 'lucide-react';
+import { ArrowRight, Upload, FileText, X, AlertCircle } from 'lucide-react';
 import { HeroGraph } from '@/components/marketing/HeroGraph';
 import { useAuth } from '@/context/AuthContext';
 import { saveGraph } from '@/lib/graphs';
@@ -443,9 +443,7 @@ function WelcomeContent() {
                 }}
               >
                 {isLoading ? (
-                  <>
-                    <Loader2 size={14} className="animate-spin" /> Generating…
-                  </>
+                  <span className="animate-[shimmer-opacity_1.8s_infinite]">Generating…</span>
                 ) : (
                   <>
                     Generate my graph <ArrowRight size={14} />
@@ -486,26 +484,18 @@ function WelcomeContent() {
             transition={{ duration: 0.4 }}
             className="h-full flex flex-col items-center justify-center gap-8 px-8"
           >
-            {/* Pulsing orb */}
-            <div className="relative flex items-center justify-center">
-              <motion.div
-                className="absolute rounded-full"
-                style={{ background: 'var(--accent-primary)', opacity: 0.06 }}
-                animate={{ width: [80, 160, 80], height: [80, 160, 80] }}
-                transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
-              />
-              <motion.div
-                className="absolute rounded-full"
-                style={{ background: 'var(--accent-primary)', opacity: 0.10 }}
-                animate={{ width: [60, 100, 60], height: [60, 100, 60] }}
-                transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut', delay: 0.35 }}
-              />
-              <div
-                className="relative w-16 h-16 rounded-full flex items-center justify-center"
-                style={{ background: 'var(--accent-glow)', border: '1px solid var(--border-default)' }}
-              >
-                <Loader2 size={24} style={{ color: 'var(--accent-primary)' }} className="animate-spin" />
-              </div>
+            {/* Skeleton graph preview */}
+            <div className="relative w-48 h-48">
+              <svg className="w-full h-full" viewBox="0 0 200 200" aria-hidden="true">
+                {[[40,80,100,50],[100,50,160,90],[100,50,80,140],[80,140,160,90],[160,90,170,150],[80,140,140,170]].map(([x1,y1,x2,y2],i) => (
+                  <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke="#E5E1F4" strokeWidth={1.5}
+                    className="animate-[shimmer-opacity_1.8s_infinite]" style={{ animationDelay: `${i*0.15}s` }} />
+                ))}
+                {[[40,80,14],[100,50,20],[160,90,16],[80,140,13],[170,150,10],[140,170,11]].map(([cx,cy,r],i) => (
+                  <circle key={i} cx={cx} cy={cy} r={r} fill="#EEEAF8"
+                    className="animate-[shimmer-opacity_1.8s_infinite]" style={{ animationDelay: `${i*0.12}s` }} />
+                ))}
+              </svg>
             </div>
 
             {/* Current phase message */}

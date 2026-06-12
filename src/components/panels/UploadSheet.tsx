@@ -11,7 +11,7 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Upload, FileText, X, Loader2, AlertCircle, PlusCircle, RefreshCw, Info } from 'lucide-react';
+import { Upload, FileText, X, AlertCircle, PlusCircle, RefreshCw, Info } from 'lucide-react';
 import { useUIStore } from '@/store/ui.store';
 import { useGraphStore } from '@/store/graph.store';
 import { useAuth } from '@/context/AuthContext';
@@ -460,7 +460,7 @@ export function UploadSheet() {
                 onMouseLeave={(e) => { if (canSubmit) (e.currentTarget as HTMLButtonElement).style.background = 'var(--accent-primary)'; }}
               >
                 {isSubmitting ? (
-                  <><Loader2 size={16} className="animate-spin" /> {ctaLabel}</>
+                  <span className="animate-[shimmer-opacity_1.8s_infinite]">{ctaLabel}</span>
                 ) : (
                   ctaLabel
                 )}

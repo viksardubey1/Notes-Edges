@@ -462,7 +462,10 @@ export function BackgroundPicker({ isOpen, onClose }: BackgroundPickerProps) {
                         onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = '#D8D0F0'; (e.currentTarget as HTMLButtonElement).style.background = isUploading ? 'rgba(123,110,196,0.06)' : '#FAFAFA'; }}
                       >
                         {isUploading ? (
-                          <div className="w-5 h-5 rounded-full border-2 border-[#7B6EC4] border-t-transparent animate-spin" />
+                          <div className="flex flex-col items-center gap-2 w-full px-3">
+                            <div className="w-8 h-8 rounded-[8px] bg-[#EEEAF8] animate-[shimmer-opacity_1.8s_infinite]" />
+                            <div className="w-16 h-2.5 rounded-full bg-[#EEEAF8] animate-[shimmer-opacity_1.8s_infinite]" style={{ animationDelay: '0.15s' }} />
+                          </div>
                         ) : (
                           <>
                             <div className="w-8 h-8 rounded-[8px] bg-[#F0EDF9] flex items-center justify-center">

@@ -1,7 +1,7 @@
 /**
  * SidebarProjectList — Notes & Edges
  *
- * Compact list of recent graphs. No thumbnails, no cards — just rows.
+ * Compact list of recent graphs. Skeleton while loading, then rows.
  */
 
 'use client';
@@ -53,18 +53,46 @@ function GraphRow({ graph, isActive }: { graph: GraphData; isActive: boolean }) 
   );
 }
 
+function SkeletonRow({ delay }: { delay: string }) {
+  return (
+    <div className="flex items-start gap-2 px-2.5 py-2">
+      <div className="w-1.5 h-1.5 rounded-full mt-[5px] bg-[#EEEAF8] animate-[shimmer-opacity_1.8s_infinite]" style={{ animationDelay: delay }} />
+      <div className="flex-1 min-w-0 flex flex-col gap-1.5">
+        <div className="h-3 rounded-full bg-[#EEEAF8] animate-[shimmer-opacity_1.8s_infinite]" style={{ width: `${60 + Math.random() * 30}%`, animationDelay: delay }} />
+        <div className="h-2 w-16 rounded-full bg-[#EEEAF8] animate-[shimmer-opacity_1.8s_infinite] opacity-60" style={{ animationDelay: delay }} />
+      </div>
+    </div>
+  );
+}
+
 export function SidebarProjectList() {
   const router = useRouter();
   const activeGraphId = useGraphStore((s) => s.graph?.id ?? null);
   const { session } = useAuth();
-  const [graphs, setGraphs] = useState<GraphData[]>([]);
+  const [graphs, setGraphs] = useState<GraphData[] | null>(null);
 
   useEffect(() => {
     if (!session) return;
     listGraphs(session.userId).then(setGraphs);
   }, [session, activeGraphId]);
 
-  if (graphs.length === 0) return null;
+  // Loading — show skeleton
+  if (graphs === null && session) {
+    return (
+      <div className="flex flex-col gap-0.5">
+        <span className="px-2.5 pt-1 pb-0.5 text-[10px] uppercase tracking-[0.08em]"
+          style={{ color: 'var(--text-muted)' }}>
+          Recents
+        </span>
+        <SkeletonRow delay="0s" />
+        <SkeletonRow delay="0.12s" />
+        <SkeletonRow delay="0.24s" />
+      </div>
+    );
+  }
+
+  // Empty — no graphs yet
+  if (!graphs || graphs.length === 0) return null;
 
   return (
     <div className="flex flex-col gap-0.5">
