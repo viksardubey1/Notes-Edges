@@ -1,12 +1,13 @@
 /**
  * GraphQuizDrawer — Notes & Edges
  *
- * Bottom-sheet quiz covering the whole graph — ~20 questions on concepts
- * and relationships. Generated once, saved to graph.quiz, reused on
- * subsequent opens.
+ * Floating center-screen quiz card covering the whole graph — ~20 questions
+ * on concepts and relationships. Generated once, saved to graph.quiz,
+ * reused on subsequent opens.
  *
  * UI rules:
- * - Slides up from bottom, does NOT occlude the full graph
+ * - Floats in the center with a soft backdrop
+ * - Light, rounded, airy feel
  * - One question at a time with a progress bar
  * - Answer → explanation → next
  * - Results screen at the end
@@ -33,9 +34,9 @@ const TYPE_LABELS: Record<QuizQuestion['type'], string> = {
 };
 
 const TYPE_COLORS: Record<QuizQuestion['type'], string> = {
-  concept: '#6B58C0',
-  relationship: '#3B9EBF',
-  application: '#B05890',
+  concept: '#7B6EC4',
+  relationship: '#3A9EC0',
+  application: '#B85A6E',
 };
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -161,59 +162,56 @@ export function GraphQuizDrawer() {
           <motion.div
             key="quiz-backdrop"
             className="fixed inset-0 z-40 pointer-events-auto"
-            style={{ background: 'rgba(37, 30, 61, 0.35)', backdropFilter: 'blur(2px)' }}
+            style={{ background: 'rgba(245, 243, 251, 0.55)', backdropFilter: 'blur(6px)' }}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.22 }}
+            transition={{ duration: 0.25 }}
             onClick={closeQuiz}
           />
 
-          {/* Drawer */}
+          {/* Floating card */}
           <motion.div
-            key="quiz-drawer"
-            className="fixed bottom-0 left-0 right-0 z-50 pointer-events-auto"
-            style={{ maxHeight: '74vh' }}
-            initial={{ y: '100%' }}
-            animate={{ y: 0 }}
-            exit={{ y: '100%' }}
-            transition={{ duration: 0.30, ease: [0.32, 0.72, 0, 1] }}
+            key="quiz-card"
+            className="fixed inset-0 z-50 pointer-events-none flex items-center justify-center p-6"
           >
-            <div
-              className="flex flex-col rounded-t-[24px] overflow-hidden"
+            <motion.div
+              className="pointer-events-auto w-full max-w-[560px] flex flex-col rounded-[28px] overflow-hidden"
               style={{
-                background: 'var(--bg-surface-1)',
-                border: '1px solid var(--border-default)',
-                borderBottom: 'none',
-                boxShadow: 'var(--panel-shadow)',
-                backdropFilter: 'blur(32px)',
-                maxHeight: '74vh',
+                background: '#FFFFFF',
+                border: '1px solid rgba(123, 110, 196, 0.10)',
+                boxShadow: '0 4px 24px rgba(37, 30, 61, 0.06), 0 20px 60px rgba(37, 30, 61, 0.08)',
+                maxHeight: 'min(680px, 85vh)',
               }}
+              initial={{ opacity: 0, scale: 0.96, y: 12 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 12 }}
+              transition={{ duration: 0.28, ease: [0.32, 0.72, 0, 1] }}
             >
 
               {/* Header */}
               <div
-                className="flex items-center justify-between px-6 py-4 flex-shrink-0"
-                style={{ borderBottom: '1px solid var(--border-subtle)' }}
+                className="flex items-center justify-between px-7 py-5 flex-shrink-0"
+                style={{ borderBottom: '1px solid rgba(123, 110, 196, 0.08)' }}
               >
                 <div>
-                  <p className="text-[14px] font-semibold" style={{ color: 'var(--text-primary)' }}>
+                  <p className="text-[15px] font-semibold" style={{ color: 'var(--text-primary)' }}>
                     {graph?.name ?? 'Graph'} — Quiz
                   </p>
                   {quiz && !done && !generating && (
-                    <p className="text-[11px] mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                    <p className="text-[11px] mt-1" style={{ color: 'var(--text-muted)' }}>
                       {questions.length} questions · {graph?.nodes.length ?? 0} concepts
                     </p>
                   )}
                 </div>
                 <button
                   onClick={closeQuiz}
-                  className="w-7 h-7 flex items-center justify-center rounded-full transition-all"
-                  style={{ background: 'var(--accent-glow)', color: 'var(--text-muted)' }}
+                  className="w-8 h-8 flex items-center justify-center rounded-[12px] transition-all"
+                  style={{ background: 'var(--bg-surface-2)', color: 'var(--text-muted)' }}
                   onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-surface-3)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-primary)'; }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--accent-glow)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)'; }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-surface-2)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)'; }}
                 >
-                  <X size={13} />
+                  <X size={14} />
                 </button>
               </div>
 
@@ -222,8 +220,8 @@ export function GraphQuizDrawer() {
 
                 {/* Generating */}
                 {generating && (
-                  <div className="flex flex-col items-center justify-center gap-4 py-16">
-                    <Loader2 size={26} className="animate-spin" style={{ color: 'var(--accent-primary)', opacity: 0.7 }} />
+                  <div className="flex flex-col items-center justify-center gap-4 py-20">
+                    <Loader2 size={24} className="animate-spin" style={{ color: 'var(--accent-primary)', opacity: 0.5 }} />
                     <p className="text-[13px]" style={{ color: 'var(--text-muted)' }}>
                       Generating quiz from your knowledge graph…
                     </p>
@@ -232,12 +230,12 @@ export function GraphQuizDrawer() {
 
                 {/* Error */}
                 {!generating && genError && (
-                  <div className="flex flex-col items-center gap-4 py-16 px-6 text-center">
-                    <p className="text-[13px]" style={{ color: 'var(--accent-warm)' }}>{genError}</p>
+                  <div className="flex flex-col items-center gap-5 py-20 px-8 text-center">
+                    <p className="text-[13px] leading-relaxed" style={{ color: 'var(--accent-warm)' }}>{genError}</p>
                     <button
                       onClick={() => void generate()}
-                      className="px-4 py-2 rounded-[10px] text-[12px] font-medium"
-                      style={{ background: 'var(--accent-glow)', color: 'var(--accent-primary)', border: '1px solid var(--border-default)' }}
+                      className="px-5 py-2.5 rounded-[14px] text-[12px] font-medium transition-colors"
+                      style={{ background: 'var(--bg-surface-2)', color: 'var(--accent-primary)', border: '1px solid var(--border-subtle)' }}
                     >
                       Try again
                     </button>
@@ -249,18 +247,18 @@ export function GraphQuizDrawer() {
                   <motion.div
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="flex flex-col items-center gap-5 py-12 px-6 text-center"
+                    className="flex flex-col items-center gap-6 py-14 px-8 text-center"
                   >
                     <div>
-                      <p className="text-[52px] font-light leading-none" style={{ color: 'var(--accent-primary)' }}>
+                      <p className="text-[48px] font-light leading-none tracking-tight" style={{ color: 'var(--accent-primary)' }}>
                         {Math.round((score / questions.length) * 100)}%
                       </p>
-                      <p className="text-[13px] font-medium mt-2" style={{ color: 'var(--text-secondary)' }}>
+                      <p className="text-[13px] font-medium mt-2.5" style={{ color: 'var(--text-secondary)' }}>
                         {score} / {questions.length} correct
                       </p>
                     </div>
 
-                    <p className="text-[12px] max-w-[360px]" style={{ color: 'var(--text-muted)' }}>
+                    <p className="text-[12px] max-w-[340px] leading-relaxed" style={{ color: 'var(--text-muted)' }}>
                       {score === questions.length
                         ? 'Perfect. You know this graph inside out.'
                         : score / questions.length >= 0.75
@@ -271,7 +269,7 @@ export function GraphQuizDrawer() {
                     </p>
 
                     {/* Breakdown by type */}
-                    <div className="flex flex-col gap-2 w-full max-w-[280px]">
+                    <div className="flex flex-col gap-2.5 w-full max-w-[260px]">
                       {(['concept', 'relationship', 'application'] as QuizQuestion['type'][]).map((type) => {
                         const qs = questions.filter((q) => q.type === type);
                         if (qs.length === 0) return null;
@@ -287,10 +285,10 @@ export function GraphQuizDrawer() {
                       })}
                     </div>
 
-                    <div className="flex gap-3 mt-1">
+                    <div className="flex gap-3 mt-2">
                       <button
                         onClick={resetAttempt}
-                        className="flex items-center gap-1.5 px-4 py-2 rounded-[10px] text-[12px] font-medium"
+                        className="flex items-center gap-1.5 px-5 py-2.5 rounded-[14px] text-[12px] font-medium transition-colors"
                         style={{ background: 'var(--bg-surface-2)', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)' }}
                       >
                         <RotateCcw size={11} /> Retry
@@ -298,8 +296,8 @@ export function GraphQuizDrawer() {
                       <button
                         onClick={() => { setQuiz(null); void generate(); }}
                         disabled={generating}
-                        className="flex items-center gap-1.5 px-4 py-2 rounded-[10px] text-[12px] font-medium"
-                        style={{ background: 'var(--accent-glow)', color: 'var(--accent-primary)', border: '1px solid var(--border-default)' }}
+                        className="flex items-center gap-1.5 px-5 py-2.5 rounded-[14px] text-[12px] font-medium transition-colors"
+                        style={{ background: 'var(--accent-primary)', color: '#FFFFFF' }}
                       >
                         New questions
                       </button>
@@ -309,22 +307,22 @@ export function GraphQuizDrawer() {
 
                 {/* Active question */}
                 {!generating && !genError && quiz && !done && q && (
-                  <div className="px-6 py-6 max-w-[700px] mx-auto">
+                  <div className="px-7 py-7 max-w-[560px] mx-auto">
 
                     {/* Progress */}
-                    <div className="mb-6">
-                      <div className="flex items-center justify-between mb-2">
+                    <div className="mb-7">
+                      <div className="flex items-center justify-between mb-2.5">
                         <span
-                          className="text-[9px] font-semibold tracking-[0.08em] uppercase px-2 py-0.5 rounded-full"
-                          style={{ background: `${TYPE_COLORS[q.type]}18`, color: TYPE_COLORS[q.type], border: `1px solid ${TYPE_COLORS[q.type]}28` }}
+                          className="text-[9px] font-semibold tracking-[0.08em] uppercase px-2.5 py-1 rounded-[10px]"
+                          style={{ background: `${TYPE_COLORS[q.type]}0D`, color: TYPE_COLORS[q.type] }}
                         >
                           {TYPE_LABELS[q.type]}
                         </span>
-                        <span className="text-[10px] tabular-nums" style={{ color: 'var(--text-muted)', opacity: 0.5 }}>
+                        <span className="text-[11px] tabular-nums" style={{ color: 'var(--text-muted)' }}>
                           {currentQ + 1} / {questions.length}
                         </span>
                       </div>
-                      <div className="h-[2px] rounded-full overflow-hidden" style={{ background: 'var(--border-subtle)' }}>
+                      <div className="h-[3px] rounded-full overflow-hidden" style={{ background: 'var(--bg-surface-2)' }}>
                         <motion.div
                           className="h-full rounded-full"
                           style={{ background: 'linear-gradient(90deg, var(--accent-primary), var(--accent-bright))' }}
@@ -344,22 +342,22 @@ export function GraphQuizDrawer() {
                         transition={{ duration: 0.18 }}
                         className="flex flex-col gap-4"
                       >
-                        <p className="text-[16px] leading-[1.65] font-medium" style={{ color: 'var(--text-primary)' }}>
+                        <p className="text-[15px] leading-[1.7] font-medium" style={{ color: 'var(--text-primary)' }}>
                           {q.question}
                         </p>
 
                         {/* Choices */}
-                        <div className="flex flex-col gap-2">
+                        <div className="flex flex-col gap-2.5">
                           {q.choices.map((choice, idx) => {
                             const isSelected = selected === idx;
                             const isCorrect = idx === q.correct;
                             let bg = 'var(--bg-surface-2)';
-                            let border = 'var(--border-subtle)';
+                            let border = 'transparent';
                             let color = 'var(--text-secondary)';
 
                             if (revealed) {
-                              if (isCorrect) { bg = 'rgba(58, 152, 112, 0.10)'; border = 'rgba(58, 152, 112, 0.35)'; color = 'var(--color-state-understood)'; }
-                              else if (isSelected) { bg = 'rgba(184, 90, 110, 0.10)'; border = 'rgba(184, 90, 110, 0.35)'; color = 'var(--accent-warm)'; }
+                              if (isCorrect) { bg = 'rgba(58, 152, 112, 0.08)'; border = 'rgba(58, 152, 112, 0.25)'; color = '#2D7A5A'; }
+                              else if (isSelected) { bg = 'rgba(184, 90, 110, 0.07)'; border = 'rgba(184, 90, 110, 0.22)'; color = 'var(--accent-warm)'; }
                             }
 
                             return (
@@ -367,23 +365,24 @@ export function GraphQuizDrawer() {
                                 key={idx}
                                 onClick={() => handleAnswer(idx)}
                                 disabled={revealed}
-                                className="flex items-center gap-3 px-4 py-3 rounded-[14px] text-left w-full"
-                                style={{ background: bg, border: `1px solid ${border}`, color, cursor: revealed ? 'default' : 'pointer' }}
-                                whileHover={revealed ? {} : { scale: 1.005 }}
+                                className="flex items-center gap-3 px-4 py-3.5 rounded-[16px] text-left w-full transition-colors"
+                                style={{ background: bg, border: `1.5px solid ${border}`, color, cursor: revealed ? 'default' : 'pointer' }}
+                                whileHover={revealed ? {} : { scale: 1.005, backgroundColor: 'var(--bg-surface-3)' }}
                                 whileTap={revealed ? {} : { scale: 0.995 }}
                               >
                                 <span
-                                  className="w-6 h-6 rounded-full flex-shrink-0 flex items-center justify-center text-[10px] font-bold"
+                                  className="w-7 h-7 rounded-[10px] flex-shrink-0 flex items-center justify-center text-[10px] font-semibold"
                                   style={{
-                                    background: revealed && isCorrect ? 'rgba(58, 152, 112, 0.15)' : revealed && isSelected ? 'rgba(184, 90, 110, 0.15)' : 'var(--accent-glow)',
-                                    color: 'inherit',
+                                    background: revealed && isCorrect ? 'rgba(58, 152, 112, 0.12)' : revealed && isSelected ? 'rgba(184, 90, 110, 0.10)' : '#FFFFFF',
+                                    color: revealed && isCorrect ? '#2D7A5A' : revealed && isSelected ? 'var(--accent-warm)' : 'var(--text-muted)',
+                                    border: revealed ? 'none' : '1px solid var(--border-subtle)',
                                   }}
                                 >
                                   {String.fromCharCode(65 + idx)}
                                 </span>
                                 <span className="text-[13px] leading-snug flex-1">{choice}</span>
-                                {revealed && isCorrect && <CheckCircle size={15} style={{ color: 'var(--color-state-understood)', flexShrink: 0 }} />}
-                                {revealed && isSelected && !isCorrect && <XCircle size={15} style={{ color: 'var(--accent-warm)', flexShrink: 0 }} />}
+                                {revealed && isCorrect && <CheckCircle size={16} style={{ color: '#2D7A5A', flexShrink: 0 }} />}
+                                {revealed && isSelected && !isCorrect && <XCircle size={16} style={{ color: 'var(--accent-warm)', flexShrink: 0 }} />}
                               </motion.button>
                             );
                           })}
@@ -400,10 +399,10 @@ export function GraphQuizDrawer() {
                               className="overflow-hidden"
                             >
                               <div
-                                className="px-4 py-3 rounded-[12px] text-[12px] leading-[1.75]"
+                                className="px-4 py-3.5 rounded-[14px] text-[12px] leading-[1.8]"
                                 style={{
-                                  background: selected === q.correct ? 'rgba(58, 152, 112, 0.06)' : 'var(--bg-surface-2)',
-                                  border: selected === q.correct ? '1px solid rgba(58, 152, 112, 0.18)' : '1px solid var(--border-subtle)',
+                                  background: selected === q.correct ? 'rgba(58, 152, 112, 0.05)' : 'var(--bg-surface-2)',
+                                  border: selected === q.correct ? '1px solid rgba(58, 152, 112, 0.12)' : '1px solid var(--border-subtle)',
                                   color: 'var(--text-secondary)',
                                 }}
                               >
@@ -420,8 +419,8 @@ export function GraphQuizDrawer() {
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.15, delay: 0.08 }}
                             onClick={handleNext}
-                            className="flex items-center justify-center gap-2 py-3 rounded-[14px] text-[13px] font-semibold"
-                            style={{ background: 'var(--accent-glow)', color: 'var(--accent-primary)', border: '1px solid var(--border-default)' }}
+                            className="flex items-center justify-center gap-2 py-3 rounded-[16px] text-[13px] font-semibold transition-colors"
+                            style={{ background: 'var(--accent-primary)', color: '#FFFFFF' }}
                             whileHover={{ scale: 1.01 }}
                             whileTap={{ scale: 0.99 }}
                           >
@@ -434,7 +433,7 @@ export function GraphQuizDrawer() {
                   </div>
                 )}
               </div>
-            </div>
+            </motion.div>
           </motion.div>
         </>
       )}
