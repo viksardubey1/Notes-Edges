@@ -291,14 +291,8 @@ export function NodeDetailPanel() {
     <div
       className="flex flex-col h-full border-l"
       style={{
-        background: node
-          ? 'rgba(16, 10, 36, 0.97)'
-          : 'rgba(11, 7, 24, 0.94)',
-        borderColor: node
-          ? 'rgba(255,255,255,0.10)'
-          : 'rgba(255,255,255,0.07)',
-        backdropFilter: 'blur(32px)',
-        WebkitBackdropFilter: 'blur(32px)',
+        background: 'var(--bg-surface-1)',
+        borderColor: 'var(--border-default)',
         transition: 'background 300ms ease, border-color 300ms ease',
       }}
     >
@@ -396,14 +390,14 @@ export function NodeDetailPanel() {
                 ) : <div />}
                 <button
                   onClick={() => { selectNode(null); closeNodeDetail(); }}
-                  className="w-7 h-7 flex items-center justify-center rounded-full transition-all"
-                  style={{ color: 'var(--text-muted)', background: 'rgba(255,255,255,0.05)' }}
+                  className="w-7 h-7 flex items-center justify-center rounded-[10px] transition-all"
+                  style={{ color: 'var(--text-muted)', background: 'var(--bg-surface-2)' }}
                   onMouseEnter={(e) => {
-                    (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.10)';
+                    (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-surface-3)';
                     (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-primary)';
                   }}
                   onMouseLeave={(e) => {
-                    (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.05)';
+                    (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-surface-2)';
                     (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)';
                   }}
                 >
@@ -473,6 +467,31 @@ export function NodeDetailPanel() {
                       ) : null;
                     })()}
                   </div>
+
+                  {/* Inline learning state — compact row */}
+                  <div className="flex items-center gap-1.5 mt-3">
+                    {LEARNING_ORDER.map((state) => {
+                      const cfg = LEARNING_CONFIG[state];
+                      const active = currentLearning === state;
+                      return (
+                        <button
+                          key={state}
+                          onClick={() => setLearningState(node.id, active ? 'unset' : state)}
+                          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-[10px] text-[10px] font-medium transition-all"
+                          style={{
+                            background: active ? cfg.bg : 'var(--bg-surface-2)',
+                            border: active ? `1px solid ${cfg.border}` : '1px solid transparent',
+                            color: active ? cfg.color : 'var(--text-muted)',
+                            boxShadow: active ? `0 0 10px ${cfg.glow}` : 'none',
+                          }}
+                        >
+                          <span className="w-1.5 h-1.5 rounded-full"
+                            style={{ background: active ? cfg.color : 'var(--text-muted)', opacity: active ? 1 : 0.35 }} />
+                          {cfg.label}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
 
                 {/* ConceptOrbit mini-visualization */}
@@ -482,6 +501,20 @@ export function NodeDetailPanel() {
                   </div>
                 )}
               </div>
+
+              {/* ── Source quote — pulled up for immediate context ──────── */}
+              {node.metadata?.sourceQuote && (
+                <blockquote
+                  className="mx-6 mt-1 mb-4 px-4 py-3 rounded-[14px] text-[12px] leading-[1.75] italic"
+                  style={{
+                    background: 'var(--bg-surface-2)',
+                    borderLeft: `2px solid ${accentRaw}40`,
+                    color: 'var(--text-secondary)',
+                  }}
+                >
+                  <LatexText>{node.metadata.sourceQuote}</LatexText>
+                </blockquote>
+              )}
             </div>
 
             {/* ── AI Summary ────────────────────────────────────────────── */}
@@ -510,7 +543,7 @@ export function NodeDetailPanel() {
                     />
                     <div className="flex gap-1.5 justify-end">
                       <button onClick={cancelEdit} className="px-3 py-1 rounded-[7px] text-[11px] font-medium"
-                        style={{ color: 'var(--text-secondary)', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)' }}>
+                        style={{ color: 'var(--text-secondary)', background: 'var(--bg-surface-2)', border: '1px solid var(--border-subtle)' }}>
                         Cancel
                       </button>
                       <button onClick={commitEdit} className="px-3 py-1 rounded-[7px] text-[11px] font-semibold text-white"
@@ -709,53 +742,6 @@ export function NodeDetailPanel() {
               </div>
             )}
 
-            {/* ── Your Mastery ───────────────────────────────────────────── */}
-            <div className="px-6 mb-6 flex-shrink-0">
-              <p className="text-[9px] font-semibold tracking-[0.14em] uppercase mb-3"
-                style={{ color: 'var(--text-muted)', opacity: 0.5 }}>
-                Your Mastery
-              </p>
-              <div className="grid grid-cols-2 gap-2">
-                {LEARNING_ORDER.map((state) => {
-                  const cfg = LEARNING_CONFIG[state];
-                  const active = currentLearning === state;
-                  return (
-                    <motion.button
-                      key={state}
-                      onClick={() => setLearningState(node.id, active ? 'unset' : state)}
-                      className="flex items-center gap-2.5 px-3.5 py-3 rounded-[12px] text-left transition-all"
-                      style={{
-                        background: active ? cfg.bg : 'rgba(255,255,255,0.03)',
-                        border: active ? `1px solid ${cfg.border}` : '1px solid rgba(255,255,255,0.07)',
-                        boxShadow: active ? `0 0 18px ${cfg.glow}` : 'none',
-                      }}
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.97 }}
-                      animate={{ scale: active ? 1.02 : 1 }}
-                      transition={{ duration: 0.15 }}
-                    >
-                      {/* State dot */}
-                      <div className="w-2 h-2 rounded-full flex-shrink-0"
-                        style={{
-                          background: active ? cfg.color : 'rgba(255,255,255,0.15)',
-                          boxShadow: active ? `0 0 8px ${cfg.color}` : 'none',
-                        }} />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[12px] font-semibold leading-tight"
-                          style={{ color: active ? cfg.color : 'var(--text-muted)' }}>
-                          {cfg.label}
-                        </p>
-                        <p className="text-[9px] leading-tight mt-0.5"
-                          style={{ color: active ? cfg.color : 'var(--text-muted)', opacity: active ? 0.65 : 0.4 }}>
-                          {cfg.sublabel}
-                        </p>
-                      </div>
-                    </motion.button>
-                  );
-                })}
-              </div>
-            </div>
-
             {/* ── Deeper Context ─────────────────────────────────────────── */}
             {hasDeeper && (
               <div className="px-6 mb-6 flex-shrink-0">
@@ -821,12 +807,12 @@ export function NodeDetailPanel() {
                               onKeyDown={(e) => { if (e.key === 'Escape') cancelEdit(); if (e.key === 'Enter' && e.metaKey) commitEdit(); }}
                               rows={3}
                               className="w-full px-3 py-2.5 rounded-[12px] text-[13px] leading-relaxed resize-none outline-none"
-                              style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid ${accentRaw}40`, color: 'var(--text-primary)', caretColor: accentRaw }}
+                              style={{ background: 'var(--bg-surface-2)', border: `1px solid ${accentRaw}40`, color: 'var(--text-primary)', caretColor: accentRaw }}
                               placeholder="Why does this matter…"
                             />
                             <div className="flex gap-1.5 justify-end">
                               <button onClick={cancelEdit} className="px-3 py-1 rounded-[7px] text-[11px] font-medium"
-                                style={{ color: 'var(--text-secondary)', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.10)' }}>
+                                style={{ color: 'var(--text-secondary)', background: 'var(--bg-surface-2)', border: '1px solid var(--border-subtle)' }}>
                                 Cancel
                               </button>
                               <button onClick={commitEdit} className="px-3 py-1 rounded-[7px] text-[11px] font-semibold text-white"
@@ -843,20 +829,6 @@ export function NodeDetailPanel() {
                             style={{ color: accentRaw }}>
                             + Add why it matters
                           </button>
-                        )}
-
-                        {/* Source quote — editorial blockquote */}
-                        {node.metadata?.sourceQuote && (
-                          <blockquote
-                            className="px-4 py-4 rounded-[14px] text-[12px] leading-[1.75] italic"
-                            style={{
-                              background: 'rgba(255,255,255,0.03)',
-                              borderLeft: `2px solid ${accentRaw}40`,
-                              color: 'var(--text-secondary)',
-                            }}
-                          >
-                            <LatexText>{node.metadata.sourceQuote}</LatexText>
-                          </blockquote>
                         )}
 
                         {/* Knowledge gaps */}
@@ -895,7 +867,7 @@ export function NodeDetailPanel() {
                               {expansions.slice(0, 5).map((s, i) => (
                                 <span key={i}
                                   className="px-2.5 py-1 rounded-full text-[10px] font-medium"
-                                  style={{ background: 'rgba(255,255,255,0.04)', color: 'var(--text-secondary)', border: '1px solid rgba(255,255,255,0.09)' }}>
+                                  style={{ background: 'var(--bg-surface-2)', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)' }}>
                                   + {s}
                                 </span>
                               ))}
@@ -953,15 +925,15 @@ export function NodeDetailPanel() {
         <div
           className="flex-shrink-0 flex items-stretch"
           style={{
-            borderTop: '1px solid rgba(255,255,255,0.07)',
-            background: 'rgba(255,255,255,0.02)',
+            borderTop: '1px solid var(--border-subtle)',
+            background: 'var(--bg-surface-2)',
           }}
         >
           <button
             onClick={() => navigateToNode(traversalOrder[(traversalIdx - 1 + traversalOrder.length) % traversalOrder.length])}
             className="flex-1 flex items-center gap-2 px-4 py-3 text-left transition-colors min-w-0"
             style={{ color: 'var(--text-muted)' }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.05)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-primary)'; }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-surface-3)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-primary)'; }}
             onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)'; }}
           >
             <ArrowLeft size={11} className="flex-shrink-0" />
@@ -970,7 +942,7 @@ export function NodeDetailPanel() {
 
           <div
             className="flex-shrink-0 flex items-center px-3 text-[10px] font-medium tabular-nums"
-            style={{ color: 'var(--text-muted)', opacity: 0.35, borderLeft: '1px solid rgba(255,255,255,0.06)', borderRight: '1px solid rgba(255,255,255,0.06)' }}
+            style={{ color: 'var(--text-muted)', opacity: 0.5, borderLeft: '1px solid var(--border-subtle)', borderRight: '1px solid var(--border-subtle)' }}
           >
             {traversalIdx + 1}/{traversalOrder.length}
           </div>
@@ -979,7 +951,7 @@ export function NodeDetailPanel() {
             onClick={() => navigateToNode(traversalOrder[(traversalIdx + 1) % traversalOrder.length])}
             className="flex-1 flex items-center justify-end gap-2 px-4 py-3 text-right transition-colors min-w-0"
             style={{ color: 'var(--text-muted)' }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.05)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-primary)'; }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-surface-3)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-primary)'; }}
             onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)'; }}
           >
             <span className="text-[11px] truncate">{nextInOrder?.label}</span>

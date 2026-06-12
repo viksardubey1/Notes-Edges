@@ -39,6 +39,96 @@ const TYPE_COLORS: Record<QuizQuestion['type'], string> = {
   application: '#B85A6E',
 };
 
+// ── Score Ring ───────────────────────────────────────────────────────────────
+
+function ScoreRing({ score, total }: { score: number; total: number }) {
+  const pct = total > 0 ? Math.round((score / total) * 100) : 0;
+  const radius = 54;
+  const stroke = 7;
+  const circumference = 2 * Math.PI * radius;
+  const offset = circumference - (pct / 100) * circumference;
+
+  return (
+    <div className="relative" style={{ width: 132, height: 132 }}>
+      <svg width={132} height={132} viewBox="0 0 132 132">
+        {/* Background ring */}
+        <circle
+          cx={66} cy={66} r={radius}
+          fill="none"
+          stroke="var(--bg-surface-2)"
+          strokeWidth={stroke}
+        />
+        {/* Filled arc */}
+        <motion.circle
+          cx={66} cy={66} r={radius}
+          fill="none"
+          stroke="url(#scoreGradient)"
+          strokeWidth={stroke}
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          initial={{ strokeDashoffset: circumference }}
+          animate={{ strokeDashoffset: offset }}
+          transition={{ duration: 0.8, ease: 'easeOut', delay: 0.15 }}
+          transform="rotate(-90 66 66)"
+        />
+        <defs>
+          <linearGradient id="scoreGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="var(--accent-primary)" />
+            <stop offset="100%" stopColor="var(--accent-bright)" />
+          </linearGradient>
+        </defs>
+      </svg>
+      {/* Center text */}
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <motion.span
+          className="text-[32px] font-semibold leading-none tracking-tight"
+          style={{ color: 'var(--accent-primary)' }}
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.3, delay: 0.4 }}
+        >
+          {pct}%
+        </motion.span>
+        <motion.span
+          className="text-[11px] font-medium mt-1"
+          style={{ color: 'var(--text-muted)' }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.3, delay: 0.55 }}
+        >
+          {score} / {total}
+        </motion.span>
+      </div>
+    </div>
+  );
+}
+
+// ── Trend Indicator ──────────────────────────────────────────────────────────
+
+function TrendIndicator({ attempts }: { attempts: QuizAttempt[] }) {
+  if (attempts.length < 2) return null;
+  const last = attempts[attempts.length - 1];
+  const prev = attempts[attempts.length - 2];
+  const lastPct = (last.score / last.total) * 100;
+  const prevPct = (prev.score / prev.total) * 100;
+  const diff = Math.round(lastPct - prevPct);
+
+  if (diff === 0) return null;
+
+  const isUp = diff > 0;
+  return (
+    <span
+      className="inline-flex items-center gap-1 text-[11px] font-medium px-2.5 py-1 rounded-[8px]"
+      style={{
+        background: isUp ? 'rgba(58, 152, 112, 0.08)' : 'rgba(184, 90, 110, 0.07)',
+        color: isUp ? '#2D7A5A' : 'var(--accent-warm)',
+      }}
+    >
+      {isUp ? '\u2191' : '\u2193'} {Math.abs(diff)}% from last
+    </span>
+  );
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function GraphQuizDrawer() {
@@ -215,6 +305,16 @@ export function GraphQuizDrawer() {
               transition={{ duration: 0.28, ease: [0.32, 0.72, 0, 1] }}
             >
 
+              {/* Top accent gradient line */}
+              <div
+                className="flex-shrink-0"
+                style={{
+                  height: 3,
+                  background: 'linear-gradient(90deg, var(--accent-primary), var(--accent-bright))',
+                  borderRadius: '28px 28px 0 0',
+                }}
+              />
+
               {/* Header */}
               <div
                 className="flex items-center justify-between px-7 py-5 flex-shrink-0"
@@ -275,14 +375,13 @@ export function GraphQuizDrawer() {
                     animate={{ opacity: 1, y: 0 }}
                     className="flex flex-col items-center gap-6 py-14 px-8 text-center"
                   >
-                    <div>
-                      <p className="text-[48px] font-light leading-none tracking-tight" style={{ color: 'var(--accent-primary)' }}>
-                        {Math.round((score / questions.length) * 100)}%
-                      </p>
-                      <p className="text-[13px] font-medium mt-2.5" style={{ color: 'var(--text-secondary)' }}>
-                        {score} / {questions.length} correct
-                      </p>
-                    </div>
+                    {/* Score ring */}
+                    <ScoreRing score={score} total={questions.length} />
+
+                    {/* Trend indicator */}
+                    {(quiz.attempts?.length ?? 0) > 1 && (
+                      <TrendIndicator attempts={quiz.attempts!} />
+                    )}
 
                     <p className="text-[12px] max-w-[340px] leading-relaxed" style={{ color: 'var(--text-muted)' }}>
                       {score === questions.length
@@ -297,7 +396,7 @@ export function GraphQuizDrawer() {
                     {/* Breakdown by type */}
                     <div className="flex flex-col gap-2.5 w-full max-w-[260px]">
                       {(['concept', 'relationship', 'application'] as QuizQuestion['type'][]).map((type) => {
-                        const qs = questions.filter((q) => q.type === type);
+                        const qs = questions.filter((qq) => qq.type === type);
                         if (qs.length === 0) return null;
                         return (
                           <div key={type} className="flex items-center justify-between text-[11px]">
@@ -311,27 +410,40 @@ export function GraphQuizDrawer() {
                       })}
                     </div>
 
-                    {/* Past attempts */}
+                    {/* Past attempts — bar chart */}
                     {(quiz.attempts?.length ?? 0) > 1 && (
-                      <div className="w-full max-w-[300px]">
-                        <p className="text-[10px] font-semibold uppercase tracking-[0.08em] mb-2.5" style={{ color: 'var(--text-muted)' }}>
+                      <div className="w-full max-w-[340px]">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.08em] mb-3" style={{ color: 'var(--text-muted)' }}>
                           Past attempts
                         </p>
-                        <div className="flex flex-col gap-1.5">
-                          {quiz.attempts!.slice(-5).map((a, i) => {
+                        <div className="flex items-end gap-2 justify-center" style={{ height: 72 }}>
+                          {quiz.attempts!.slice(-8).map((a, i) => {
                             const pct = Math.round((a.score / a.total) * 100);
-                            const isLatest = i === quiz.attempts!.slice(-5).length - 1;
+                            const isLatest = i === quiz.attempts!.slice(-8).length - 1;
+                            const barHeight = Math.max(8, (pct / 100) * 64);
                             return (
                               <div
                                 key={a.completedAt}
-                                className="flex items-center justify-between text-[11px] px-3 py-2 rounded-[10px]"
-                                style={{
-                                  background: isLatest ? 'var(--accent-glow)' : 'var(--bg-surface-2)',
-                                  color: isLatest ? 'var(--accent-primary)' : 'var(--text-muted)',
-                                }}
+                                className="flex flex-col items-center gap-1"
                               >
-                                <span>{a.score}/{a.total}</span>
-                                <span className="tabular-nums font-medium">{pct}%</span>
+                                <span
+                                  className="text-[9px] tabular-nums font-medium"
+                                  style={{ color: isLatest ? 'var(--accent-primary)' : 'var(--text-muted)' }}
+                                >
+                                  {pct}%
+                                </span>
+                                <motion.div
+                                  className="rounded-[4px]"
+                                  style={{
+                                    width: 28,
+                                    background: isLatest
+                                      ? 'linear-gradient(180deg, var(--accent-primary), var(--accent-bright))'
+                                      : 'var(--bg-surface-3)',
+                                  }}
+                                  initial={{ height: 0 }}
+                                  animate={{ height: barHeight }}
+                                  transition={{ duration: 0.4, delay: i * 0.06, ease: 'easeOut' }}
+                                />
                               </div>
                             );
                           })}
@@ -342,7 +454,7 @@ export function GraphQuizDrawer() {
                     <div className="flex gap-3 mt-2">
                       <button
                         onClick={resetAttempt}
-                        className="flex items-center gap-1.5 px-5 py-2.5 rounded-[14px] text-[12px] font-medium transition-colors"
+                        className="flex items-center gap-1.5 px-5 py-2.5 rounded-[14px] text-[12px] font-medium transition-all duration-200 hover:brightness-95"
                         style={{ background: 'var(--bg-surface-2)', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)' }}
                       >
                         <RotateCcw size={11} /> Retry
@@ -350,7 +462,7 @@ export function GraphQuizDrawer() {
                       <button
                         onClick={() => { setQuiz(null); void generate(); }}
                         disabled={generating}
-                        className="flex items-center gap-1.5 px-5 py-2.5 rounded-[14px] text-[12px] font-medium transition-colors"
+                        className="flex items-center gap-1.5 px-5 py-2.5 rounded-[14px] text-[12px] font-medium transition-all duration-200 hover:brightness-110"
                         style={{ background: 'var(--accent-primary)', color: '#FFFFFF' }}
                       >
                         New questions
@@ -372,11 +484,21 @@ export function GraphQuizDrawer() {
                         >
                           {TYPE_LABELS[q.type]}
                         </span>
-                        <span className="text-[11px] tabular-nums" style={{ color: 'var(--text-muted)' }}>
-                          {currentQ + 1} / {questions.length}
-                        </span>
+                        <AnimatePresence mode="wait">
+                          <motion.span
+                            key={currentQ}
+                            className="text-[11px] tabular-nums"
+                            style={{ color: 'var(--text-muted)' }}
+                            initial={{ opacity: 0, y: -4 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: 4 }}
+                            transition={{ duration: 0.15 }}
+                          >
+                            {currentQ + 1} / {questions.length}
+                          </motion.span>
+                        </AnimatePresence>
                       </div>
-                      <div className="h-[3px] rounded-full overflow-hidden" style={{ background: 'var(--bg-surface-2)' }}>
+                      <div className="h-[4px] rounded-full overflow-hidden" style={{ background: 'var(--bg-surface-2)' }}>
                         <motion.div
                           className="h-full rounded-full"
                           style={{ background: 'linear-gradient(90deg, var(--accent-primary), var(--accent-bright))' }}
