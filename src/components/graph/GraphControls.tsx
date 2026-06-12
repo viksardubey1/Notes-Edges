@@ -7,10 +7,11 @@
 
 'use client';
 
-import { Minus, Plus, Maximize2, ImagePlus, X } from 'lucide-react';
+import { Minus, Plus, Maximize2, ImagePlus, X, GraduationCap } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useGraphStore } from '@/store/graph.store';
+import { useUIStore } from '@/store/ui.store';
 
 // Note: Tooltip still used for zoom-in/out/fit buttons above
 
@@ -24,6 +25,7 @@ interface GraphControlsProps {
 
 export function GraphControls({ zoom, onZoomIn, onZoomOut, onFitToScreen, onOpenPicker }: GraphControlsProps) {
   const { backdropUrl, setBackdrop, graph } = useGraphStore();
+  const { openQuiz } = useUIStore();
 
   const btnClass = "flex items-center justify-center rounded-[7px] transition-colors duration-100 hover:bg-black/5 active:bg-black/8";
 
@@ -149,6 +151,31 @@ export function GraphControls({ zoom, onZoomIn, onZoomOut, onFitToScreen, onOpen
               <span className="text-[10px]">Remove</span>
             </button>
           )}
+
+          <div className="h-px mx-2" style={{ background: 'var(--border-subtle)' }} />
+
+          {/* Quiz button */}
+          <div className="mx-1.5 my-1.5">
+            <button
+              onClick={openQuiz}
+              aria-label="Take quiz"
+              className="flex items-center gap-1.5 w-full px-2 py-1.5 rounded-[8px] transition-colors duration-100"
+              style={{
+                background: graph?.quiz
+                  ? 'rgba(107,88,192,0.12)'
+                  : 'rgba(107,88,192,0.07)',
+                border: '1px solid rgba(107,88,192,0.22)',
+                color: 'var(--accent-primary)',
+              }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(107,88,192,0.18)'; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = graph?.quiz ? 'rgba(107,88,192,0.12)' : 'rgba(107,88,192,0.07)'; }}
+            >
+              <GraduationCap size={13} />
+              <span className="text-[10px] font-semibold">
+                {graph?.quiz ? 'Resume quiz' : 'Take quiz'}
+              </span>
+            </button>
+          </div>
         </>
       )}
     </div>

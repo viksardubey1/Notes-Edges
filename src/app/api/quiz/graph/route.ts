@@ -86,13 +86,18 @@ Question distribution (total 20):
 - 7 relationship questions: "How does X relate to Y?", "What connects X and Y?", "Which statement about X and Y is true?"
 - 5 application questions: "If X were removed, what would happen to Y?", "Which scenario applies X correctly?"
 
-Rules:
+Strict rules for answer choices:
+- Every question has exactly 4 choices
+- All 4 choices MUST be the same length and depth — aim for 12–22 words each, no choice shorter or longer than the others
+- The correct choice must not be more detailed, more specific, or better-worded than the distractors
+- Distractors must be plausible and well-formed — not obviously wrong due to being vague or short
+- Do NOT include letter labels (A/B/C/D) in the choice text
+- The "correct" index should vary across all questions — spread it evenly across 0, 1, 2, and 3
+
+Other rules:
 - Each question must reference specific concepts or relationships from the lists above
-- 4 answer choices per question — exactly one correct, others plausible but clearly wrong to someone who understands
-- Explanation: 1-2 sentences explaining why the correct answer is right (not just restating it)
-- No letter labels (A/B/C/D) in the choices array — just the text
-- Vary which concepts appear — do not ask about the same concept twice
-- Questions should range from straightforward recall to nuanced understanding
+- Do not ask about the same concept twice across all 20 questions
+- Explanation: 1–2 sentences explaining why the correct answer is right (not just restating it)
 
 Return ONLY valid JSON — no markdown, no backticks, no commentary:
 {
@@ -106,6 +111,14 @@ Return ONLY valid JSON — no markdown, no backticks, no commentary:
     }
   ]
 }`;
+}
+
+/** Shuffle the 4 choices and update the correct index to match. */
+function shuffleChoices(q: QuizQuestion): QuizQuestion {
+  const correctText = q.choices[q.correct];
+  const shuffled = [...q.choices].sort(() => Math.random() - 0.5) as [string, string, string, string];
+  const newCorrect = shuffled.indexOf(correctText) as 0 | 1 | 2 | 3;
+  return { ...q, choices: shuffled, correct: newCorrect };
 }
 
 function validateQuestion(q: RawQuestion): QuizQuestion | null {
@@ -189,7 +202,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const questions: QuizQuestion[] = (parsed.questions ?? [])
     .map(validateQuestion)
     .filter((q): q is QuizQuestion => q !== null)
-    .slice(0, 22); // allow slight overage, client trims to ~20
+    .map(shuffleChoices)   // randomise correct position server-side
+    .slice(0, 22);         // allow slight overage, client trims to ~20
 
   if (questions.length < 5) {
     return NextResponse.json({ error: 'Not enough valid questions generated' }, { status: 502 });
