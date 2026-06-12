@@ -242,22 +242,24 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       })
     );
 
+  // Model cascade: try each in order until one succeeds
+  const models = ['gemini-2.0-flash', 'gemini-2.5-flash', 'gemini-1.5-flash'];
   let raw: string;
   try {
     let result;
-    try {
-      result = await generate('gemini-2.5-flash');
-    } catch (primaryErr) {
-      const msg = primaryErr instanceof Error ? primaryErr.message : String(primaryErr);
-      console.warn('[quiz/graph] gemini-2.5-flash failed:', msg);
-      // Fall back on any error, not just retryable ones
+    let lastErr: unknown;
+    for (const model of models) {
       try {
-        result = await generate('gemini-2.0-flash');
-      } catch (fallbackErr) {
-        // If both fail, throw the original error for specific handling below
-        throw primaryErr;
+        result = await generate(model);
+        console.log(`[quiz/graph] succeeded with ${model}`);
+        break;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.warn(`[quiz/graph] ${model} failed:`, msg);
+        lastErr = err;
       }
     }
+    if (!result) throw lastErr;
     raw = result.text?.trim() ?? '';
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
