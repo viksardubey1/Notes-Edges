@@ -11,6 +11,7 @@ import { useRouter } from 'next/navigation';
 import { useGraphStore } from '@/store/graph.store';
 import { useAuth } from '@/context/AuthContext';
 import { listGraphs } from '@/lib/graphs';
+import { useStableLoading } from '@/hooks/useStableLoading';
 import type { GraphData } from '@/types/graph';
 
 function relativeTime(iso: string): string {
@@ -70,6 +71,8 @@ export function SidebarProjectList() {
   const activeGraphId = useGraphStore((s) => s.graph?.id ?? null);
   const { session } = useAuth();
   const [graphs, setGraphs] = useState<GraphData[] | null>(null);
+  const isLoading = graphs === null && !!session;
+  const { showSkeleton, phase: loadPhase } = useStableLoading(isLoading, { delay: 150, minDuration: 400 });
 
   useEffect(() => {
     if (!session) return;
@@ -77,9 +80,9 @@ export function SidebarProjectList() {
   }, [session, activeGraphId]);
 
   // Loading — show skeleton
-  if (graphs === null && session) {
+  if (showSkeleton) {
     return (
-      <div className="flex flex-col gap-0.5">
+      <div className="flex flex-col gap-0.5" style={{ opacity: loadPhase === 'fading' ? 0 : 1, transition: 'opacity 250ms ease-out' }}>
         <span className="px-2.5 pt-1 pb-0.5 text-[10px] uppercase tracking-[0.08em]"
           style={{ color: 'var(--text-muted)' }}>
           Recents

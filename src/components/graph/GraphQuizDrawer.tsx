@@ -23,6 +23,7 @@ import { useUIStore } from '@/store/ui.store';
 import { useGraphStore } from '@/store/graph.store';
 import { useAuth } from '@/context/AuthContext';
 import { saveGraph } from '@/lib/graphs';
+import { useStableLoading } from '@/hooks/useStableLoading';
 import type { GraphQuiz, QuizQuestion, QuizAttempt } from '@/types/graph';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -139,6 +140,8 @@ export function GraphQuizDrawer() {
   const [generating, setGenerating] = useState(false);
   const [genError, setGenError] = useState<string | null>(null);
   const [quiz, setQuiz] = useState<GraphQuiz | null>(null);
+
+  const { showSkeleton: showGenSkeleton, phase: genPhase } = useStableLoading(generating, { delay: 100, minDuration: 500 });
 
   const [currentQ, setCurrentQ] = useState(0);
   const [selected, setSelected] = useState<number | null>(null);
@@ -345,8 +348,8 @@ export function GraphQuizDrawer() {
               <div className="flex-1 overflow-y-auto">
 
                 {/* Generating */}
-                {generating && (
-                  <div className="flex flex-col gap-5 px-6 py-8">
+                {showGenSkeleton && (
+                  <div className="flex flex-col gap-5 px-6 py-8" style={{ opacity: genPhase === 'fading' ? 0 : 1, transition: 'opacity 250ms ease-out' }}>
                     {/* Skeleton question */}
                     <div className="flex flex-col gap-3">
                       <div className="h-3 w-16 rounded-full bg-[#EEEAF8] animate-[shimmer-opacity_2.4s_ease-in-out_infinite]" />

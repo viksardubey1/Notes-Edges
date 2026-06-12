@@ -15,6 +15,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Compass } from 'lucide-react';
 import { useGraphStore } from '@/store/graph.store';
 import { useGraphInteractions } from '@/hooks/useGraphInteractions';
+import { useStableLoading } from '@/hooks/useStableLoading';
 import { getLODLevel } from '@/lib/graph/lod';
 import { shouldUseWebGL } from '@/lib/graph/physics';
 import { Button } from '@/components/ui/button';
@@ -48,6 +49,9 @@ export function GraphCanvas({ className }: GraphCanvasProps) {
     graph, zoom, pan, mode, isGenerating,
     selectedNodeId, selectedEdgeId, backdropUrl,
   } = useGraphStore();
+
+  const graphLoading = isGenerating || (!!graph && !isLayoutReady);
+  const { showSkeleton: showGraphSkeleton, phase: graphPhase } = useStableLoading(graphLoading, { delay: 100, minDuration: 500 });
   const setPan = useGraphStore((s) => s.setPan);
   const hasSelection = !!(selectedNodeId || selectedEdgeId);
 
@@ -407,13 +411,13 @@ export function GraphCanvas({ className }: GraphCanvasProps) {
 
       {/* Loading overlay — skeleton graph while generating or layout settling */}
       <AnimatePresence>
-        {(isGenerating || (graph && !isLayoutReady)) && (
+        {showGraphSkeleton && (
           <motion.div
             key="loading"
             initial={{ opacity: 1 }}
-            animate={{ opacity: 1 }}
+            animate={{ opacity: graphPhase === 'fading' ? 0 : 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.7, ease: 'easeInOut' }}
+            transition={{ duration: 0.3, ease: 'easeInOut' }}
             className="absolute inset-0 pointer-events-none"
             style={{ background: 'var(--bg-base)', zIndex: 40 }}
           >
