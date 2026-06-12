@@ -342,24 +342,63 @@ export async function POST(req: NextRequest) {
       ? [{ text: `--- BEGIN USER TEXT ---\n${text}\n--- END USER TEXT ---` }]
       : [{ inlineData: { mimeType: 'application/pdf', data: pdfBase64! } }, { text: 'Extract a deep knowledge graph from this document.' }];
 
-    const res = await withRetry(() =>
-      ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: [{ role: 'user', parts }],
-        config: {
-          systemInstruction: SYSTEM_PROMPT,
-          responseMimeType: 'application/json',
-        },
-      })
-    );
+    const generate = (model: string) =>
+      withRetry(() =>
+        ai.models.generateContent({
+          model,
+          contents: [{ role: 'user', parts }],
+          config: {
+            systemInstruction: SYSTEM_PROMPT,
+            responseMimeType: 'application/json',
+          },
+        })
+      );
+
+    let res;
+    try {
+      res = await generate('gemini-2.5-flash');
+    } catch (primaryErr) {
+      const msg = primaryErr instanceof Error ? primaryErr.message : String(primaryErr);
+      const isFallbackable = msg.includes('503') || msg.includes('Service Unavailable') || msg.includes('overloaded') || msg.includes('429') || msg.includes('RESOURCE_EXHAUSTED');
+      if (!isFallbackable) throw primaryErr;
+      console.warn('[extract-graph] gemini-2.5-flash failed after retries, falling back to gemini-2.0-flash:', msg);
+      res = await generate('gemini-2.0-flash');
+    }
     const rawText = res.text?.trim() ?? '';
+
+    if (!rawText) {
+      return NextResponse.json({ error: 'AI returned an empty response. Please try again with different text.' }, { status: 502 });
+    }
 
     const raw = rawText;
     const json = raw.startsWith('```') ? raw.replace(/^```[^\n]*\n?/, '').replace(/```$/, '') : raw;
-    const g = JSON.parse(json) as RawGraph;
+
+    let g: RawGraph;
+    try {
+      g = JSON.parse(json) as RawGraph;
+    } catch {
+      console.error('[extract-graph] JSON parse failed. Raw response (first 500 chars):', rawText.slice(0, 500));
+      return NextResponse.json({ error: 'AI returned a malformed response. Please try again.' }, { status: 502 });
+    }
+
+    if (!g || typeof g !== 'object') {
+      return NextResponse.json({ error: 'AI returned an unexpected response format. Please try again.' }, { status: 502 });
+    }
 
     if (!Array.isArray(g.nodes) || g.nodes.length === 0) {
-      return NextResponse.json({ error: 'No concepts extracted — try longer or more detailed text' }, { status: 422 });
+      return NextResponse.json({ error: 'No concepts extracted — try longer or more detailed text.' }, { status: 422 });
+    }
+
+    // Ensure edges is always an array even if Gemini omits it
+    if (!Array.isArray(g.edges)) g.edges = [];
+
+    // Filter out malformed nodes (must have at least id and label)
+    g.nodes = g.nodes.filter((n): n is RawNode =>
+      n != null && typeof n.id === 'string' && typeof n.label === 'string' && n.id.length > 0 && n.label.length > 0
+    );
+
+    if (g.nodes.length === 0) {
+      return NextResponse.json({ error: 'No valid concepts extracted — try longer or more detailed text.' }, { status: 422 });
     }
 
     const positions = assignPositions(g.nodes);
@@ -369,15 +408,16 @@ export async function POST(req: NextRequest) {
 
     const nodes: GraphNode[] = g.nodes.map((n) => {
       const pos = positions.get(n.id) ?? { x: 0, y: 0 };
+      const centrality = typeof n.centrality === 'number' ? Math.min(1, Math.max(0, n.centrality)) : 0.5;
       return {
         id: n.id,
         label: n.label,
         type: (validTypes.has(n.type) ? n.type : 'concept') as GraphNode['type'],
         sourceId: 'src-user',
         metadata: {
-          summary: n.summary,
-          sourceQuote: n.sourceQuote,
-          whyItMatters: n.whyItMatters,
+          summary: n.summary ?? '',
+          sourceQuote: n.sourceQuote ?? '',
+          whyItMatters: n.whyItMatters ?? '',
           depthLevel: (VALID_DEPTH_LEVELS.has(n.depthLevel as DepthLevel) ? n.depthLevel : 'surface') as DepthLevel,
           gaps: Array.isArray(n.gaps) ? n.gaps : [],
           expansionSuggestions: Array.isArray(n.expansionSuggestions) ? n.expansionSuggestions : [],
@@ -385,23 +425,23 @@ export async function POST(req: NextRequest) {
         createdAt: now,
         x: pos.x,
         y: pos.y,
-        size: Math.round(8 + Math.min(1, Math.max(0, n.centrality)) * 16),
-        centrality: Math.min(1, Math.max(0, n.centrality)),
-        clusterId: n.clusterId,
-        clusterColor: clusterColor(n.clusterId),
-        clusterName: n.clusterName,
+        size: Math.round(8 + centrality * 16),
+        centrality,
+        clusterId: n.clusterId ?? 'cluster-a',
+        clusterColor: clusterColor(n.clusterId ?? 'cluster-a'),
+        clusterName: n.clusterName ?? '',
       };
     });
 
     const nodeIds = new Set(nodes.map((n) => n.id));
     const edges: GraphEdge[] = g.edges
-      .filter((e) => nodeIds.has(e.sourceId) && nodeIds.has(e.targetId) && e.sourceId !== e.targetId)
+      .filter((e) => e != null && typeof e.sourceId === 'string' && typeof e.targetId === 'string' && nodeIds.has(e.sourceId) && nodeIds.has(e.targetId) && e.sourceId !== e.targetId)
       .map((e, i) => ({
         id: `e${i + 1}`,
         sourceId: e.sourceId,
         targetId: e.targetId,
-        label: e.label,
-        weight: Math.min(1, Math.max(0, e.weight)),
+        label: typeof e.label === 'string' ? e.label : '',
+        weight: typeof e.weight === 'number' ? Math.min(1, Math.max(0, e.weight)) : 0.5,
         type: 'semantic' as const,
         semanticType: (VALID_SEMANTIC_TYPES.has(e.semanticType as SemanticEdgeType)
           ? e.semanticType
@@ -460,19 +500,27 @@ export async function POST(req: NextRequest) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error('[extract-graph] error:', msg);
 
-    // Surface specific failure reasons where possible
+    // API key misconfiguration
     if (msg.includes('API_KEY') || msg.includes('api key') || msg.includes('API key')) {
       return NextResponse.json({ error: 'AI service not configured. Contact support.' }, { status: 500 });
     }
+
+    // Quota / rate limiting
     if (msg.includes('quota') || msg.includes('RESOURCE_EXHAUSTED')) {
       return NextResponse.json({ error: 'AI quota exceeded. Try again in a few minutes.' }, { status: 429 });
     }
-    if (msg.includes('JSON') || msg.includes('parse') || msg.includes('Unexpected token')) {
-      return NextResponse.json({ error: 'AI returned an unexpected response. Please try again.' }, { status: 500 });
+
+    // Overload / 503 — both models failed
+    if (msg.includes('503') || msg.includes('Service Unavailable') || msg.includes('overloaded') || msg.includes('429')) {
+      return NextResponse.json({ error: 'AI service is temporarily overloaded. Please wait a moment and try again.' }, { status: 503 });
     }
-    if (msg.includes('No concepts extracted')) {
-      return NextResponse.json({ error: 'No concepts found — try longer or more detailed text.' }, { status: 422 });
+
+    // Network failures (timeouts, connection resets, DNS)
+    if (msg.includes('ECONNRESET') || msg.includes('ETIMEDOUT') || msg.includes('ENOTFOUND') || msg.includes('fetch failed') || msg.includes('network') || msg.includes('socket hang up') || msg.includes('ECONNREFUSED')) {
+      return NextResponse.json({ error: 'Could not reach the AI service. Check your connection and try again.' }, { status: 503 });
     }
+
+    // Invalid input (bad PDF, image-only, etc.)
     if (
       msg.includes('INVALID_ARGUMENT') ||
       msg.includes('unsupported') ||
@@ -487,8 +535,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const detail = err instanceof Error ? err.message : String(err);
-    console.error('[extract-graph] unhandled error detail:', detail);
-    return NextResponse.json({ error: 'Extraction failed. Please try again.' }, { status: 500 });
+    // Catch-all with the actual error logged for debugging
+    console.error('[extract-graph] unhandled error detail:', msg);
+    return NextResponse.json({ error: 'Something went wrong during extraction. Please try again — if this keeps happening, try shorter or simpler text.' }, { status: 500 });
   }
 }

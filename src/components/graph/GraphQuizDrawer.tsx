@@ -161,7 +161,7 @@ export function GraphQuizDrawer() {
           <motion.div
             key="quiz-backdrop"
             className="fixed inset-0 z-40 pointer-events-auto"
-            style={{ background: 'rgba(10, 6, 20, 0.50)', backdropFilter: 'blur(2px)' }}
+            style={{ background: 'rgba(37, 30, 61, 0.35)', backdropFilter: 'blur(2px)' }}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -182,10 +182,10 @@ export function GraphQuizDrawer() {
             <div
               className="flex flex-col rounded-t-[24px] overflow-hidden"
               style={{
-                background: 'rgba(16, 10, 36, 0.98)',
-                border: '1px solid rgba(255,255,255,0.10)',
+                background: 'var(--bg-surface-1)',
+                border: '1px solid var(--border-default)',
                 borderBottom: 'none',
-                boxShadow: '0 -24px 80px rgba(10,6,20,0.55)',
+                boxShadow: 'var(--panel-shadow)',
                 backdropFilter: 'blur(32px)',
                 maxHeight: '74vh',
               }}
@@ -194,7 +194,7 @@ export function GraphQuizDrawer() {
               {/* Header */}
               <div
                 className="flex items-center justify-between px-6 py-4 flex-shrink-0"
-                style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}
+                style={{ borderBottom: '1px solid var(--border-subtle)' }}
               >
                 <div>
                   <p className="text-[14px] font-semibold" style={{ color: 'var(--text-primary)' }}>
@@ -209,9 +209,9 @@ export function GraphQuizDrawer() {
                 <button
                   onClick={closeQuiz}
                   className="w-7 h-7 flex items-center justify-center rounded-full transition-all"
-                  style={{ background: 'rgba(255,255,255,0.06)', color: 'var(--text-muted)' }}
-                  onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.12)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-primary)'; }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.06)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)'; }}
+                  style={{ background: 'var(--accent-glow)', color: 'var(--text-muted)' }}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-surface-3)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-primary)'; }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--accent-glow)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)'; }}
                 >
                   <X size={13} />
                 </button>
@@ -233,11 +233,11 @@ export function GraphQuizDrawer() {
                 {/* Error */}
                 {!generating && genError && (
                   <div className="flex flex-col items-center gap-4 py-16 px-6 text-center">
-                    <p className="text-[13px]" style={{ color: '#E05878' }}>{genError}</p>
+                    <p className="text-[13px]" style={{ color: 'var(--accent-warm)' }}>{genError}</p>
                     <button
                       onClick={() => void generate()}
                       className="px-4 py-2 rounded-[10px] text-[12px] font-medium"
-                      style={{ background: 'rgba(107,88,192,0.18)', color: 'var(--accent-primary)', border: '1px solid rgba(107,88,192,0.28)' }}
+                      style={{ background: 'var(--accent-glow)', color: 'var(--accent-primary)', border: '1px solid var(--border-default)' }}
                     >
                       Try again
                     </button>
@@ -291,7 +291,7 @@ export function GraphQuizDrawer() {
                       <button
                         onClick={resetAttempt}
                         className="flex items-center gap-1.5 px-4 py-2 rounded-[10px] text-[12px] font-medium"
-                        style={{ background: 'rgba(255,255,255,0.06)', color: 'var(--text-muted)', border: '1px solid rgba(255,255,255,0.09)' }}
+                        style={{ background: 'var(--bg-surface-2)', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)' }}
                       >
                         <RotateCcw size={11} /> Retry
                       </button>
@@ -299,7 +299,7 @@ export function GraphQuizDrawer() {
                         onClick={() => { setQuiz(null); void generate(); }}
                         disabled={generating}
                         className="flex items-center gap-1.5 px-4 py-2 rounded-[10px] text-[12px] font-medium"
-                        style={{ background: 'rgba(107,88,192,0.18)', color: 'var(--accent-primary)', border: '1px solid rgba(107,88,192,0.28)' }}
+                        style={{ background: 'var(--accent-glow)', color: 'var(--accent-primary)', border: '1px solid var(--border-default)' }}
                       >
                         New questions
                       </button>
@@ -324,10 +324,10 @@ export function GraphQuizDrawer() {
                           {currentQ + 1} / {questions.length}
                         </span>
                       </div>
-                      <div className="h-[2px] rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.07)' }}>
+                      <div className="h-[2px] rounded-full overflow-hidden" style={{ background: 'var(--border-subtle)' }}>
                         <motion.div
                           className="h-full rounded-full"
-                          style={{ background: 'linear-gradient(90deg, #6B58C0, #9876EE)' }}
+                          style={{ background: 'linear-gradient(90deg, var(--accent-primary), var(--accent-bright))' }}
                           animate={{ width: `${((currentQ + (revealed ? 1 : 0)) / questions.length) * 100}%` }}
                           transition={{ duration: 0.3, ease: 'easeOut' }}
                         />
@@ -353,13 +353,13 @@ export function GraphQuizDrawer() {
                           {q.choices.map((choice, idx) => {
                             const isSelected = selected === idx;
                             const isCorrect = idx === q.correct;
-                            let bg = 'rgba(255,255,255,0.04)';
-                            let border = 'rgba(255,255,255,0.08)';
+                            let bg = 'var(--bg-surface-2)';
+                            let border = 'var(--border-subtle)';
                             let color = 'var(--text-secondary)';
 
                             if (revealed) {
-                              if (isCorrect) { bg = 'rgba(96,200,152,0.10)'; border = 'rgba(96,200,152,0.35)'; color = '#60C898'; }
-                              else if (isSelected) { bg = 'rgba(224,88,120,0.10)'; border = 'rgba(224,88,120,0.35)'; color = '#E05878'; }
+                              if (isCorrect) { bg = 'rgba(58, 152, 112, 0.10)'; border = 'rgba(58, 152, 112, 0.35)'; color = 'var(--color-state-understood)'; }
+                              else if (isSelected) { bg = 'rgba(184, 90, 110, 0.10)'; border = 'rgba(184, 90, 110, 0.35)'; color = 'var(--accent-warm)'; }
                             }
 
                             return (
@@ -369,21 +369,21 @@ export function GraphQuizDrawer() {
                                 disabled={revealed}
                                 className="flex items-center gap-3 px-4 py-3 rounded-[14px] text-left w-full"
                                 style={{ background: bg, border: `1px solid ${border}`, color, cursor: revealed ? 'default' : 'pointer' }}
-                                whileHover={revealed ? {} : { scale: 1.005, background: 'rgba(107,88,192,0.10)' }}
+                                whileHover={revealed ? {} : { scale: 1.005 }}
                                 whileTap={revealed ? {} : { scale: 0.995 }}
                               >
                                 <span
                                   className="w-6 h-6 rounded-full flex-shrink-0 flex items-center justify-center text-[10px] font-bold"
                                   style={{
-                                    background: revealed && isCorrect ? 'rgba(96,200,152,0.20)' : revealed && isSelected ? 'rgba(224,88,120,0.20)' : 'rgba(255,255,255,0.07)',
+                                    background: revealed && isCorrect ? 'rgba(58, 152, 112, 0.15)' : revealed && isSelected ? 'rgba(184, 90, 110, 0.15)' : 'var(--accent-glow)',
                                     color: 'inherit',
                                   }}
                                 >
                                   {String.fromCharCode(65 + idx)}
                                 </span>
                                 <span className="text-[13px] leading-snug flex-1">{choice}</span>
-                                {revealed && isCorrect && <CheckCircle size={15} style={{ color: '#60C898', flexShrink: 0 }} />}
-                                {revealed && isSelected && !isCorrect && <XCircle size={15} style={{ color: '#E05878', flexShrink: 0 }} />}
+                                {revealed && isCorrect && <CheckCircle size={15} style={{ color: 'var(--color-state-understood)', flexShrink: 0 }} />}
+                                {revealed && isSelected && !isCorrect && <XCircle size={15} style={{ color: 'var(--accent-warm)', flexShrink: 0 }} />}
                               </motion.button>
                             );
                           })}
@@ -402,8 +402,8 @@ export function GraphQuizDrawer() {
                               <div
                                 className="px-4 py-3 rounded-[12px] text-[12px] leading-[1.75]"
                                 style={{
-                                  background: selected === q.correct ? 'rgba(96,200,152,0.07)' : 'rgba(255,255,255,0.03)',
-                                  border: selected === q.correct ? '1px solid rgba(96,200,152,0.18)' : '1px solid rgba(255,255,255,0.06)',
+                                  background: selected === q.correct ? 'rgba(58, 152, 112, 0.06)' : 'var(--bg-surface-2)',
+                                  border: selected === q.correct ? '1px solid rgba(58, 152, 112, 0.18)' : '1px solid var(--border-subtle)',
                                   color: 'var(--text-secondary)',
                                 }}
                               >
@@ -421,7 +421,7 @@ export function GraphQuizDrawer() {
                             transition={{ duration: 0.15, delay: 0.08 }}
                             onClick={handleNext}
                             className="flex items-center justify-center gap-2 py-3 rounded-[14px] text-[13px] font-semibold"
-                            style={{ background: 'rgba(107,88,192,0.20)', color: 'var(--accent-primary)', border: '1px solid rgba(107,88,192,0.32)' }}
+                            style={{ background: 'var(--accent-glow)', color: 'var(--accent-primary)', border: '1px solid var(--border-default)' }}
                             whileHover={{ scale: 1.01 }}
                             whileTap={{ scale: 0.99 }}
                           >

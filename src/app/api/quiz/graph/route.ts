@@ -23,6 +23,20 @@ import type { QuizQuestion } from '@/types/graph';
 // 20 graph quiz generations per 15 minutes per IP (expensive call)
 const AI_RATE_LIMIT = { max: 20, windowMs: 15 * 60 * 1000 };
 
+async function withRetry<T>(fn: () => Promise<T>, retries = 2, delayMs = 1500): Promise<T> {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      const isRetryable = msg.includes('503') || msg.includes('Service Unavailable') || msg.includes('overloaded') || msg.includes('429');
+      if (!isRetryable || attempt === retries) throw err;
+      await new Promise((r) => setTimeout(r, delayMs * (attempt + 1)));
+    }
+  }
+  throw new Error('unreachable');
+}
+
 interface NodeSummary {
   id: string;
   label: string;
@@ -177,19 +191,52 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
 
   // Generate
-  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) return NextResponse.json({ error: 'AI service not configured.' }, { status: 500 });
+
+  const ai = new GoogleGenAI({ apiKey });
   const prompt = buildPrompt(nodes, edges);
+
+  const generate = (model: string) =>
+    withRetry(() =>
+      ai.models.generateContent({
+        model,
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        config: { responseMimeType: 'application/json' },
+      })
+    );
 
   let raw: string;
   try {
-    const result = await ai.models.generateContent({
-      model: 'gemini-2.0-flash',
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    });
+    let result;
+    try {
+      result = await generate('gemini-2.5-flash');
+    } catch (primaryErr) {
+      const msg = primaryErr instanceof Error ? primaryErr.message : String(primaryErr);
+      const isFallbackable = msg.includes('503') || msg.includes('Service Unavailable') || msg.includes('overloaded') || msg.includes('429') || msg.includes('RESOURCE_EXHAUSTED');
+      if (!isFallbackable) throw primaryErr;
+      console.warn('[quiz/graph] gemini-2.5-flash failed after retries, falling back to gemini-2.0-flash:', msg);
+      result = await generate('gemini-2.0-flash');
+    }
     raw = result.text?.trim() ?? '';
   } catch (err) {
-    console.error('[quiz/graph] Gemini error:', err);
-    return NextResponse.json({ error: 'Generation failed' }, { status: 502 });
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error('[quiz/graph] Gemini error:', msg);
+
+    if (msg.includes('503') || msg.includes('Service Unavailable') || msg.includes('overloaded') || msg.includes('429')) {
+      return NextResponse.json({ error: 'AI service is temporarily overloaded. Please wait a moment and try again.' }, { status: 503 });
+    }
+    if (msg.includes('ECONNRESET') || msg.includes('ETIMEDOUT') || msg.includes('ENOTFOUND') || msg.includes('fetch failed') || msg.includes('socket hang up')) {
+      return NextResponse.json({ error: 'Could not reach the AI service. Check your connection and try again.' }, { status: 503 });
+    }
+    if (msg.includes('quota') || msg.includes('RESOURCE_EXHAUSTED')) {
+      return NextResponse.json({ error: 'AI quota exceeded. Try again in a few minutes.' }, { status: 429 });
+    }
+    return NextResponse.json({ error: 'Quiz generation failed. Please try again.' }, { status: 502 });
+  }
+
+  if (!raw) {
+    return NextResponse.json({ error: 'AI returned an empty response. Please try again.' }, { status: 502 });
   }
 
   let parsed: { questions: RawQuestion[] };
@@ -198,17 +245,21 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     parsed = JSON.parse(cleaned) as { questions: RawQuestion[] };
   } catch {
     console.error('[quiz/graph] JSON parse failed. Raw:', raw.slice(0, 400));
-    return NextResponse.json({ error: 'Failed to parse quiz response' }, { status: 502 });
+    return NextResponse.json({ error: 'AI returned a malformed response. Please try again.' }, { status: 502 });
   }
 
-  const questions: QuizQuestion[] = (parsed.questions ?? [])
+  if (!parsed || !Array.isArray(parsed.questions)) {
+    return NextResponse.json({ error: 'AI returned an unexpected response format. Please try again.' }, { status: 502 });
+  }
+
+  const questions: QuizQuestion[] = parsed.questions
     .map(validateQuestion)
     .filter((q): q is QuizQuestion => q !== null)
-    .map(shuffleChoices)   // randomise correct position server-side
-    .slice(0, 22);         // allow slight overage, client trims to ~20
+    .map(shuffleChoices)
+    .slice(0, 22);
 
   if (questions.length < 5) {
-    return NextResponse.json({ error: 'Not enough valid questions generated' }, { status: 502 });
+    return NextResponse.json({ error: 'Not enough valid questions were generated. Try a graph with more concepts.' }, { status: 422 });
   }
 
   return NextResponse.json({ questions });
