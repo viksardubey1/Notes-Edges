@@ -69,11 +69,11 @@ function ConstellationMap({
   onNavigate: (nodeId: string) => void;
 }) {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
-  const viewW = 120;
-  const viewH = 120;
+  const viewW = 80;
+  const viewH = 80;
   const cx = viewW / 2;
   const cy = viewH / 2;
-  const orbitR = 42;
+  const orbitR = 28;
   const color = node.clusterColor ?? '#9876EE';
   const visible = connections.slice(0, 8);
   const angleStep = (2 * Math.PI) / Math.max(1, visible.length);
@@ -87,7 +87,7 @@ function ConstellationMap({
       aria-label={`Connections for ${node.label}`}
     >
       {/* Outer atmospheric glow */}
-      <circle cx={cx} cy={cy} r={orbitR + 18} fill={color} opacity={0.04} style={{ filter: 'blur(14px)' }} />
+      <circle cx={cx} cy={cy} r={orbitR + 10} fill={color} opacity={0.04} style={{ filter: 'blur(10px)' }} />
 
       {/* Dashed orbit ring */}
       <circle
@@ -102,15 +102,15 @@ function ConstellationMap({
         const ty = cy + Math.sin(a) * orbitR;
         const c = conn.other.clusterColor ?? color;
         const isHovered = hoveredId === conn.other.id;
-        const label = conn.other.label.length > 14
-          ? conn.other.label.slice(0, 13) + '…'
+        const label = conn.other.label.length > 10
+          ? conn.other.label.slice(0, 9) + '…'
           : conn.other.label;
         const semType = conn.edge.semanticType;
         const relColor = semType ? (SEM_TYPE_COLORS[semType] ?? c) : c;
 
         // Label positioning: push away from center
         const labelAngle = a;
-        const labelOffset = 13;
+        const labelOffset = 10;
         const lx = cx + Math.cos(labelAngle) * (orbitR + labelOffset);
         const ly = cy + Math.sin(labelAngle) * (orbitR + labelOffset);
         const textAnchor = Math.abs(Math.cos(labelAngle)) < 0.3
@@ -138,11 +138,11 @@ function ConstellationMap({
               style={{ transition: 'all 0.15s ease' }}
             />
             {/* Satellite glow */}
-            <circle cx={tx} cy={ty} r={isHovered ? 10 : 7} fill={c} opacity={0.07} style={{ transition: 'r 0.15s ease' }} />
+            <circle cx={tx} cy={ty} r={isHovered ? 7 : 5} fill={c} opacity={0.07} style={{ transition: 'r 0.15s ease' }} />
             {/* Satellite node */}
             <circle
               cx={tx} cy={ty}
-              r={isHovered ? 6 : 4.5}
+              r={isHovered ? 4 : 3}
               fill={c}
               opacity={isHovered ? 0.85 : 0.55}
               stroke={c}
@@ -154,7 +154,7 @@ function ConstellationMap({
               x={lx} y={ly + 1}
               textAnchor={textAnchor}
               fill="rgba(90,82,114,0.70)"
-              fontSize={isHovered ? 7.5 : 6.5}
+              fontSize={isHovered ? 6.5 : 5.5}
               fontFamily="var(--font-sans, sans-serif)"
               style={{ transition: 'font-size 0.15s ease, fill 0.15s ease', userSelect: 'none', pointerEvents: 'none' }}
             >
@@ -165,11 +165,10 @@ function ConstellationMap({
       })}
 
       {/* Center node — atmospheric glow layers */}
-      <circle cx={cx} cy={cy} r={22} fill={color} opacity={0.06} style={{ filter: 'blur(8px)' }} />
-      <circle cx={cx} cy={cy} r={16} fill={`${color}25`} />
-      <circle cx={cx} cy={cy} r={12} fill={color} opacity={0.55} stroke={color} strokeWidth={1.2} />
-      {/* Inner glass highlight */}
-      <circle cx={cx - 4} cy={cy - 4} r={4} fill="rgba(255,255,255,0.25)" style={{ filter: 'blur(2px)' }} />
+      <circle cx={cx} cy={cy} r={15} fill={color} opacity={0.06} style={{ filter: 'blur(6px)' }} />
+      <circle cx={cx} cy={cy} r={10} fill={`${color}25`} />
+      <circle cx={cx} cy={cy} r={7} fill={color} opacity={0.55} stroke={color} strokeWidth={1} />
+      <circle cx={cx - 2} cy={cy - 2} r={2.5} fill="rgba(255,255,255,0.25)" style={{ filter: 'blur(1.5px)' }} />
     </svg>
   );
 }
@@ -366,7 +365,7 @@ export function ConceptExpansion() {
           </div>
 
           {/* ── Title area + Constellation Map (side by side) ───────────── */}
-          <div className="flex-shrink-0 px-5 pb-3 relative overflow-hidden">
+          <div className="flex-shrink-0 px-5 pb-1 relative overflow-hidden">
             {/* Subtle radial backdrop */}
             <div
               className="absolute inset-0 pointer-events-none"
@@ -380,7 +379,7 @@ export function ConceptExpansion() {
               {/* LEFT: badges + title + teaser */}
               <div className="flex-1 min-w-0">
                 {/* Badges row */}
-                <div className="flex items-center gap-2 mb-2.5 flex-wrap">
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
                   {node.clusterName && (
                     <span
                       className="inline-flex items-center gap-1.5 text-[9px] font-semibold tracking-[0.08em] uppercase px-2 py-0.5 rounded-full"
@@ -410,8 +409,8 @@ export function ConceptExpansion() {
 
                 {/* Concept title */}
                 <h2
-                  className="font-light leading-tight tracking-tight mb-1.5"
-                  style={{ fontSize: 22, color: 'var(--text-primary)' }}
+                  className="font-medium leading-tight tracking-tight"
+                  style={{ fontSize: 18, color: 'var(--text-primary)' }}
                 >
                   {node.label}
                 </h2>
@@ -439,13 +438,13 @@ export function ConceptExpansion() {
 
           {/* Separator */}
           <div
-            className="flex-shrink-0 mx-5 my-1"
-            style={{ height: 1, background: 'rgba(123,110,196,0.10)' }}
+            className="flex-shrink-0 mx-5"
+            style={{ height: 1, background: 'rgba(123,110,196,0.08)' }}
           />
 
           {/* ── Body ─────────────────────────────────────────────────────── */}
           <div
-            className="flex-1 min-h-0 px-5 pt-3 pb-4 flex flex-col gap-3 overflow-y-auto"
+            className="flex-1 min-h-0 px-5 pt-2 pb-4 flex flex-col gap-3 overflow-y-auto"
             style={{ scrollbarWidth: 'none' }}
           >
             {/* The Idea */}
