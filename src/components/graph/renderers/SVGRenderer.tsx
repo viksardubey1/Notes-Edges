@@ -872,7 +872,7 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions, showSecond
             const glowColor   = node.clusterColor ?? 'var(--accent-primary)';
 
             // Centrality threshold for LOD-gated labels (zoom 0.8–1.3 = tier 3)
-            const labelCentralityThreshold = zoom < 1.3 ? 0.30 : 0.10;
+            const labelCentralityThreshold = zoom < 1.3 ? 0.10 : 0.05;
 
             // Always show: selected, hovered, neighbors, root+top-8, mastered/understood
             // All others need LOD permission + collision safety
@@ -1154,7 +1154,7 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions, showSecond
             // - Always: selected, hovered, neighbors, root+top-8, mastered/understood
             // - Zoom 0.8-1.3: centrality >= 0.30 + collision safe
             // - Zoom > 1.3: centrality >= 0.10 + collision safe
-            const labelCentralityThreshold = zoom < 1.3 ? 0.30 : 0.10;
+            const labelCentralityThreshold = zoom < 1.3 ? 0.10 : 0.05;
             const alwaysShowLabel = isSelected || isHovered || isNeighbor
               || topLabelNodeIds.has(node.id)
               || tier === 'mastered' || tier === 'understood';

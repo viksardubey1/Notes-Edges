@@ -367,7 +367,7 @@ export function NodeDetailPanel() {
             />
 
             {/* ── Header ────────────────────────────────────────────────── */}
-            <div className="px-6 pt-5 pb-5 flex-shrink-0">
+            <div className="px-6 pt-5 pb-2 flex-shrink-0">
               {/* Back nav + close row */}
               <div className="flex items-center justify-between mb-4">
                 {prevNode ? (
@@ -505,7 +505,7 @@ export function NodeDetailPanel() {
               {/* ── Source quote — pulled up for immediate context ──────── */}
               {node.metadata?.sourceQuote && (
                 <blockquote
-                  className="mx-6 mt-1 mb-4 px-4 py-3 rounded-[14px] text-[12px] leading-[1.75] italic"
+                  className="mt-2 mb-1 px-4 py-3 rounded-[14px] text-[12px] leading-[1.75] italic"
                   style={{
                     background: 'var(--bg-surface-2)',
                     borderLeft: `2px solid ${accentRaw}40`,
@@ -518,9 +518,9 @@ export function NodeDetailPanel() {
             </div>
 
             {/* ── AI Summary ────────────────────────────────────────────── */}
-            <div className="mx-6 mb-6 flex-shrink-0">
+            <div className="mx-6 mb-4 flex-shrink-0">
               <div
-                className="px-4 py-4 rounded-[16px] group"
+                className="px-4 py-3 rounded-[16px] group"
                 style={{
                   background: `${accentRaw}0A`,
                   borderLeft: `2px solid ${accentRaw}50`,
@@ -573,7 +573,7 @@ export function NodeDetailPanel() {
 
             {/* ── Next in Sequence — always shown when graph has >1 node ── */}
             {nextInOrder && (
-              <div className="px-6 mb-6 flex-shrink-0">
+              <div className="px-6 mb-4 flex-shrink-0">
                 <div className="flex items-center justify-between mb-3">
                   <p className="text-[9px] font-semibold tracking-[0.14em] uppercase flex items-center gap-1.5"
                     style={{ color: accentRaw, opacity: 0.9 }}>
@@ -680,7 +680,7 @@ export function NodeDetailPanel() {
 
             {/* ── Connection Threads — relationship cards ────────────────── */}
             {connectedEdges.length > 0 && (
-              <div className="px-6 mb-6 flex-shrink-0">
+              <div className="px-6 mb-4 flex-shrink-0">
                 <div className="flex items-center justify-between mb-3">
                   <p className="text-[9px] font-semibold tracking-[0.14em] uppercase"
                     style={{ color: 'var(--text-muted)', opacity: 0.5 }}>
@@ -744,7 +744,7 @@ export function NodeDetailPanel() {
 
             {/* ── Deeper Context ─────────────────────────────────────────── */}
             {hasDeeper && (
-              <div className="px-6 mb-6 flex-shrink-0">
+              <div className="px-6 mb-4 flex-shrink-0">
                 <button
                   onClick={() => setDeeperExpanded((v) => !v)}
                   className="w-full flex items-center justify-between mb-3 transition-opacity hover:opacity-80"

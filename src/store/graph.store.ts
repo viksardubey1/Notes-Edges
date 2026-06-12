@@ -342,7 +342,8 @@ export const useGraphStore = create<GraphState>()(
         const gW = maxX - minX;
         const gH = maxY - minY;
         if (gW <= 0 || gH <= 0) return;
-        const zoom = Math.max(0.25, Math.min(dimensions.width / gW, dimensions.height / gH, 2.5) * 0.88);
+        // Min zoom 0.9 ensures LOD tier 3 where labels are visible on load
+        const zoom = Math.max(0.9, Math.min(dimensions.width / gW, dimensions.height / gH, 2.5) * 0.88);
         draft.zoom = zoom;
         draft.pan = { x: -((minX + maxX) / 2) * zoom, y: -((minY + maxY) / 2) * zoom };
       }),
