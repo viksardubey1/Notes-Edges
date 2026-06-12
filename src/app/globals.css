@@ -124,8 +124,8 @@ body {
 }
 
 @keyframes shimmer-opacity {
-  0%, 100% { opacity: 0.35; }
-  50%      { opacity: 0.75; }
+  0%, 100% { opacity: 0.55; }
+  50%      { opacity: 0.85; }
 }
 
 /* ─── Ambient Float ───────────────────────────────────────────────────────── */

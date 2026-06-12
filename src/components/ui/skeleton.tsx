@@ -16,7 +16,7 @@ function Skeleton({ className, ...props }: React.HTMLAttributes<HTMLDivElement>)
         'relative overflow-hidden',
         'before:absolute before:inset-0',
         'before:bg-gradient-to-r before:from-transparent before:via-[#F7F5FC] before:to-transparent',
-        'before:animate-[shimmer_1.8s_infinite]',
+        'before:animate-[shimmer_2.4s_ease-in-out_infinite]',
         'motion-reduce:before:animate-none',
         className,
       )}

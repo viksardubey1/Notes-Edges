@@ -349,20 +349,20 @@ export function GraphQuizDrawer() {
                   <div className="flex flex-col gap-5 px-6 py-8">
                     {/* Skeleton question */}
                     <div className="flex flex-col gap-3">
-                      <div className="h-3 w-16 rounded-full bg-[#EEEAF8] animate-[shimmer-opacity_1.8s_infinite]" />
-                      <div className="h-5 w-full rounded-[6px] bg-[#EEEAF8] animate-[shimmer-opacity_1.8s_infinite]" style={{ animationDelay: '0.1s' }} />
-                      <div className="h-5 w-3/4 rounded-[6px] bg-[#EEEAF8] animate-[shimmer-opacity_1.8s_infinite]" style={{ animationDelay: '0.15s' }} />
+                      <div className="h-3 w-16 rounded-full bg-[#EEEAF8] animate-[shimmer-opacity_2.4s_ease-in-out_infinite]" />
+                      <div className="h-5 w-full rounded-[6px] bg-[#EEEAF8] animate-[shimmer-opacity_2.4s_ease-in-out_infinite]" style={{ animationDelay: '0.1s' }} />
+                      <div className="h-5 w-3/4 rounded-[6px] bg-[#EEEAF8] animate-[shimmer-opacity_2.4s_ease-in-out_infinite]" style={{ animationDelay: '0.15s' }} />
                     </div>
                     {/* Skeleton choices */}
                     <div className="flex flex-col gap-2.5">
                       {[0, 1, 2, 3].map((i) => (
-                        <div key={i} className="h-12 rounded-[14px] bg-[#EEEAF8] animate-[shimmer-opacity_1.8s_infinite]"
+                        <div key={i} className="h-12 rounded-[14px] bg-[#EEEAF8] animate-[shimmer-opacity_2.4s_ease-in-out_infinite]"
                           style={{ animationDelay: `${0.2 + i * 0.1}s` }} />
                       ))}
                     </div>
                     {/* Skeleton button */}
-                    <div className="h-11 w-full rounded-[14px] bg-[#E5E1F4] animate-[shimmer-opacity_1.8s_infinite]" style={{ animationDelay: '0.6s' }} />
-                    <p className="text-[12px] text-center animate-[shimmer-opacity_1.8s_infinite]" style={{ color: 'var(--text-muted)' }}>
+                    <div className="h-11 w-full rounded-[14px] bg-[#E5E1F4] animate-[shimmer-opacity_2.4s_ease-in-out_infinite]" style={{ animationDelay: '0.6s' }} />
+                    <p className="text-[12px] text-center animate-[shimmer-opacity_2.4s_ease-in-out_infinite]" style={{ color: 'var(--text-muted)' }}>
                       Generating quiz from your knowledge graph…
                     </p>
                   </div>

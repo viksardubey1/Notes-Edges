@@ -89,7 +89,7 @@ export default function ResetPasswordPage() {
         onMouseEnter={(e) => { if (!loading) (e.currentTarget as HTMLButtonElement).style.background = 'var(--accent-bright)'; }}
         onMouseLeave={(e) => { if (!loading) (e.currentTarget as HTMLButtonElement).style.background = 'var(--accent-primary)'; }}
       >
-        {loading ? <span className="animate-[shimmer-opacity_1.8s_infinite]">Updating…</span> : 'Set new password'}
+        {loading ? <span className="animate-[shimmer-opacity_2.4s_ease-in-out_infinite]">Updating…</span> : 'Set new password'}
       </button>
     </form>
   );

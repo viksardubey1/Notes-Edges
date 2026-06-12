@@ -46,11 +46,11 @@ export function GoogleButton({ label = 'Continue with Google' }: GoogleButtonPro
       }}
     >
       {loading ? (
-        <div className="w-[17px] h-[17px] rounded-[4px] bg-[#EEEAF8] animate-[shimmer-opacity_1.8s_infinite]" />
+        <div className="w-[17px] h-[17px] rounded-[4px] bg-[#EEEAF8] animate-[shimmer-opacity_2.4s_ease-in-out_infinite]" />
       ) : (
         <GoogleLogo />
       )}
-      <span className={loading ? 'animate-[shimmer-opacity_1.8s_infinite]' : ''}>{loading ? 'Redirecting…' : label}</span>
+      <span className={loading ? 'animate-[shimmer-opacity_2.4s_ease-in-out_infinite]' : ''}>{loading ? 'Redirecting…' : label}</span>
     </button>
   );
 }

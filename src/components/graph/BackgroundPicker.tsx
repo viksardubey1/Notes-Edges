@@ -463,8 +463,8 @@ export function BackgroundPicker({ isOpen, onClose }: BackgroundPickerProps) {
                       >
                         {isUploading ? (
                           <div className="flex flex-col items-center gap-2 w-full px-3">
-                            <div className="w-8 h-8 rounded-[8px] bg-[#EEEAF8] animate-[shimmer-opacity_1.8s_infinite]" />
-                            <div className="w-16 h-2.5 rounded-full bg-[#EEEAF8] animate-[shimmer-opacity_1.8s_infinite]" style={{ animationDelay: '0.15s' }} />
+                            <div className="w-8 h-8 rounded-[8px] bg-[#EEEAF8] animate-[shimmer-opacity_2.4s_ease-in-out_infinite]" />
+                            <div className="w-16 h-2.5 rounded-full bg-[#EEEAF8] animate-[shimmer-opacity_2.4s_ease-in-out_infinite]" style={{ animationDelay: '0.15s' }} />
                           </div>
                         ) : (
                           <>

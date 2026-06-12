@@ -427,7 +427,7 @@ export function GraphCanvas({ className }: GraphCanvasProps) {
               ].map(([x1, y1, x2, y2], i) => (
                 <line key={`e${i}`} x1={`${(x1 / 900) * 100}%`} y1={`${(y1 / 600) * 100}%`}
                   x2={`${(x2 / 900) * 100}%`} y2={`${(y2 / 600) * 100}%`}
-                  stroke="#E5E1F4" strokeWidth={1.5} className="animate-[shimmer-opacity_1.8s_infinite]"
+                  stroke="#E5E1F4" strokeWidth={1.5} className="animate-[shimmer-opacity_2.4s_ease-in-out_infinite]"
                   style={{ animationDelay: `${i * 0.15}s` }}
                 />
               ))}
@@ -438,7 +438,7 @@ export function GraphCanvas({ className }: GraphCanvasProps) {
                 [140, 370, 10], [420, 80, 11],
               ].map(([cx, cy, r], i) => (
                 <circle key={`n${i}`} cx={`${(cx / 900) * 100}%`} cy={`${(cy / 600) * 100}%`}
-                  r={r} fill="#EEEAF8" className="animate-[shimmer-opacity_1.8s_infinite]"
+                  r={r} fill="#EEEAF8" className="animate-[shimmer-opacity_2.4s_ease-in-out_infinite]"
                   style={{ animationDelay: `${i * 0.12}s` }}
                 />
               ))}
@@ -448,7 +448,7 @@ export function GraphCanvas({ className }: GraphCanvasProps) {
               ].map(([x, y, w], i) => (
                 <rect key={`l${i}`} x={`${((x - w / 2) / 900) * 100}%`} y={`${(y / 600) * 100}%`}
                   width={w} height={8} rx={4} fill="#E5E1F4" opacity={0.6}
-                  className="animate-[shimmer-opacity_1.8s_infinite]"
+                  className="animate-[shimmer-opacity_2.4s_ease-in-out_infinite]"
                   style={{ animationDelay: `${i * 0.2}s` }}
                 />
               ))}
@@ -456,7 +456,7 @@ export function GraphCanvas({ className }: GraphCanvasProps) {
 
             {/* Status text */}
             <div className="absolute inset-x-0 bottom-16 flex justify-center">
-              <p className="text-[13px] font-light tracking-wide animate-[shimmer-opacity_1.8s_infinite]"
+              <p className="text-[13px] font-light tracking-wide animate-[shimmer-opacity_2.4s_ease-in-out_infinite]"
                 style={{ color: 'var(--text-muted)' }}>
                 {isGenerating ? 'Mapping your ideas…' : 'Arranging your graph…'}
               </p>

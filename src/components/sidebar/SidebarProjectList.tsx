@@ -56,10 +56,10 @@ function GraphRow({ graph, isActive }: { graph: GraphData; isActive: boolean }) 
 function SkeletonRow({ delay }: { delay: string }) {
   return (
     <div className="flex items-start gap-2 px-2.5 py-2">
-      <div className="w-1.5 h-1.5 rounded-full mt-[5px] bg-[#EEEAF8] animate-[shimmer-opacity_1.8s_infinite]" style={{ animationDelay: delay }} />
+      <div className="w-1.5 h-1.5 rounded-full mt-[5px] bg-[#EEEAF8] animate-[shimmer-opacity_2.4s_ease-in-out_infinite]" style={{ animationDelay: delay }} />
       <div className="flex-1 min-w-0 flex flex-col gap-1.5">
-        <div className="h-3 rounded-full bg-[#EEEAF8] animate-[shimmer-opacity_1.8s_infinite]" style={{ width: `${60 + Math.random() * 30}%`, animationDelay: delay }} />
-        <div className="h-2 w-16 rounded-full bg-[#EEEAF8] animate-[shimmer-opacity_1.8s_infinite] opacity-60" style={{ animationDelay: delay }} />
+        <div className="h-3 rounded-full bg-[#EEEAF8] animate-[shimmer-opacity_2.4s_ease-in-out_infinite]" style={{ width: `${60 + Math.random() * 30}%`, animationDelay: delay }} />
+        <div className="h-2 w-16 rounded-full bg-[#EEEAF8] animate-[shimmer-opacity_2.4s_ease-in-out_infinite] opacity-60" style={{ animationDelay: delay }} />
       </div>
     </div>
   );

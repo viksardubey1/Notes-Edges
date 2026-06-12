@@ -443,7 +443,7 @@ function WelcomeContent() {
                 }}
               >
                 {isLoading ? (
-                  <span className="animate-[shimmer-opacity_1.8s_infinite]">Generating…</span>
+                  <span className="animate-[shimmer-opacity_2.4s_ease-in-out_infinite]">Generating…</span>
                 ) : (
                   <>
                     Generate my graph <ArrowRight size={14} />
@@ -489,11 +489,11 @@ function WelcomeContent() {
               <svg className="w-full h-full" viewBox="0 0 200 200" aria-hidden="true">
                 {[[40,80,100,50],[100,50,160,90],[100,50,80,140],[80,140,160,90],[160,90,170,150],[80,140,140,170]].map(([x1,y1,x2,y2],i) => (
                   <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke="#E5E1F4" strokeWidth={1.5}
-                    className="animate-[shimmer-opacity_1.8s_infinite]" style={{ animationDelay: `${i*0.15}s` }} />
+                    className="animate-[shimmer-opacity_2.4s_ease-in-out_infinite]" style={{ animationDelay: `${i*0.15}s` }} />
                 ))}
                 {[[40,80,14],[100,50,20],[160,90,16],[80,140,13],[170,150,10],[140,170,11]].map(([cx,cy,r],i) => (
                   <circle key={i} cx={cx} cy={cy} r={r} fill="#EEEAF8"
-                    className="animate-[shimmer-opacity_1.8s_infinite]" style={{ animationDelay: `${i*0.12}s` }} />
+                    className="animate-[shimmer-opacity_2.4s_ease-in-out_infinite]" style={{ animationDelay: `${i*0.12}s` }} />
                 ))}
               </svg>
             </div>

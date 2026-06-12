@@ -460,7 +460,7 @@ export function UploadSheet() {
                 onMouseLeave={(e) => { if (canSubmit) (e.currentTarget as HTMLButtonElement).style.background = 'var(--accent-primary)'; }}
               >
                 {isSubmitting ? (
-                  <span className="animate-[shimmer-opacity_1.8s_infinite]">{ctaLabel}</span>
+                  <span className="animate-[shimmer-opacity_2.4s_ease-in-out_infinite]">{ctaLabel}</span>
                 ) : (
                   ctaLabel
                 )}

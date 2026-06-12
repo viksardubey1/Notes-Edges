@@ -146,7 +146,7 @@ function LoginForm() {
         onMouseEnter={(e) => { if (!loading) (e.currentTarget as HTMLButtonElement).style.background = 'var(--accent-bright)'; }}
         onMouseLeave={(e) => { if (!loading) (e.currentTarget as HTMLButtonElement).style.background = 'var(--accent-primary)'; }}
       >
-        {loading ? <span className="animate-[shimmer-opacity_1.8s_infinite]">Signing in…</span> : 'Sign in with email'}
+        {loading ? <span className="animate-[shimmer-opacity_2.4s_ease-in-out_infinite]">Signing in…</span> : 'Sign in with email'}
       </button>
 
       <p className="text-[12px] text-center" style={{ color: 'var(--text-muted)' }}>
