@@ -41,7 +41,7 @@ export interface QuizQuestion {
   explanation: string;
 }
 
-export interface NodeQuiz {
+export interface GraphQuiz {
   questions: QuizQuestion[];
   generatedAt: string;
 }
@@ -61,7 +61,6 @@ export interface GraphNode {
     depthLevel?: DepthLevel;      // AI assessment of user's understanding depth
     gaps?: string[];              // Missing connections the AI identified
     expansionSuggestions?: string[]; // Related concepts not yet in the graph
-    quiz?: NodeQuiz;              // Generated quiz questions for this node
     [key: string]: unknown;
   };
   createdAt: string;
@@ -104,6 +103,7 @@ export interface GraphData {
   nodes: GraphNode[];
   edges: GraphEdge[];
   intelligenceSummary?: GraphIntelligenceSummary;
+  quiz?: GraphQuiz;
 }
 
 export interface GraphSource {

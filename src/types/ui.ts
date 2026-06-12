@@ -14,6 +14,7 @@ export interface UIState {
   uploadSheetOpen: boolean;
   searchPaletteOpen: boolean;
   shortcutsOverlayOpen: boolean;
+  quizOpen: boolean;
 
   // Focus mode (F key)
   focusModeActive: boolean;
@@ -34,6 +35,8 @@ export interface UIState {
   closeUploadSheet: () => void;
   openSearchPalette: () => void;
   closeSearchPalette: () => void;
+  openQuiz: () => void;
+  closeQuiz: () => void;
   toggleFocusMode: () => void;
   openShortcutsOverlay: () => void;
   closeShortcutsOverlay: () => void;

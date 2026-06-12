@@ -8,7 +8,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { PanelLeft, LogOut, Check, Plus, RotateCcw, AlertTriangle, Upload, ChevronDown, Copy, Share2 } from 'lucide-react';
+import { PanelLeft, LogOut, Check, Plus, RotateCcw, AlertTriangle, Upload, ChevronDown, Copy, Share2, GraduationCap } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
@@ -28,7 +28,7 @@ interface CommandBarProps {
 }
 
 export function CommandBar({ projectName = 'Untitled Graph', graphId }: CommandBarProps) {
-  const { toggleSidebar, sidebarOpen, openUploadSheet } = useUIStore();
+  const { toggleSidebar, sidebarOpen, openUploadSheet, openQuiz } = useUIStore();
   const { graph, clearGraph } = useGraphStore();
   const router = useRouter();
 
@@ -255,6 +255,34 @@ export function CommandBar({ projectName = 'Untitled Graph', graphId }: CommandB
 
         {/* Right: Actions + user */}
         <div className="flex items-center gap-0.5 flex-shrink-0">
+          {graph && (
+            <button
+              onClick={openQuiz}
+              aria-label="Take quiz"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] text-[12px] font-medium transition-all mr-0.5"
+              style={{
+                background: 'var(--bg-surface-2)',
+                color: 'var(--text-secondary)',
+                border: '1px solid var(--border-default)',
+              }}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.background = 'rgba(107,88,192,0.10)';
+                (e.currentTarget as HTMLButtonElement).style.color = 'var(--accent-primary)';
+                (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(107,88,192,0.30)';
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-surface-2)';
+                (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-secondary)';
+                (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border-default)';
+              }}
+            >
+              <GraduationCap size={12} />
+              Quiz
+              {graph.quiz && (
+                <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: 'var(--accent-primary)' }} />
+              )}
+            </button>
+          )}
           {graph && (
             <button
               onClick={handleShare}

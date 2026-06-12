@@ -13,6 +13,7 @@ import { GraphCanvas } from '@/components/graph/GraphCanvas';
 import { UploadSheet } from '@/components/panels/UploadSheet';
 import { RightPanel } from '@/components/panels/RightPanel';
 import { SearchPalette } from '@/components/panels/SearchPalette';
+import { GraphQuizDrawer } from '@/components/graph/GraphQuizDrawer';
 import { SidebarProjectList } from '@/components/sidebar/SidebarProjectList';
 import { GraphIntelligenceSummary } from '@/components/sidebar/GraphIntelligenceSummary';
 
@@ -48,6 +49,7 @@ export default async function GraphWorkspaceLayout({
       {/* Fixed overlays */}
       <UploadSheet />
       <SearchPalette />
+      <GraphQuizDrawer />
     </>
   );
 }

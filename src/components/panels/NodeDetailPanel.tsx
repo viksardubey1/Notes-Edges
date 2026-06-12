@@ -19,7 +19,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, Network, ArrowRight, Target, Lightbulb,
   Pencil, RotateCcw, Sparkles, ArrowLeft,
-  ChevronDown, ChevronUp, BookOpen, GraduationCap,
+  ChevronDown, ChevronUp, BookOpen,
 } from 'lucide-react';
 import { useGraphStore, getNeighborNodeIds } from '@/store/graph.store';
 import { LatexText } from '@/components/ui/latex-text';
@@ -30,8 +30,6 @@ import { saveGraph } from '@/lib/graphs';
 import type { GraphNode, SemanticEdgeType, LearningState } from '@/types/graph';
 import { buildTraversalOrder } from '@/lib/traversal';
 import { SEMANTIC_TYPE_CONFIG } from '@/lib/graph/edge-config';
-import { NodeQuizCard } from '@/components/panels/NodeQuizCard';
-import type { NodeQuiz } from '@/types/graph';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -190,7 +188,6 @@ export function NodeDetailPanel() {
   const [editingField, setEditingField] = useState<'label' | 'summary' | 'why' | null>(null);
   const [draftValue, setDraftValue] = useState('');
   const [connectionsExpanded, setConnectionsExpanded] = useState(false);
-  const [quizOpen, setQuizOpen] = useState(false);
   const editInputRef = useRef<HTMLInputElement>(null);
   const editTextareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -276,16 +273,6 @@ export function NodeDetailPanel() {
   };
 
   const cancelEdit = () => setEditingField(null);
-
-  const handleQuizSaved = (quiz: NodeQuiz) => {
-    if (!node || !graph) return;
-    updateNode(node.id, { metadata: { quiz } });
-    const updatedNodes = graph.nodes.map((n) =>
-      n.id === node.id ? { ...n, metadata: { ...n.metadata, quiz } } : n,
-    );
-    const updatedGraph = { ...graph, nodes: updatedNodes, updatedAt: new Date().toISOString() };
-    if (session) void saveGraph(session.userId, updatedGraph);
-  };
 
   const prevNodeId = navigationHistory.length > 0 ? navigationHistory[navigationHistory.length - 1] : null;
   const prevNode = prevNodeId ? graph?.nodes.find((n) => n.id === prevNodeId) : null;
@@ -767,51 +754,6 @@ export function NodeDetailPanel() {
                   );
                 })}
               </div>
-            </div>
-
-            {/* ── Quiz ──────────────────────────────────────────────────── */}
-            <div className="px-6 mb-6 flex-shrink-0">
-              <button
-                onClick={() => setQuizOpen((v) => !v)}
-                className="w-full flex items-center justify-between mb-0 transition-opacity hover:opacity-80"
-              >
-                <p className="text-[9px] font-semibold tracking-[0.14em] uppercase flex items-center gap-1.5"
-                  style={{ color: 'var(--text-muted)', opacity: 0.5 }}>
-                  <GraduationCap size={9} />
-                  Quiz
-                  {node.metadata?.quiz && (
-                    <span className="ml-1 px-1.5 py-0.5 rounded-full text-[8px] font-semibold"
-                      style={{ background: `${accentRaw}18`, color: accentRaw, border: `1px solid ${accentRaw}28` }}>
-                      saved
-                    </span>
-                  )}
-                </p>
-                {quizOpen
-                  ? <ChevronUp size={11} style={{ color: 'var(--text-muted)', opacity: 0.4 }} />
-                  : <ChevronDown size={11} style={{ color: 'var(--text-muted)', opacity: 0.4 }} />
-                }
-              </button>
-
-              <AnimatePresence initial={false}>
-                {quizOpen && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.22, ease: 'easeOut' }}
-                    className="overflow-hidden"
-                  >
-                    <div className="mt-3">
-                      <NodeQuizCard
-                        node={node}
-                        connections={connectedEdges}
-                        accentRaw={accentRaw}
-                        onQuizSaved={handleQuizSaved}
-                      />
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
             </div>
 
             {/* ── Deeper Context ─────────────────────────────────────────── */}

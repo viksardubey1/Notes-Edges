@@ -26,6 +26,7 @@ export const useUIStore = create<UIState>()((set, get) => ({
   nodeDetailOpen: false,
   uploadSheetOpen: false,
   searchPaletteOpen: false,
+  quizOpen: false,
   shortcutsOverlayOpen: false,
 
   // ─── Focus Mode ─────────────────────────────────────────────────────────────
@@ -60,6 +61,9 @@ export const useUIStore = create<UIState>()((set, get) => ({
 
   openSearchPalette: () => set({ searchPaletteOpen: true }),
   closeSearchPalette: () => set({ searchPaletteOpen: false }),
+
+  openQuiz: () => set({ quizOpen: true }),
+  closeQuiz: () => set({ quizOpen: false }),
 
   toggleFocusMode: () =>
     set((state) => ({
