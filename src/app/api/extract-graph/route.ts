@@ -27,7 +27,7 @@ async function withRetry<T>(fn: () => Promise<T>, retries = 3, delayMs = 1500): 
       return await fn();
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      const isRetryable = msg.includes('503') || msg.includes('Service Unavailable') || msg.includes('overloaded');
+      const isRetryable = msg.includes('503') || msg.includes('Service Unavailable') || msg.includes('overloaded') || msg.includes('429');
       if (!isRetryable || attempt === retries) throw err;
       await new Promise((r) => setTimeout(r, delayMs * (attempt + 1)));
     }
@@ -336,24 +336,39 @@ export async function POST(req: NextRequest) {
 
   try {
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-2.5-flash',
-      systemInstruction: SYSTEM_PROMPT,
-    });
 
     type Part = { text: string } | { inlineData: { mimeType: string; data: string } };
     const parts: Part[] = text
       ? [{ text: `--- BEGIN USER TEXT ---\n${text}\n--- END USER TEXT ---` }]
       : [{ inlineData: { mimeType: 'application/pdf', data: pdfBase64! } }, { text: 'Extract a deep knowledge graph from this document.' }];
 
-    const result = await withRetry(() =>
-      model.generateContent({
-        contents: [{ role: 'user', parts }],
-        generationConfig: { responseMimeType: 'application/json' },
-      })
-    );
+    const MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash'];
+    let rawText = '';
+    let lastErr: unknown;
 
-    const raw = result.response.text().trim();
+    for (const modelName of MODELS) {
+      try {
+        const model = genAI.getGenerativeModel({ model: modelName, systemInstruction: SYSTEM_PROMPT });
+        const res = await withRetry(() =>
+          model.generateContent({
+            contents: [{ role: 'user', parts }],
+            generationConfig: { responseMimeType: 'application/json' },
+          })
+        );
+        rawText = res.response.text().trim();
+        break;
+      } catch (err) {
+        lastErr = err;
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error(`[extract-graph] model ${modelName} failed:`, msg);
+        const isFallbackable = msg.includes('not found') || msg.includes('404') || msg.includes('MODEL_NOT_FOUND') || msg.includes('NOT_FOUND') || msg.includes('unsupported') || msg.includes('unavailable');
+        if (!isFallbackable) throw err;
+      }
+    }
+
+    if (!rawText) throw lastErr;
+
+    const raw = rawText;
     const json = raw.startsWith('```') ? raw.replace(/^```[^\n]*\n?/, '').replace(/```$/, '') : raw;
     const g = JSON.parse(json) as RawGraph;
 
@@ -486,6 +501,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const detail = err instanceof Error ? err.message : String(err);
+    console.error('[extract-graph] unhandled error detail:', detail);
     return NextResponse.json({ error: 'Extraction failed. Please try again.' }, { status: 500 });
   }
 }
