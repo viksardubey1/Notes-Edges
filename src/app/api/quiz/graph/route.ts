@@ -235,7 +235,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       ai.models.generateContent({
         model,
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        config: { responseMimeType: 'application/json' },
+        config: {
+          systemInstruction: 'You are a quiz generator. Return ONLY valid JSON matching the schema requested. No markdown, no commentary.',
+          responseMimeType: 'application/json',
+        },
       })
     );
 
@@ -246,10 +249,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       result = await generate('gemini-2.5-flash');
     } catch (primaryErr) {
       const msg = primaryErr instanceof Error ? primaryErr.message : String(primaryErr);
-      const isFallbackable = msg.includes('503') || msg.includes('Service Unavailable') || msg.includes('overloaded') || msg.includes('429') || msg.includes('RESOURCE_EXHAUSTED');
-      if (!isFallbackable) throw primaryErr;
-      console.warn('[quiz/graph] gemini-2.5-flash failed after retries, falling back to gemini-2.0-flash:', msg);
-      result = await generate('gemini-2.0-flash');
+      console.warn('[quiz/graph] gemini-2.5-flash failed:', msg);
+      // Fall back on any error, not just retryable ones
+      try {
+        result = await generate('gemini-2.0-flash');
+      } catch (fallbackErr) {
+        // If both fail, throw the original error for specific handling below
+        throw primaryErr;
+      }
     }
     raw = result.text?.trim() ?? '';
   } catch (err) {
@@ -265,7 +272,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     if (msg.includes('quota') || msg.includes('RESOURCE_EXHAUSTED')) {
       return NextResponse.json({ error: 'AI quota exceeded. Try again in a few minutes.' }, { status: 429 });
     }
-    return NextResponse.json({ error: 'Quiz generation failed. Please try again.' }, { status: 502 });
+    // Include the actual error for debugging — safe because msg comes from the SDK, not user input
+    return NextResponse.json({ error: `Quiz generation failed: ${msg.slice(0, 200)}` }, { status: 502 });
   }
 
   if (!raw) {
