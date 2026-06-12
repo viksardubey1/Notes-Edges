@@ -484,19 +484,40 @@ export function GraphQuizDrawer() {
                         >
                           {TYPE_LABELS[q.type]}
                         </span>
-                        <AnimatePresence mode="wait">
-                          <motion.span
-                            key={currentQ}
-                            className="text-[11px] tabular-nums"
-                            style={{ color: 'var(--text-muted)' }}
-                            initial={{ opacity: 0, y: -4 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: 4 }}
-                            transition={{ duration: 0.15 }}
-                          >
-                            {currentQ + 1} / {questions.length}
-                          </motion.span>
-                        </AnimatePresence>
+                        <div className="flex items-center gap-3">
+                          {/* Live accuracy */}
+                          {currentQ > 0 && (
+                            <AnimatePresence mode="wait">
+                              <motion.span
+                                key={score}
+                                className="text-[10px] font-medium tabular-nums px-2 py-0.5 rounded-[8px]"
+                                style={{
+                                  background: score / currentQ >= 0.7 ? 'rgba(58, 152, 112, 0.08)' : score / currentQ >= 0.4 ? 'rgba(212, 168, 64, 0.08)' : 'rgba(184, 90, 110, 0.07)',
+                                  color: score / currentQ >= 0.7 ? '#2D7A5A' : score / currentQ >= 0.4 ? '#B89030' : 'var(--accent-warm)',
+                                }}
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.9 }}
+                                transition={{ duration: 0.2 }}
+                              >
+                                {score}/{currentQ} correct
+                              </motion.span>
+                            </AnimatePresence>
+                          )}
+                          <AnimatePresence mode="wait">
+                            <motion.span
+                              key={currentQ}
+                              className="text-[11px] tabular-nums"
+                              style={{ color: 'var(--text-muted)' }}
+                              initial={{ opacity: 0, y: -4 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0, y: 4 }}
+                              transition={{ duration: 0.15 }}
+                            >
+                              {currentQ + 1} / {questions.length}
+                            </motion.span>
+                          </AnimatePresence>
+                        </div>
                       </div>
                       <div className="h-[4px] rounded-full overflow-hidden" style={{ background: 'var(--bg-surface-2)' }}>
                         <motion.div
