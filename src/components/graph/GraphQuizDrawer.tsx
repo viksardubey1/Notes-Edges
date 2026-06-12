@@ -56,16 +56,24 @@ export function GraphQuizDrawer() {
   const [score, setScore] = useState(0);
   const [done, setDone] = useState(false);
 
-  // Sync stored quiz from graph whenever the drawer opens or graph changes
+  // Reset quiz state when graph changes
+  const graphId = graph?.id;
   useEffect(() => {
-    if (graph?.quiz && !quiz) setQuiz(graph.quiz);
-  }, [graph?.quiz, quiz]);
+    setQuiz(graph?.quiz ?? null);
+    setCurrentQ(0);
+    setSelected(null);
+    setRevealed(false);
+    setScore(0);
+    setDone(false);
+    setGenError(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [graphId]);
 
   // Auto-generate when drawer opens and no quiz exists yet
   useEffect(() => {
     if (quizOpen && graph && !quiz && !generating) void generate();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [quizOpen]);
+  }, [quizOpen, graphId]);
 
   // Close on Escape
   useEffect(() => {
