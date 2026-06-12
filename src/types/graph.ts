@@ -31,6 +31,21 @@ export interface GraphIntelligenceSummary {
   overview: string;          // 2-3 sentence synthesis
 }
 
+// ─── Quiz Types ───────────────────────────────────────────────────────────────
+
+export interface QuizQuestion {
+  question: string;
+  type: 'concept' | 'relationship' | 'application';
+  choices: [string, string, string, string];
+  correct: 0 | 1 | 2 | 3;
+  explanation: string;
+}
+
+export interface NodeQuiz {
+  questions: QuizQuestion[];
+  generatedAt: string;
+}
+
 // ─── Core Graph Data Model ────────────────────────────────────────────────────
 
 export interface GraphNode {
@@ -46,6 +61,7 @@ export interface GraphNode {
     depthLevel?: DepthLevel;      // AI assessment of user's understanding depth
     gaps?: string[];              // Missing connections the AI identified
     expansionSuggestions?: string[]; // Related concepts not yet in the graph
+    quiz?: NodeQuiz;              // Generated quiz questions for this node
     [key: string]: unknown;
   };
   createdAt: string;

@@ -18,8 +18,6 @@ interface GraphTipsProps {
   isLayoutReady: boolean;
 }
 
-const LS_KEY = 'ne_graph_tips_dismissed';
-
 const TIPS = [
   { icon: MousePointer2, label: 'Click nodes' },
   { icon: GitBranch,     label: 'Click edges' },
@@ -28,13 +26,12 @@ const TIPS = [
   { icon: ScanSearch,    label: 'Scroll to zoom' },
 ] as const;
 
-const AUTO_HIDE_MS = 12_000;
+const AUTO_HIDE_MS = 25_000;
 
 export function GraphTips({ graphId, isLayoutReady }: GraphTipsProps) {
   const { selectedNodeId, selectedEdgeId } = useGraphStore();
   const [visible, setVisible] = useState(false);
   const [hovered, setHovered] = useState(false);
-  const [seenGraphId, setSeenGraphId] = useState<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const startTimer = useCallback(() => {
@@ -46,15 +43,12 @@ export function GraphTips({ graphId, isLayoutReady }: GraphTipsProps) {
     if (timerRef.current) clearTimeout(timerRef.current);
   }, []);
 
-  // Show on new graph load, skip if permanently dismissed
+  // Show on every graph load (whenever graphId or isLayoutReady changes to a ready state)
   useEffect(() => {
     if (!graphId || !isLayoutReady) return;
-    if (graphId === seenGraphId) return;
-    if (typeof window !== 'undefined' && localStorage.getItem(LS_KEY) === '1') return;
-    setSeenGraphId(graphId);
     setVisible(true);
     startTimer();
-  }, [graphId, isLayoutReady, seenGraphId, startTimer]);
+  }, [graphId, isLayoutReady, startTimer]);
 
   // Pause timer on hover, restart on leave
   useEffect(() => {
@@ -74,7 +68,6 @@ export function GraphTips({ graphId, isLayoutReady }: GraphTipsProps) {
   const handleDismiss = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     setVisible(false);
-    if (typeof window !== 'undefined') localStorage.setItem(LS_KEY, '1');
   }, []);
 
   return (

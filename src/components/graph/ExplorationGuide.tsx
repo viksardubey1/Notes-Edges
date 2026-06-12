@@ -47,18 +47,16 @@ function clamp(v: number, lo: number, hi: number) {
 export function ExplorationGuide({ graph, zoom, pan, dimensions, onNodeClick }: ExplorationGuideProps) {
   const { selectedNodeId } = useGraphStore();
   const [visible, setVisible] = useState(false);
-  const [graphKey, setGraphKey] = useState<string | null>(null);
   const cardRef = useRef<HTMLButtonElement>(null);
   const [cardSize, setCardSize] = useState({ w: 220, h: 112 });
 
-  // Show on new graph, hide after 12 s or on selection
+  // Show on every graph load, hide after 25 s or on selection
   useEffect(() => {
-    if (!graph?.id || graph.id === graphKey) return;
-    setGraphKey(graph.id);
+    if (!graph?.id) return;
     setVisible(true);
-    const t = setTimeout(() => setVisible(false), 12_000);
+    const t = setTimeout(() => setVisible(false), 25_000);
     return () => clearTimeout(t);
-  }, [graph?.id, graphKey]);
+  }, [graph?.id]);
 
   useEffect(() => {
     if (selectedNodeId) setVisible(false);
