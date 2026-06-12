@@ -127,12 +127,45 @@ Return ONLY valid JSON — no markdown, no backticks, no commentary:
 }`;
 }
 
-/** Shuffle the 4 choices and update the correct index to match. */
+/** Fisher-Yates shuffle — unbiased uniform permutation. */
+function fisherYatesShuffle<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+/** Shuffle choices within a single question using Fisher-Yates. */
 function shuffleChoices(q: QuizQuestion): QuizQuestion {
   const correctText = q.choices[q.correct];
-  const shuffled = [...q.choices].sort(() => Math.random() - 0.5) as [string, string, string, string];
+  const shuffled = fisherYatesShuffle(q.choices) as [string, string, string, string];
   const newCorrect = shuffled.indexOf(correctText) as 0 | 1 | 2 | 3;
   return { ...q, choices: shuffled, correct: newCorrect };
+}
+
+/**
+ * Redistribute correct-answer positions across the full quiz so that
+ * each slot (0–3) appears roughly equally. Uses a balanced deck approach:
+ * fill a "deck" of positions [0,1,2,3,0,1,2,3,...], shuffle it, then
+ * force each question's correct answer into the assigned slot.
+ */
+function balanceCorrectPositions(qs: QuizQuestion[]): QuizQuestion[] {
+  // Build a balanced deck of positions
+  const deck: number[] = [];
+  for (let i = 0; i < qs.length; i++) deck.push(i % 4);
+  const shuffledDeck = fisherYatesShuffle(deck);
+
+  return qs.map((q, i) => {
+    const targetSlot = shuffledDeck[i];
+    if (q.correct === targetSlot) return q;
+
+    // Swap the correct answer into the target slot
+    const choices = [...q.choices] as [string, string, string, string];
+    [choices[q.correct], choices[targetSlot]] = [choices[targetSlot], choices[q.correct]];
+    return { ...q, choices, correct: targetSlot as 0 | 1 | 2 | 3 };
+  });
 }
 
 function validateQuestion(q: RawQuestion): QuizQuestion | null {
@@ -252,11 +285,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'AI returned an unexpected response format. Please try again.' }, { status: 502 });
   }
 
-  const questions: QuizQuestion[] = parsed.questions
+  const validated = parsed.questions
     .map(validateQuestion)
     .filter((q): q is QuizQuestion => q !== null)
     .map(shuffleChoices)
     .slice(0, 22);
+
+  const questions = balanceCorrectPositions(validated);
 
   if (questions.length < 5) {
     return NextResponse.json({ error: 'Not enough valid questions were generated. Try a graph with more concepts.' }, { status: 422 });

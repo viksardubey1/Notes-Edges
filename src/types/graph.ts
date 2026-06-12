@@ -41,9 +41,16 @@ export interface QuizQuestion {
   explanation: string;
 }
 
+export interface QuizAttempt {
+  score: number;
+  total: number;
+  completedAt: string;
+}
+
 export interface GraphQuiz {
   questions: QuizQuestion[];
   generatedAt: string;
+  attempts?: QuizAttempt[];
 }
 
 // ─── Core Graph Data Model ────────────────────────────────────────────────────

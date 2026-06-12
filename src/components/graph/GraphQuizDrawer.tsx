@@ -23,7 +23,7 @@ import { useUIStore } from '@/store/ui.store';
 import { useGraphStore } from '@/store/graph.store';
 import { useAuth } from '@/context/AuthContext';
 import { saveGraph } from '@/lib/graphs';
-import type { GraphQuiz, QuizQuestion } from '@/types/graph';
+import type { GraphQuiz, QuizQuestion, QuizAttempt } from '@/types/graph';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -140,10 +140,28 @@ export function GraphQuizDrawer() {
     if (idx === quiz.questions[currentQ]?.correct) setScore((s) => s + 1);
   }
 
+  function saveAttempt(finalScore: number) {
+    if (!quiz || !graph) return;
+    const attempt: QuizAttempt = {
+      score: finalScore,
+      total: quiz.questions.length,
+      completedAt: new Date().toISOString(),
+    };
+    const updatedQuiz: GraphQuiz = {
+      ...quiz,
+      attempts: [...(quiz.attempts ?? []), attempt],
+    };
+    setQuiz(updatedQuiz);
+    const updated = { ...graph, quiz: updatedQuiz, updatedAt: new Date().toISOString() };
+    setGraph(updated);
+    if (session) void saveGraph(session.userId, updated);
+  }
+
   function handleNext() {
     if (!quiz) return;
     if (currentQ + 1 >= quiz.questions.length) {
       setDone(true);
+      saveAttempt(score);
     } else {
       setCurrentQ((i) => i + 1);
       setSelected(null);
@@ -284,6 +302,34 @@ export function GraphQuizDrawer() {
                         );
                       })}
                     </div>
+
+                    {/* Past attempts */}
+                    {(quiz.attempts?.length ?? 0) > 1 && (
+                      <div className="w-full max-w-[300px]">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.08em] mb-2.5" style={{ color: 'var(--text-muted)' }}>
+                          Past attempts
+                        </p>
+                        <div className="flex flex-col gap-1.5">
+                          {quiz.attempts!.slice(-5).map((a, i) => {
+                            const pct = Math.round((a.score / a.total) * 100);
+                            const isLatest = i === quiz.attempts!.slice(-5).length - 1;
+                            return (
+                              <div
+                                key={a.completedAt}
+                                className="flex items-center justify-between text-[11px] px-3 py-2 rounded-[10px]"
+                                style={{
+                                  background: isLatest ? 'var(--accent-glow)' : 'var(--bg-surface-2)',
+                                  color: isLatest ? 'var(--accent-primary)' : 'var(--text-muted)',
+                                }}
+                              >
+                                <span>{a.score}/{a.total}</span>
+                                <span className="tabular-nums font-medium">{pct}%</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
 
                     <div className="flex gap-3 mt-2">
                       <button
