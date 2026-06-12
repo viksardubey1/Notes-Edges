@@ -64,22 +64,19 @@ const SEM_TYPE_COLORS: Partial<Record<SemanticEdgeType, string>> = Object.fromEn
 // ── ConceptOrbit mini-visualization ──────────────────────────────────────────
 
 function ConceptOrbit({ node, connections }: { node: GraphNode; connections: Connection[] }) {
-  const size = 88;
+  const size = 56;
   const cx = size / 2, cy = size / 2;
-  const centerR = 9;
-  const orbitR = 32;
-  const visible = connections.slice(0, 7);
+  const centerR = 6;
+  const orbitR = 22;
+  const visible = connections.slice(0, 6);
   const angleStep = (2 * Math.PI) / Math.max(1, visible.length);
   const color = node.clusterColor ?? '#9876EE';
 
   return (
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden="true">
-      {/* Outer atmospheric glow */}
-      <circle cx={cx} cy={cy} r={centerR + 18} fill={color} opacity={0.06} style={{ filter: 'blur(8px)' }} />
-      {/* Orbit ring */}
+      <circle cx={cx} cy={cy} r={centerR + 12} fill={color} opacity={0.06} style={{ filter: 'blur(6px)' }} />
       <circle cx={cx} cy={cy} r={orbitR} fill="none"
-        stroke={color} strokeWidth={0.6} opacity={0.20} strokeDasharray="2.5 3" />
-      {/* Connection lines */}
+        stroke={color} strokeWidth={0.5} opacity={0.20} strokeDasharray="2 2.5" />
       {visible.map((conn, i) => {
         const a = i * angleStep - Math.PI / 2;
         const tx = cx + Math.cos(a) * orbitR;
@@ -87,11 +84,10 @@ function ConceptOrbit({ node, connections }: { node: GraphNode; connections: Con
         return (
           <line key={conn.edge.id} x1={cx} y1={cy} x2={tx} y2={ty}
             stroke={conn.other?.clusterColor ?? color}
-            strokeWidth={0.7} opacity={0.30}
+            strokeWidth={0.6} opacity={0.25}
           />
         );
       })}
-      {/* Satellite nodes */}
       {visible.map((conn, i) => {
         const a = i * angleStep - Math.PI / 2;
         const tx = cx + Math.cos(a) * orbitR;
@@ -99,17 +95,14 @@ function ConceptOrbit({ node, connections }: { node: GraphNode; connections: Con
         const c = conn.other?.clusterColor ?? color;
         return (
           <g key={conn.edge.id}>
-            <circle cx={tx} cy={ty} r={5.5} fill={c} opacity={0.12} />
-            <circle cx={tx} cy={ty} r={3} fill={c} opacity={0.65} />
+            <circle cx={tx} cy={ty} r={3.5} fill={c} opacity={0.12} />
+            <circle cx={tx} cy={ty} r={2} fill={c} opacity={0.65} />
           </g>
         );
       })}
-      {/* Center node — inner fill */}
-      <circle cx={cx} cy={cy} r={centerR + 5} fill={color} opacity={0.10} />
+      <circle cx={cx} cy={cy} r={centerR + 3} fill={color} opacity={0.10} />
       <circle cx={cx} cy={cy} r={centerR} fill={color} opacity={0.28} />
-      <circle cx={cx} cy={cy} r={centerR - 3} fill={color} opacity={0.55} />
-      {/* Inner highlight */}
-      <circle cx={cx - 3} cy={cy - 3} r={3} fill="rgba(255,255,255,0.30)" style={{ filter: 'blur(1px)' }} />
+      <circle cx={cx} cy={cy} r={centerR - 2} fill={color} opacity={0.55} />
     </svg>
   );
 }
@@ -367,9 +360,9 @@ export function NodeDetailPanel() {
             />
 
             {/* ── Header ────────────────────────────────────────────────── */}
-            <div className="px-6 pt-5 pb-2 flex-shrink-0">
+            <div className="px-6 pt-4 pb-1 flex-shrink-0">
               {/* Back nav + close row */}
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center justify-between mb-3">
                 {prevNode ? (
                   <button
                     onClick={navigateBack}
@@ -410,7 +403,7 @@ export function NodeDetailPanel() {
                 <div className="flex-1 min-w-0">
                   {/* Cluster badge */}
                   {node.clusterName && (
-                    <div className="mb-2">
+                    <div className="mb-1">
                       <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold tracking-[0.06em] uppercase"
                         style={{ color: accentRaw, opacity: 0.75 }}>
                         <span className="w-1.5 h-1.5 rounded-full" style={{ background: accentRaw }} />
@@ -420,7 +413,7 @@ export function NodeDetailPanel() {
                   )}
 
                   {/* Concept name — editorial, large */}
-                  <div className="group flex items-start gap-2 mb-1">
+                  <div className="group flex items-start gap-2">
                     {editingField === 'label' ? (
                       <input
                         ref={editInputRef}
@@ -428,12 +421,12 @@ export function NodeDetailPanel() {
                         onChange={(e) => setDraftValue(e.target.value)}
                         onKeyDown={(e) => { if (e.key === 'Enter') commitEdit(); if (e.key === 'Escape') cancelEdit(); }}
                         onBlur={commitEdit}
-                        className="flex-1 bg-transparent font-light text-[24px] leading-tight outline-none border-b pb-0.5"
+                        className="flex-1 bg-transparent font-light text-[20px] leading-tight outline-none border-b pb-0.5"
                         style={{ color: 'var(--text-primary)', borderColor: accentRaw, caretColor: accentRaw }}
                       />
                     ) : (
                       <>
-                        <h2 className="font-light text-[24px] leading-tight tracking-tight flex-1"
+                        <h2 className="font-light text-[20px] leading-tight tracking-tight flex-1"
                           style={{ color: 'var(--text-primary)' }}>
                           {node.label}
                         </h2>
@@ -469,7 +462,7 @@ export function NodeDetailPanel() {
                   </div>
 
                   {/* Inline learning state — compact row */}
-                  <div className="flex items-center gap-1.5 mt-3">
+                  <div className="flex items-center gap-1.5 mt-2">
                     {LEARNING_ORDER.map((state) => {
                       const cfg = LEARNING_CONFIG[state];
                       const active = currentLearning === state;
