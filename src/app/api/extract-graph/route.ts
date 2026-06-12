@@ -10,7 +10,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenAI } from '@google/genai';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
@@ -335,38 +335,24 @@ export async function POST(req: NextRequest) {
   if (text) text = sanitizeForPrompt(text);
 
   try {
-    const genAI = new GoogleGenerativeAI(apiKey);
+    const ai = new GoogleGenAI({ apiKey });
 
     type Part = { text: string } | { inlineData: { mimeType: string; data: string } };
     const parts: Part[] = text
       ? [{ text: `--- BEGIN USER TEXT ---\n${text}\n--- END USER TEXT ---` }]
       : [{ inlineData: { mimeType: 'application/pdf', data: pdfBase64! } }, { text: 'Extract a deep knowledge graph from this document.' }];
 
-    const MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash'];
-    let rawText = '';
-    let lastErr: unknown;
-
-    for (const modelName of MODELS) {
-      try {
-        const model = genAI.getGenerativeModel({ model: modelName, systemInstruction: SYSTEM_PROMPT });
-        const res = await withRetry(() =>
-          model.generateContent({
-            contents: [{ role: 'user', parts }],
-            generationConfig: { responseMimeType: 'application/json' },
-          })
-        );
-        rawText = res.response.text().trim();
-        break;
-      } catch (err) {
-        lastErr = err;
-        const msg = err instanceof Error ? err.message : String(err);
-        console.error(`[extract-graph] model ${modelName} failed:`, msg);
-        const isFallbackable = msg.includes('not found') || msg.includes('404') || msg.includes('MODEL_NOT_FOUND') || msg.includes('NOT_FOUND') || msg.includes('unsupported') || msg.includes('unavailable');
-        if (!isFallbackable) throw err;
-      }
-    }
-
-    if (!rawText) throw lastErr;
+    const res = await withRetry(() =>
+      ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: [{ role: 'user', parts }],
+        config: {
+          systemInstruction: SYSTEM_PROMPT,
+          responseMimeType: 'application/json',
+        },
+      })
+    );
+    const rawText = res.text?.trim() ?? '';
 
     const raw = rawText;
     const json = raw.startsWith('```') ? raw.replace(/^```[^\n]*\n?/, '').replace(/```$/, '') : raw;

@@ -14,7 +14,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenAI } from '@google/genai';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
@@ -177,14 +177,16 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
 
   // Generate
-  const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
   const prompt = buildPrompt(nodes, edges);
 
   let raw: string;
   try {
-    const result = await model.generateContent(prompt);
-    raw = result.response.text().trim();
+    const result = await ai.models.generateContent({
+      model: 'gemini-2.0-flash',
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+    });
+    raw = result.text?.trim() ?? '';
   } catch (err) {
     console.error('[quiz/graph] Gemini error:', err);
     return NextResponse.json({ error: 'Generation failed' }, { status: 502 });

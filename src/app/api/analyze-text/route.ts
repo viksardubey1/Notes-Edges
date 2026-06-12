@@ -10,7 +10,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenAI } from '@google/genai';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
@@ -119,17 +119,17 @@ export async function POST(req: NextRequest) {
   const userContent = `${PROMPT}\n\n--- BEGIN USER TEXT ---\n${safeText.slice(0, 3000)}\n--- END USER TEXT ---`;
 
   try {
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+    const ai = new GoogleGenAI({ apiKey });
 
     const result = await withRetry(() =>
-      model.generateContent({
+      ai.models.generateContent({
+        model: 'gemini-2.5-flash',
         contents: [{ role: 'user', parts: [{ text: userContent }] }],
-        generationConfig: { responseMimeType: 'application/json' },
+        config: { responseMimeType: 'application/json' },
       })
     );
 
-    const raw = result.response.text().trim();
+    const raw = result.text?.trim() ?? '';
     const json = raw.startsWith('```') ? raw.replace(/^```[^\n]*\n?/, '').replace(/```$/, '') : raw;
     const analysis = JSON.parse(json) as TextAnalysis;
 
