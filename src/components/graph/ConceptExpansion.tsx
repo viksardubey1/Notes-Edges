@@ -69,11 +69,11 @@ function ConstellationMap({
   onNavigate: (nodeId: string) => void;
 }) {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
-  const viewW = 80;
-  const viewH = 80;
+  const viewW = 66;
+  const viewH = 66;
   const cx = viewW / 2;
   const cy = viewH / 2;
-  const orbitR = 28;
+  const orbitR = 23;
   const color = node.clusterColor ?? '#9876EE';
   const visible = connections.slice(0, 8);
   const angleStep = (2 * Math.PI) / Math.max(1, visible.length);
@@ -318,54 +318,49 @@ export function ConceptExpansion() {
             }}
           />
 
-          {/* ── Header ─────────────────────────────────────────────────────── */}
-          <div
-            className="flex-shrink-0 flex items-center justify-between px-5 pt-3 pb-2"
-          >
-            {/* Back button */}
-            {historyPrevNode ? (
-              <motion.button
-                onClick={() => navigateBack()}
-                className="flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1.5 rounded-[8px]"
-                style={{ color: 'var(--text-muted)' }}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.97 }}
+          {/* ── Header — compact two-column layout ─────────────────────── */}
+          <div className="flex-shrink-0 relative overflow-hidden">
+            {/* Nav row: back + close */}
+            <div className="flex items-center justify-between px-5 pt-2.5 pb-0">
+              {historyPrevNode ? (
+                <motion.button
+                  onClick={() => navigateBack()}
+                  className="flex items-center gap-1.5 text-[11px] font-medium px-2 py-1 rounded-[8px]"
+                  style={{ color: 'var(--text-muted)' }}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.97 }}
+                  onMouseEnter={(e) => {
+                    (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-secondary)';
+                    (e.currentTarget as HTMLButtonElement).style.background = 'rgba(123,110,196,0.07)';
+                  }}
+                  onMouseLeave={(e) => {
+                    (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)';
+                    (e.currentTarget as HTMLButtonElement).style.background = 'transparent';
+                  }}
+                >
+                  <ArrowLeft size={11} />
+                  <span className="truncate max-w-[130px]">{historyPrevNode.label}</span>
+                </motion.button>
+              ) : (
+                <div />
+              )}
+              <button
+                onClick={handleClose}
+                className="w-6 h-6 flex items-center justify-center rounded-full transition-all"
+                style={{ color: 'var(--text-muted)', background: 'rgba(123,110,196,0.06)' }}
                 onMouseEnter={(e) => {
-                  (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-secondary)';
-                  (e.currentTarget as HTMLButtonElement).style.background = 'rgba(123,110,196,0.07)';
+                  (e.currentTarget as HTMLButtonElement).style.background = 'rgba(123,110,196,0.12)';
+                  (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-primary)';
                 }}
                 onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.background = 'rgba(123,110,196,0.06)';
                   (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)';
-                  (e.currentTarget as HTMLButtonElement).style.background = 'transparent';
                 }}
               >
-                <ArrowLeft size={11} />
-                <span className="truncate max-w-[130px]">{historyPrevNode.label}</span>
-              </motion.button>
-            ) : (
-              <div />
-            )}
+                <X size={11} />
+              </button>
+            </div>
 
-            {/* Close */}
-            <button
-              onClick={handleClose}
-              className="w-7 h-7 flex items-center justify-center rounded-full transition-all"
-              style={{ color: 'var(--text-muted)', background: 'rgba(123,110,196,0.06)' }}
-              onMouseEnter={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.background = 'rgba(123,110,196,0.12)';
-                (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-primary)';
-              }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.background = 'rgba(123,110,196,0.06)';
-                (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)';
-              }}
-            >
-              <X size={12} />
-            </button>
-          </div>
-
-          {/* ── Title area + Constellation Map (side by side) ───────────── */}
-          <div className="flex-shrink-0 px-5 pb-1 relative overflow-hidden">
             {/* Subtle radial backdrop */}
             <div
               className="absolute inset-0 pointer-events-none"
@@ -375,11 +370,12 @@ export function ConceptExpansion() {
               aria-hidden="true"
             />
 
-            <div className="relative flex items-start gap-3">
-              {/* LEFT: badges + title + teaser */}
-              <div className="flex-1 min-w-0">
+            {/* Two-column: identity left, constellation right */}
+            <div className="relative flex items-center gap-3 px-5 pt-2 pb-3">
+              {/* LEFT: badge + title */}
+              <div className="flex-1 min-w-0 flex flex-col" style={{ gap: 6 }}>
                 {/* Badges row */}
-                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                <div className="flex items-center gap-2 flex-wrap">
                   {node.clusterName && (
                     <span
                       className="inline-flex items-center gap-1.5 text-[9px] font-semibold tracking-[0.08em] uppercase px-2 py-0.5 rounded-full"
@@ -414,13 +410,12 @@ export function ConceptExpansion() {
                 >
                   {node.label}
                 </h2>
-
               </div>
 
-              {/* RIGHT: ConstellationMap — compact, tucked to the side */}
+              {/* RIGHT: ConstellationMap — secondary, vertically centered */}
               {connectedEdges.length > 0 && (
                 <div
-                  className="flex-shrink-0 rounded-[10px] overflow-hidden -mt-1"
+                  className="flex-shrink-0 rounded-[10px] overflow-hidden"
                   style={{
                     background: `${accentRaw}07`,
                     border: `1px solid ${accentRaw}14`,
@@ -436,7 +431,7 @@ export function ConceptExpansion() {
             </div>
           </div>
 
-          {/* Separator */}
+          {/* Separator — flush under header */}
           <div
             className="flex-shrink-0 mx-5"
             style={{ height: 1, background: 'rgba(123,110,196,0.08)' }}
@@ -444,7 +439,7 @@ export function ConceptExpansion() {
 
           {/* ── Body ─────────────────────────────────────────────────────── */}
           <div
-            className="flex-1 min-h-0 px-5 pt-2 pb-4 flex flex-col gap-3 overflow-y-auto"
+            className="flex-1 min-h-0 px-5 pt-3 pb-4 flex flex-col gap-3 overflow-y-auto"
             style={{ scrollbarWidth: 'none' }}
           >
             {/* The Idea */}
