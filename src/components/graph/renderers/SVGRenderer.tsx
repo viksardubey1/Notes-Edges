@@ -18,13 +18,13 @@
 
 'use client';
 
-import { useMemo, useState, useEffect, useRef } from 'react';
+import { useMemo, useCallback, useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { GraphData, LODLevel, GraphNode, SemanticEdgeType, LearningState } from '@/types/graph';
 import { useGraphStore, getNeighborNodeIds, getNeighborEdgeIds } from '@/store/graph.store';
 import { useGraphInteractions } from '@/hooks/useGraphInteractions';
 import { getTopNodesByPercent } from '@/lib/graph/layout';
-import { edgeOpacityFromWeight, truncateWords, hashString } from '@/lib/utils';
+import { truncateWords, hashString } from '@/lib/utils';
 import {
   EDGE_STROKE_WIDTH,
   EDGE_STROKE_COLOR,
@@ -64,6 +64,9 @@ const TIER_CONFIG: Record<VisualTier, {
   mastered:   { radiusMult: 1.08, glowColor: '#60C0E8', glowRadius: 20, glowOpacity: 0.26, strokeSuffix: 'FF', strokeWidth: 1.5 },
 };
 
+// Constant arrays extracted to module scope to avoid recreation on every render
+const SPARK_ANGLES = [0, 45, 90, 135, 180, 225, 270, 315] as const;
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 interface SVGRendererProps {
@@ -86,8 +89,14 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions, showSecond
 
   const { handleNodeClick, handleNodeDoubleClick, handleEdgeClick, hoverNode, hoverEdge } = useGraphInteractions();
 
-  const neighborNodeIds  = getNeighborNodeIds(graph, selectedNodeId);
-  const neighborEdgeIds  = getNeighborEdgeIds(graph, selectedNodeId);
+  // O(1) node lookups — avoids O(n) find() calls in edge/node rendering loops
+  const nodeMap = useMemo(
+    () => new Map(graph.nodes.map((n) => [n.id, n])),
+    [graph.nodes],
+  );
+
+  const neighborNodeIds  = useMemo(() => getNeighborNodeIds(graph, selectedNodeId), [graph, selectedNodeId]);
+  const neighborEdgeIds  = useMemo(() => getNeighborEdgeIds(graph, selectedNodeId), [graph, selectedNodeId]);
 
   // Hover-node neighbors — only meaningful when no node/edge is selected
   const hoveredNodeNeighborEdgeIds = useMemo(
@@ -240,30 +249,6 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions, showSecond
     for (const n of graph.nodes) if (n.clusterColor) colors.add(n.clusterColor);
     return [...colors];
   }, [graph.nodes]);
-
-  // Viewport-fixed ambient star field — seeded deterministically
-  const starParticles = useMemo(() => {
-    const W = dimensions.width  || 1200;
-    const H = dimensions.height || 800;
-    const pts: Array<{
-      px: number; py: number; sz: number;
-      drift: 1 | 2 | 3; delay: number; color: string; opacity: number;
-    }> = [];
-    for (let i = 0; i < 72; i++) {
-      const px      = ((i * 73 + 41)  % 997) / 997 * W;
-      const py      = ((i * 47 + 83)  % 991) / 991 * H;
-      const sz      = i % 9 === 0 ? 1.6 : i % 4 === 0 ? 1.0 : 0.55;
-      const drift   = ((i % 3) + 1) as 1 | 2 | 3;
-      const delay   = (i * 1.37) % 11;
-      const color   = i % 7  === 0 ? '#9876EE'
-                    : i % 11 === 0 ? '#60C0E8'
-                    : i % 13 === 0 ? '#D4A840'
-                    : '#ffffff';
-      const opacity = i % 5 === 0 ? 0.28 : i % 3 === 0 ? 0.16 : 0.09;
-      pts.push({ px, py, sz, drift, delay, color, opacity });
-    }
-    return pts;
-  }, [dimensions.width, dimensions.height]);
 
   // Selected node's cluster (for blob illumination)
   const selectedClusterId = useMemo(() => {
@@ -563,8 +548,8 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions, showSecond
         {lodLevel.showEdges && (
           <g className="edges">
             {graph.edges.map((edge) => {
-              const sourceNode = graph.nodes.find((n) => n.id === edge.sourceId);
-              const targetNode = graph.nodes.find((n) => n.id === edge.targetId);
+              const sourceNode = nodeMap.get(edge.sourceId);
+              const targetNode = nodeMap.get(edge.targetId);
               if (!sourceNode || !targetNode) return null;
               if (!activeNodeIds.has(edge.sourceId) || !activeNodeIds.has(edge.targetId)) return null;
               if (lodLevel.showStrongEdgesOnly && edge.weight < 0.7) return null;
@@ -1053,7 +1038,7 @@ export function SVGRenderer({ graph, zoom, pan, lodLevel, dimensions, showSecond
                 <AnimatePresence>
                   {isHovered && !isSelected && (
                     <>
-                      {[0, 45, 90, 135, 180, 225, 270, 315].map((angle, i) => {
+                      {SPARK_ANGLES.map((angle, i) => {
                         const rad  = (angle * Math.PI) / 180;
                         const dist = radius * 2.4 + 10;
                         return (

@@ -16,7 +16,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, CheckCircle, XCircle, ChevronRight, RotateCcw } from 'lucide-react';
 import { useUIStore } from '@/store/ui.store';
@@ -39,6 +39,9 @@ const TYPE_COLORS: Record<QuizQuestion['type'], string> = {
   relationship: '#3A9EC0',
   application: '#B85A6E',
 };
+
+const QUIZ_TYPES: QuizQuestion['type'][] = ['concept', 'relationship', 'application'];
+const SKELETON_INDICES = [0, 1, 2, 3];
 
 // ── Score Ring ───────────────────────────────────────────────────────────────
 
@@ -226,22 +229,22 @@ export function GraphQuizDrawer() {
     }
   }
 
-  function resetAttempt() {
+  const resetAttempt = useCallback(() => {
     setCurrentQ(0);
     setSelected(null);
     setRevealed(false);
     setScore(0);
     setDone(false);
-  }
+  }, []);
 
-  function handleAnswer(idx: number) {
+  const handleAnswer = useCallback((idx: number) => {
     if (revealed || !quiz) return;
     setSelected(idx);
     setRevealed(true);
     if (idx === quiz.questions[currentQ]?.correct) setScore((s) => s + 1);
-  }
+  }, [revealed, quiz, currentQ]);
 
-  function saveAttempt(finalScore: number) {
+  const saveAttempt = useCallback((finalScore: number) => {
     if (!quiz || !graph) return;
     const attempt: QuizAttempt = {
       score: finalScore,
@@ -256,9 +259,9 @@ export function GraphQuizDrawer() {
     const updated = { ...graph, quiz: updatedQuiz, updatedAt: new Date().toISOString() };
     setGraph(updated);
     if (session) void saveGraph(session.userId, updated);
-  }
+  }, [quiz, graph, session, setGraph]);
 
-  function handleNext() {
+  const handleNext = useCallback(() => {
     if (!quiz) return;
     if (currentQ + 1 >= quiz.questions.length) {
       setDone(true);
@@ -268,7 +271,7 @@ export function GraphQuizDrawer() {
       setSelected(null);
       setRevealed(false);
     }
-  }
+  }, [quiz, currentQ, score, saveAttempt]);
 
   const questions = quiz?.questions ?? [];
   const q: QuizQuestion | undefined = questions[currentQ];
@@ -358,7 +361,7 @@ export function GraphQuizDrawer() {
                     </div>
                     {/* Skeleton choices */}
                     <div className="flex flex-col gap-2.5">
-                      {[0, 1, 2, 3].map((i) => (
+                      {SKELETON_INDICES.map((i) => (
                         <div key={i} className="h-12 rounded-[14px] bg-[#EEEAF8] animate-[shimmer-opacity_2.4s_ease-in-out_infinite]"
                           style={{ animationDelay: `${0.2 + i * 0.1}s` }} />
                       ))}
@@ -412,7 +415,7 @@ export function GraphQuizDrawer() {
 
                     {/* Breakdown by type */}
                     <div className="flex flex-col gap-2.5 w-full max-w-[260px]">
-                      {(['concept', 'relationship', 'application'] as QuizQuestion['type'][]).map((type) => {
+                      {QUIZ_TYPES.map((type) => {
                         const qs = questions.filter((qq) => qq.type === type);
                         if (qs.length === 0) return null;
                         return (

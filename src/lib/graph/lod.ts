@@ -12,6 +12,7 @@
 
 import type { LODLevel } from '@/types/graph';
 import { lod as thresholds } from '@/lib/tokens';
+import { clamp } from '@/lib/utils';
 
 export type LODTier = 1 | 2 | 3 | 4;
 
@@ -111,6 +112,3 @@ export function getLODTransitionProgress(zoom: number): number {
   return 1;
 }
 
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(Math.max(value, min), max);
-}

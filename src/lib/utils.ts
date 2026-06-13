@@ -43,13 +43,6 @@ export function clamp(value: number, min: number, max: number): number {
 }
 
 /**
- * Linear interpolation between two values.
- */
-export function lerp(a: number, b: number, t: number): number {
-  return a + (b - a) * t;
-}
-
-/**
  * Generate a stable ID from a string (for deterministic positioning).
  */
 export function hashString(str: string): number {
@@ -62,50 +55,3 @@ export function hashString(str: string): number {
   return Math.abs(hash);
 }
 
-/**
- * Generate a unique ID.
- */
-export function generateId(): string {
-  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
-}
-
-/**
- * Check if the user prefers reduced motion.
- */
-export function prefersReducedMotion(): boolean {
-  if (typeof window === 'undefined') return false;
-  return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-}
-
-/**
- * Get node radius from centrality score.
- * Hub nodes are larger, leaf nodes are smaller.
- */
-export function nodeRadiusFromCentrality(
-  centrality: number,
-  minRadius: number = 8,
-  maxRadius: number = 28,
-): number {
-  // centrality is 0–1 normalized
-  return minRadius + (maxRadius - minRadius) * Math.sqrt(centrality);
-}
-
-/**
- * Get edge opacity from weight — default (resting) state only.
- * Target: 20-30% opacity so edges show overall structure without competing with nodes.
- * --color-edge-default is a solid neutral gray-purple; this opacity IS the visual weight.
- */
-export function edgeOpacityFromWeight(weight: number): number {
-  if (weight >= 0.7) return 0.28;
-  if (weight >= 0.4) return 0.22;
-  return 0.18;
-}
-
-/**
- * Get edge stroke width from weight.
- * All edges use the same canonical width regardless of weight — weight
- * is expressed through opacity, not thickness.
- */
-export function edgeStrokeFromWeight(_weight: number): number {
-  return 1.0; // matches EDGE_STROKE_WIDTH in edge-config.ts
-}

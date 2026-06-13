@@ -14,6 +14,7 @@ import { useEffect, useLayoutEffect, useRef, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Compass, MousePointerClick } from 'lucide-react';
 import { useGraphStore } from '@/store/graph.store';
+import { clamp } from '@/lib/utils';
 import type { GraphData } from '@/types/graph';
 
 interface ExplorationGuideProps {
@@ -38,10 +39,6 @@ function pickSide(
   if (dh - sy - nr - GAP >= ch + PAD)      return 'below';
   if (sx - nr - GAP >= cw + PAD)           return 'left';
   return 'right';
-}
-
-function clamp(v: number, lo: number, hi: number) {
-  return Math.max(lo, Math.min(hi, v));
 }
 
 export function ExplorationGuide({ graph, zoom, pan, dimensions, onNodeClick }: ExplorationGuideProps) {

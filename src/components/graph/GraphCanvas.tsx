@@ -10,7 +10,7 @@
 
 'use client';
 
-import { useRef, useEffect, useState, useCallback } from 'react';
+import { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Compass } from 'lucide-react';
 import { useGraphStore } from '@/store/graph.store';
@@ -20,7 +20,12 @@ import { getLODLevel } from '@/lib/graph/lod';
 import { shouldUseWebGL } from '@/lib/graph/physics';
 import { Button } from '@/components/ui/button';
 import { GraphControls } from './GraphControls';
-import { BackgroundPicker } from './BackgroundPicker';
+import dynamic from 'next/dynamic';
+
+const BackgroundPicker = dynamic(
+  () => import('./BackgroundPicker').then((m) => m.BackgroundPicker),
+  { ssr: false },
+);
 import { SVGRenderer } from './renderers/SVGRenderer';
 import { ExplorationGuide } from './ExplorationGuide';
 import { ConceptExpansion } from './ConceptExpansion';
@@ -179,6 +184,51 @@ export function GraphCanvas({ className }: GraphCanvasProps) {
     [zoom, handleZoom],
   );
 
+  // Memoize polar reference grid — only changes when dimensions change
+  const polarGrid = useMemo(() => {
+    if (dimensions.width <= 0 || backdropUrl) return null;
+    const cx = dimensions.width * 0.5;
+    const cy = dimensions.height * 0.52;
+    const maxR = Math.hypot(dimensions.width, dimensions.height) * 0.55;
+    const rings = [0.22, 0.40, 0.60, 0.82].map((f) => f * maxR);
+    const spokes = 8;
+    return (
+      <svg
+        className="absolute inset-0 w-full h-full pointer-events-none"
+        style={{ opacity: hasSelection ? 0.3 : 0.7, transition: 'opacity 500ms ease', zIndex: 0 }}
+        aria-hidden="true"
+      >
+        <g>
+          {rings.map((r, i) => (
+            <circle
+              key={`ring-${i}`}
+              cx={cx} cy={cy} r={r}
+              fill="none"
+              stroke="rgba(123,110,196,0.10)"
+              strokeWidth={0.8}
+              strokeDasharray={i % 2 === 0 ? '4 8' : '1 10'}
+            />
+          ))}
+          {Array.from({ length: spokes }).map((_, i) => {
+            const angle = (i / spokes) * Math.PI * 2 - Math.PI / 8;
+            return (
+              <line
+                key={`spoke-${i}`}
+                x1={cx} y1={cy}
+                x2={cx + Math.cos(angle) * maxR}
+                y2={cy + Math.sin(angle) * maxR}
+                stroke="rgba(123,110,196,0.05)"
+                strokeWidth={0.7}
+              />
+            );
+          })}
+          <circle cx={cx} cy={cy} r={2} fill="rgba(123,110,196,0.18)" />
+          <circle cx={cx} cy={cy} r={6} fill="none" stroke="rgba(123,110,196,0.08)" strokeWidth={0.7} />
+        </g>
+      </svg>
+    );
+  }, [dimensions.width, dimensions.height, backdropUrl, hasSelection]);
+
   return (
     <div
       ref={containerRef}
@@ -252,53 +302,7 @@ export function GraphCanvas({ className }: GraphCanvasProps) {
       )}
 
       {/* Polar reference grid — hidden when backdrop image is active */}
-      {dimensions.width > 0 && !backdropUrl && (
-        <svg
-          className="absolute inset-0 w-full h-full pointer-events-none"
-          style={{ opacity: hasSelection ? 0.3 : 0.7, transition: 'opacity 500ms ease', zIndex: 0 }}
-          aria-hidden="true"
-        >
-          {(() => {
-            const cx = dimensions.width * 0.5;
-            const cy = dimensions.height * 0.52;
-            const maxR = Math.hypot(dimensions.width, dimensions.height) * 0.55;
-            const rings = [0.22, 0.40, 0.60, 0.82].map((f) => f * maxR);
-            const spokes = 8;
-            return (
-              <g>
-                {/* Concentric dashed circles */}
-                {rings.map((r, i) => (
-                  <circle
-                    key={`ring-${i}`}
-                    cx={cx} cy={cy} r={r}
-                    fill="none"
-                    stroke="rgba(123,110,196,0.10)"
-                    strokeWidth={0.8}
-                    strokeDasharray={i % 2 === 0 ? '4 8' : '1 10'}
-                  />
-                ))}
-                {/* Radial spokes */}
-                {Array.from({ length: spokes }).map((_, i) => {
-                  const angle = (i / spokes) * Math.PI * 2 - Math.PI / 8;
-                  return (
-                    <line
-                      key={`spoke-${i}`}
-                      x1={cx} y1={cy}
-                      x2={cx + Math.cos(angle) * maxR}
-                      y2={cy + Math.sin(angle) * maxR}
-                      stroke="rgba(123,110,196,0.05)"
-                      strokeWidth={0.7}
-                    />
-                  );
-                })}
-                {/* Center focal point — tiny dot */}
-                <circle cx={cx} cy={cy} r={2} fill="rgba(123,110,196,0.18)" />
-                <circle cx={cx} cy={cy} r={6} fill="none" stroke="rgba(123,110,196,0.08)" strokeWidth={0.7} />
-              </g>
-            );
-          })()}
-        </svg>
-      )}
+      {polarGrid}
 
       {/* Grain texture — hidden when backdrop image is active */}
       <svg

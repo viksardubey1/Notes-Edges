@@ -99,10 +99,3 @@ export interface Toast {
   duration?: number;
 }
 
-// ─── Node Detail Panel ────────────────────────────────────────────────────────
-
-export interface NodeDetailSection {
-  id: string;
-  title: string;
-  collapsed: boolean;
-}

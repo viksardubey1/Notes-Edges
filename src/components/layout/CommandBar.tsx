@@ -18,7 +18,12 @@ import { useGraphStore } from '@/store/graph.store';
 import { useAuth } from '@/context/AuthContext';
 import { signOut } from '@/lib/auth';
 import { renameGraph, cloneGraph } from '@/lib/graphs';
-import { AddNodeDialog } from '@/components/graph/AddNodeDialog';
+import dynamic from 'next/dynamic';
+
+const AddNodeDialog = dynamic(
+  () => import('@/components/graph/AddNodeDialog').then((m) => m.AddNodeDialog),
+  { ssr: false },
+);
 import { cn } from '@/lib/utils';
 import posthog from 'posthog-js';
 
